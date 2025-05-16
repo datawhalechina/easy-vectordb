@@ -53,7 +53,7 @@
 - [milvus](https://github.com/milvus-io/milvus)
   - [x] [milvus lite版部署](./docs/Milvus%20Lite部署与应用.md)
   - [x] [milvus Standalone版部署](./docs/Milvus%20Standalone部署.md)
-  - [ ] [milvus Standalone版应用]
+  - [x] [milvus 文本嵌入实战](./docs/milvus%20%E6%96%87%E6%9C%AC%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
 
 ## 参与贡献
 
