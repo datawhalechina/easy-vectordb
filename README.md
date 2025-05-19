@@ -55,6 +55,10 @@
   - [x] [milvus Standalone版部署](./docs/Milvus%20Standalone部署.md)
   - [x] [milvus 文本嵌入实战](./docs/milvus%20%E6%96%87%E6%9C%AC%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
   - [ ] [milvus pdf嵌入实战]
+ 
+文档解析软件
+- [MinerU](https://github.com/opendatalab/MinerU/blob/master/README_zh-CN.md)
+  - [x] [MinerU部署]()
 
 ## 参与贡献
 
