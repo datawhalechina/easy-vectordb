@@ -50,6 +50,8 @@
 - [开源大模型食用指南](https://github.com/datawhalechina/self-llm)
 
 # 教程
+
+向量数据库软件
 - [milvus](https://github.com/milvus-io/milvus)
   - [x] [milvus lite版部署](./docs/Milvus%20Lite部署与应用.md)
   - [x] [milvus Standalone版部署](./docs/Milvus%20Standalone部署.md)
