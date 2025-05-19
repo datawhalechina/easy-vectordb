@@ -60,7 +60,7 @@
  
 文档解析软件
 - [MinerU](https://github.com/opendatalab/MinerU/blob/master/README_zh-CN.md)
-  - [x] [MinerU部署]()
+  - [x] [MinerU部署](./docs/MinerU%E9%83%A8%E7%BD%B2%E6%95%99%E7%A8%8B.md)
 
 ## 参与贡献
 
