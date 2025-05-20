@@ -61,6 +61,9 @@
 文档解析软件
 - [MinerU](https://github.com/opendatalab/MinerU/blob/master/README_zh-CN.md)
   - [x] [MinerU部署](./docs/MinerU%E9%83%A8%E7%BD%B2%E6%95%99%E7%A8%8B.md)
+ 
+pdf文档
+- [Datawhale社区介绍](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
 
 ## 参与贡献
 
