@@ -44,7 +44,7 @@ client = MilvusClient("./milvus_demo.db")  # 文件路径可自定义
 | 集合 (Collection)  | 集合类似于MySQL中的表，它是用来存储向量的容器。集合可以有多个字段，每个字段对应一个向量属性。 |
 |   向量 (Vector)    | 向量是多维空间中的点，通常用于表示数据的特征，是集合中的基本存储单元。 |
 |    索引 (Index)    | 索引是用来加速向量搜索的数据结构，有多种索引类型，如 FLAT、IVF、HNSW 等，各自都有特定的适用场景。 |
-|       Filed        |                字段，可以是结构化数据、向量；                |
+|       Field        |                字段，可以是结构化数据、向量；                |
 |       Entity       |                一组Filed，类似表的一条记录。                 |
 
 > 在milvus中 数据库（Database）类似与MySQL的database，首先需要一个库，在Milvus Lite模式中，milvus_demo.db就是数据库
