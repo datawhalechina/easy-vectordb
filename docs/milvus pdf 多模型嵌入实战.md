@@ -4,7 +4,7 @@
 
 需要提取安装好milvus的环境，推荐使用独立部署的版本，性能相对来说会更好一点。
 
-[milvus Standalone版部署](https://github.com/datawhalechina/easy-vectordb/blob/main/docs/Milvus Standalone部署.md) 
+[milvus Standalone版部署](https://github.com/datawhalechina/easy-vectordb/blob/main/docs/Milvus%20Standalone部署.md) 
 
 milvus数据库一般在19530这个端口上
 
