@@ -52,6 +52,8 @@
 # 教程
 
 向量数据库软件
+- [聚类算法介绍](./docs/聚类算法介绍.md)
+  
 - [milvus](https://github.com/milvus-io/milvus)
   - [x] [milvus lite版部署](./docs/Milvus%20Lite部署与应用.md)
   - [x] [milvus Standalone版部署](./docs/Milvus%20Standalone部署.md)
