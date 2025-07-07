@@ -60,6 +60,7 @@
   - [x] [milvus 文本嵌入实战](./docs/milvus%20%E6%96%87%E6%9C%AC%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
   - [x] [milvus pdf嵌入实战](./docs/milvus%20pdf%20%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
   - [x] [milvus pdf 多模型嵌入召回实战](./docs/milvus%20pdf%20多模型嵌入实战.md)
+  - [x] [milvus 存储优化](./docs/milvus%20存储优化.md)
  - [实践项目](./project/README.md)  
 
 文档解析软件
