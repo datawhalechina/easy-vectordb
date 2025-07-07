@@ -1,0 +1,81 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    background-color: #f4f4f4; /* 轻灰背景 */
+    font-family: 'Open Sans', sans-serif;
+}
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+}
+.gr-box {
+    background-color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    width: 90%;
+    max-width: 600px;
+    margin-bottom: 20px;
+}
+.gr-button {
+    background-color: #007bff;
+    color: rgb(28, 3, 3);
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    text-transform: uppercase;
+}
+.gr-button:hover {
+    background-color: #0056b3;
+}
+.gr-textbox {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    margin-bottom: 20px;
+}
+.gr-textbox-label {
+    font-size: 14px;
+    color: #6c757d;
+    margin-bottom: 5px;
+    display: block;
+}
+.output-group {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.output-text {
+    margin-bottom: 20px;
+}
+.related-urls {
+    font-size: 14px;
+    color: #007bff;
+}
+.related-urls a {
+    text-decoration: none;
+    color: #007bff;
+}
+.related-urls a:hover {
+    text-decoration: underline;
+}
+.gr-button {
+    background-color: #007bff;
+    color: #007bff;
+    border: none;
+    border-radius: 5px;
+    padding: 10px 20px;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    text-transform: uppercase;
+}

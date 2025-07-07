@@ -53,14 +53,15 @@
 
 向量数据库软件
 - [聚类算法介绍](./docs/聚类算法介绍.md)
-  
+- [索引介绍](./docs/milvus%20索引介绍.md)
 - [milvus](https://github.com/milvus-io/milvus)
   - [x] [milvus lite版部署](./docs/Milvus%20Lite部署与应用.md)
   - [x] [milvus Standalone版部署](./docs/Milvus%20Standalone部署.md)
   - [x] [milvus 文本嵌入实战](./docs/milvus%20%E6%96%87%E6%9C%AC%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
   - [x] [milvus pdf嵌入实战](./docs/milvus%20pdf%20%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
   - [x] [milvus pdf 多模型嵌入召回实战](./docs/milvus%20pdf%20多模型嵌入实战.md)
- 
+ - [实践项目](./project/README.md)  
+
 文档解析软件
 - [MinerU](https://github.com/opendatalab/MinerU/blob/master/README_zh-CN.md)
   - [x] [MinerU部署](./docs/MinerU%E9%83%A8%E7%BD%B2%E6%95%99%E7%A8%8B.md)

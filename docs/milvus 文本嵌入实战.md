@@ -69,6 +69,7 @@ print(f"嵌入向量矩阵形状: {embeddings.shape}")
 
 ```python
 # milvus环境连接
+# alias: 数据库名称，可不填，默认为default
 connections.connect(alias="default", uri="http://127.0.0.1:19530")
 
 # 定义向量表结构
@@ -127,7 +128,7 @@ def vector_search(query_text: str, top_k=3):
     collection = Collection("datawhale") 
     # 加载集合（若数据库中已存在该集合）
     collection.load()
-    # metric_type指定距离度量方式：
+    # metric_type指定距离度量方式，请确保索引中设置的距离度量方式与search_params中设置的一致
     search_params = {
         "metric_type": "IP"
     }
