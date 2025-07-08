@@ -34,7 +34,7 @@ client = MilvusClient("./milvus_demo.db")  # 文件路径可自定义
 
 > 会在本地创建milvus_demo.db数据库文件，持久化存储所有数据
 
-![fig1](./src/fig1.png)
+![fig1](/docs/src/fig1.png)
 
 先来简单了解一下向量数据库内一些东西的基本概念
 
