@@ -2,73 +2,42 @@
 
 向量数据库部署与实践指南
 
-# 项目意义
-
-在人工智能技术高速发展的今天，向量数据库已成为支撑大模型、推荐系统、图像检索等场景的核心基础设施。然而，开发者面临部署复杂、概念抽象、实战案例不足等痛点。本教程旨在通过开源、模块化、实战驱动的方式，降低向量数据库的学习门槛，推动技术普及与社区协作。其意义体现在：
-
-1.填补知识鸿沟：系统梳理向量数据库的核心概念与部署流程，帮助开发者快速掌握这一新兴技术
-
-2.加速AI应用落地：结合真实案例（如RAG框架、大模型知识库），解决非结构化数据处理难题
-
-# 项目介绍
-
-1. 什么是向量数据库？
-   向量数据库是专为高维向量数据设计的数据库系统，能够将文本、图像、音频等非结构化数据转化为数学向量（即高维数组），并基于相似性度量（如余弦相似度、欧氏距离）实现高效检索。与传统关系型数据库相比，其核心优势在于：
-
-     - 处理非结构化数据：通过嵌入模型（Embedding）将复杂数据转化为向量，突破传统数据库的行列限制。
-
-     - 近似最近邻搜索（ANN）：利用索引技术（如HNSW、LSH）实现毫秒级海量数据检索，支持模糊匹配。
-
-     - 多模态支持：统一管理文本、图像、视频等多源数据，构建跨模态检索能力
-
-2. 向量数据库有什么用？
-   向量数据库是AI时代的“数据枢纽”，其应用场景包括但不限于：
-
-     - 大模型知识库增强：通过RAG（检索增强生成）框架，为ChatGPT等模型提供实时外部知识，减少“幻觉”问题。
-
-     - 推荐系统：基于用户行为向量与商品特征的相似性匹配，实现个性化推荐（如电商、流媒体平台）。
-
-     - 图像/音视频检索：将多媒体内容向量化，支持以图搜图、跨模态搜索（如医疗影像分析、版权检测）。
-
-     - 物联网与边缘计算：高效处理传感器数据流，实现实时异常检测与预测性维护。
-
-3. 教程内容概览
-   本教程将涵盖以下核心模块：
-
-   基础部署：手把手搭建开源向量数据库（如Milvus、Chroma），配置环境与集群。
-
-   实战案例：
-
-     - 使用RAG框架构建企业级知识库
-
-     - 图像检索系统开发：从数据嵌入到服务端API封装
-
-     - 性能优化：索引选择策略、GPU加速、分布式扩展方案
-
-# 友情链接
-
-- [开源大模型食用指南](https://github.com/datawhalechina/self-llm)
 
 # 教程
+## 📖 内容导航
 
-向量数据库软件
-- [聚类算法介绍](./docs/聚类算法介绍.md)
-- [索引介绍](./docs/milvus%20索引介绍.md)
-- [milvus](https://github.com/milvus-io/milvus)
-  - [x] [milvus lite版部署](./docs/Milvus%20Lite部署与应用.md)
-  - [x] [milvus Standalone版部署](./docs/Milvus%20Standalone部署.md)
-  - [x] [milvus 文本嵌入实战](./docs/milvus%20%E6%96%87%E6%9C%AC%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
-  - [x] [milvus pdf嵌入实战](./docs/milvus%20pdf%20%E5%B5%8C%E5%85%A5%E5%AE%9E%E6%88%98.md)
-  - [x] [milvus pdf 多模型嵌入召回实战](./docs/milvus%20pdf%20多模型嵌入实战.md)
- - [实践项目](./project/README.md)  
+| **Milvus**     | 章节                                       | 关键内容                                     | 状态   |
+|----------|-------------------------------------------|---------------------------------------------|--------|
+| 前言 | [前言](./docs/Milvus/chapter0/前言.md)    | 项目目标与大纲                                |   ⌛    |
+|    第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/技术选型            |   ⌛    |
+|      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略/重建方法           | ✅     |
+|          | [ 聚类介绍](./docs/Milvus/chapter1/聚类算法介绍.md) | 聚类原理/算法选择/优化策略                  | ✅     |
+|    第二章    | [Milvus Lite部署与应用](./docs/Milvus/chapter2/Milvus%20Lite部署与应用.md) | Lite部署方案             | ✅     |
+|          | [Milvus Standalone部署](./docs/Milvus/chapter2/Milvus%20Standalone部署.md) | Standalone部署方案                            | ✅     |
+|          | [ MinerU部署](./docs/Milvus/chapter2/MinerU部署教程.md) | MinerU部署方案                            | ✅     |
+|    第三章   | [ Milvus 文本嵌入实战](./docs/Milvus/chapter3/milvus%20文本嵌入实战.md) | 文本嵌入实战案例                            | ✅     |
+|          | [Milvus pdf嵌入实战](./docs/Milvus/chapter3/milvus%20pdf%20嵌入实战.md) | pdf嵌入实战案例                            | ✅     |
+|          | [Milvus pdf多模型嵌入实战](./docs/Milvus/chapter3/milvus%20pdf%20多模型嵌入实战.md) | pdf多模型嵌入实战案例                            | ✅     |
+|      第四章| [ Milvus mmp](./docs/Milvus/chapter4/milvus%20存储优化.md) | mmp理论与实践                            | ⌛     |
+|          | [ FunsionAnns](./docs/Milvus/chapter4/GPU加速检索-基于FusionANNS.md) | FusionANNS论文解读                 |    ⌛    |
+|      第五章   | [url分割处理](./docs/Milvus/project/url_process/README.md) | 视频数据存储过程中url分割与存放                 |   ✅     |
+|          | [ Milvus HDBSCAN](./docs/Milvus/project/milvus_hdbscan/hdbscan_clustering_with_milvus.ipynb) | HDBSCAN聚类算法可视化                 |    ✅    |
+|          | [ Text search pic](./docs/Milvus/project/text_search_pic/1_build_text_image_search_engine.ipynb) | 文搜图实践                 |     ⌛   |
+|          | [Store](./docs/Milvus/project/Cre_milvus/introduction.md) | 多类型数据存储工作流                 |     ⌛   |
+|     第六章     | [k8s部署Milvus监控](./docs/Milvus/project/xxxx) | 基于loki与Grafana的Milvus监控系统                 |     ⌛   |
 
-文档解析软件
-- [MinerU](https://github.com/opendatalab/MinerU/blob/master/README_zh-CN.md)
-  - [x] [MinerU部署](./docs/MinerU%E9%83%A8%E7%BD%B2%E6%95%99%E7%A8%8B.md)
- 
-pdf文档
+| **Faiss**     | 章节                                       | 关键内容                                     | 状态   |
+|----------|-------------------------------------------|---------------------------------------------|--------|
+|  | 待补充    | 项目目标与大纲                                |        
+|   | *待补充*                                  | Faiss核心原理与架构                          | ⌛     |
+|          | *待补充*                                  | 索引构建与参数调优                            | ⌛     |
+|          | *待补充*                                  | GPU加速方案                                 | ⌛     |
+|          | *待补充*                                  | 大规模向量检索实践                            | ⌛     |
+
+---
+
+## 📄 补充文档
 - [Datawhale社区介绍](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
-
 ## 参与贡献
 
 - 如果你发现了一些问题，可以提Issue进行反馈，如果提完没有人回复你可以联系[保姆团队](https://github.com/datawhalechina/DOPMC/blob/main/OP.md)的同学进行反馈跟进~
