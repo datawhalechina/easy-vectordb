@@ -10,8 +10,8 @@
 |----------|-------------------------------------------|---------------------------------------------|--------|
 | 前言 | [前言](./docs/Milvus/chapter0/前言.md)    | 项目目标与大纲                                |   ⌛    |
 |    第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/技术选型            |   ⌛    |
-|      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略/重建方法           | ✅     |
-|          | [ 聚类介绍](./docs/Milvus/chapter1/聚类算法介绍.md) | 聚类原理/算法选择/优化策略                  | ✅     |
+|      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略/重建方法           | ⌛     |
+|          | [ 聚类介绍](./docs/Milvus/chapter1/聚类算法介绍.md) | 聚类原理/算法选择/优化策略                  | ⌛     |
 |    第二章    | [Milvus Lite部署与应用](./docs/Milvus/chapter2/Milvus%20Lite部署与应用.md) | Lite部署方案             | ✅     |
 |          | [Milvus Standalone部署](./docs/Milvus/chapter2/Milvus%20Standalone部署.md) | Standalone部署方案                            | ✅     |
 |          | [ MinerU部署](./docs/Milvus/chapter2/MinerU部署教程.md) | MinerU部署方案                            | ✅     |
