@@ -1,0 +1,17 @@
+data:
+  data_location: ./data/upload/20250702
+milvus:
+  collection_name: Test
+  host: 127.0.0.1
+  index_device: cpu
+  index_name: HNSW
+  port: '19530'
+  replica_num: 1
+  vector_name: default
+search:
+  col_choice: hdbscan
+  reorder_strategy: distance
+  top_k: 20
+system:
+  insert_mode: 追加（保留原有数据）
+  url_split: false
