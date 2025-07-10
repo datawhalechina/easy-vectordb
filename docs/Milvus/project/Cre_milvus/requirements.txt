@@ -1,0 +1,24 @@
+numpy
+scikit-learn
+hdbscan
+pyyaml
+pymilvus>=2.2.0
+elasticsearch>=7.0.0,<8.0.0
+redis
+redisvl
+fastapi
+uvicorn
+streamlit
+pandas
+markdown
+PyPDF2
+requests
+sentence-transformers
+umap-learn
+plotly
+pandas
+zhipuai
+modelscope
+
+# 确保你的redis是7.0+ 版本，因为我用到了Redis向量库redisvl
+# pip install -r requirements.txt
