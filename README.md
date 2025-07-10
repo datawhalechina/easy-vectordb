@@ -46,6 +46,7 @@
 
 ### 核心贡献者
 - [牧小熊-项目负责人](https://github.com/muxiaoxiong) (Datawhale成员-武汉社区负责人)
+- [](xxxxx)(xxxxxx)
 
 ### 特别感谢
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
