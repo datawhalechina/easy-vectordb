@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-config
+  namespace: monitoring
+data:
+  grafana.ini: |
+    [server]
+    domain = localhost
+    root_url = http://localhost:3000
+    serve_from_sub_path = true
+
+    [security]
+    admin_user = admin
+    admin_password = admin

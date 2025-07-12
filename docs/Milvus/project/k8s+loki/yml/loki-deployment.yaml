@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: loki
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: loki
+  template:
+    metadata:
+      labels:
+        app: loki
+    spec:
+      securityContext:
+        runAsUser: 0  # 以 root 用户运行
+      containers:
+      - name: loki
+        image: grafana/loki:latest
+        args:
+        - "-config.file=/etc/loki/local-config.yaml"
+        ports:
+        - containerPort: 3100
+        volumeMounts:
+        - name: loki-config
+          mountPath: /etc/loki
+        - name: loki-wal
+          mountPath: /tmp/wal
+      volumes:
+      - name: loki-config
+        configMap:
+          name: loki-config
+      - name: loki-wal
+        emptyDir: {}
