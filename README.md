@@ -24,7 +24,7 @@
 |          | [ Milvus HDBSCAN](./docs/Milvus/project/milvus_hdbscan/hdbscan_clustering_with_milvus.ipynb) | HDBSCAN聚类算法可视化                 |    ✅    |
 |          | [ Text search pic](./docs/Milvus/project/text_search_pic/1_build_text_image_search_engine.ipynb) | 文搜图实践                 |     ⌛   |
 |          | [Store](./docs/Milvus/project/Cre_milvus/introduction.md) | 多类型数据存储工作流                 |     ✅   |
-|     第六章     | [k8s部署Milvus监控](./docs/Milvus/project/xxxx) | 基于loki与Grafana的Milvus监控系统                 |     ✅   |
+|     第六章     | [k8s部署Milvus监控](./docs/Milvus/project/k8s+loki/README.md) | 基于loki与Grafana的Milvus监控系统                 |     ✅   |
 
 | **Faiss**     | 章节                                       | 关键内容                                     | 状态   |
 |----------|-------------------------------------------|---------------------------------------------|--------|
