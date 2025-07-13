@@ -19,7 +19,7 @@
 |          | [Milvus pdf嵌入实战](./docs/Milvus/chapter3/milvus%20pdf%20嵌入实战.md) | pdf嵌入实战案例                            | ✅     |
 |          | [Milvus pdf多模型嵌入实战](./docs/Milvus/chapter3/milvus%20pdf%20多模型嵌入实战.md) | pdf多模型嵌入实战案例                            | ✅     |
 |      第四章| [ Milvus mmp](./docs/Milvus/chapter4/milvus%20存储优化.md) | mmp理论与实践                            | ⌛     |
-|          | [ FunsionAnns](./docs/Milvus/chapter4/GPU加速检索-基于FusionANNS.md) | FusionANNS论文解读                 |    ⌛    |
+|          | [ FunsionAnns](./docs/Milvus/chapter4/GPU加速检索-基于FusionANNS.md) | FusionANNS论文解读                 |    ✅    |
 |      第五章   | [url分割处理](./docs/Milvus/project/url_process/README.md) | 视频数据存储过程中url分割与存放                 |   ✅     |
 |          | [ Milvus HDBSCAN](./docs/Milvus/project/milvus_hdbscan/hdbscan_clustering_with_milvus.ipynb) | HDBSCAN聚类算法可视化                 |    ✅    |
 |          | [ Text search pic](./docs/Milvus/project/text_search_pic/1_build_text_image_search_engine.ipynb) | 文搜图实践                 |     ⌛   |
