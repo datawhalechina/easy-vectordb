@@ -73,4 +73,4 @@
 1. 《Meta-Chunking: Learning Efficient Text Segmentation via Logical Perception》（2024）  
 2. 《VisRAG: Vision-based Retrieval-augmented Generation》（多模态文档处理）
 
-
+如果你觉得论文看起来太枯燥，可以看看：[Meta-Chunking：一种新的文本切分策略](../chapter4/Meta-Chunking：一种新的文本切分策略.md)
