@@ -3,26 +3,6 @@ perplexity_chunking.py - 困惑度计算的核心实现模块
 
 这个文件实现了困惑度(Perplexity)的高效批量计算，是PPL分块方法的核心基础组件。
 困惑度是衡量语言模型对文本序列预测能力的重要指标，值越低表示模型对该文本的理解越好。
-
-核心概念与数学原理：
-- 困惑度(Perplexity) = 2^(交叉熵损失) = exp(交叉熵损失)
-- 交叉熵损失(Cross-Entropy Loss) = -log(P(真实token|上下文))
-- 在文本分块应用中，困惑度的局部极小值点通常对应语义连贯的区域边界
-
-技术特点：
-- 支持批量处理，提高计算效率
-- 集成KV缓存机制，优化长文本处理性能
-- 自动处理注意力掩码，确保计算准确性
-- 内存优化设计，支持大规模文本处理
-
-使用场景：
-- PPL分块算法的核心计算引擎
-- 文本质量评估和语义边界检测
-- 语言模型性能分析和调优
-
-作者：Meta-Chunking Team
-版本：1.0
-依赖：torch, transformers
 """
 
 import torch 
@@ -70,11 +50,6 @@ class Chunking:
         返回:
             loss: 每个token的交叉熵损失（困惑度的对数形式）
             past_key_values: KV缓存（如果return_kv=True）
-            
-        工作原理:
-        1. 使用语言模型进行前向推理，获取每个位置的概率分布
-        2. 计算每个token的交叉熵损失：-log(P(真实token|上下文))
-        3. 返回损失序列，每个值对应一个token的困惑度
         """
         past_length = 0
         if end is None:
