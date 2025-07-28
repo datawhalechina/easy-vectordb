@@ -173,66 +173,49 @@ def meta_chunking(original_text,base_model,language,ppl_threshold,chunk_length):
     final_text='\n\n'.join(merged_paragraphs)
     return final_text
 
-# 为界面加载示例数据
 with open('data/examples.json', 'r') as f:
     examples = json.load(f)
-# 从示例中提取原始文本用于数据集组件
 original_prompt_list = [[s["original_text"]] for s in examples]
 
-# Gradio界面配置
 title = "Meta-Chunking"
 
 header = """# Meta-Chunking: 基于逻辑感知的高效文本分割学习
         """
 
 theme = "soft"
-# 用于界面样式的自定义CSS
 css = """#anno-img .mask {opacity: 0.5; transition: all 0.2s ease-in-out;}
             #anno-img .mask.active {opacity: 0.7}"""
 
 
-# 创建Gradio界面
 with gr.Blocks(title=title, css=css) as app:
     gr.Markdown(header)
     
     with gr.Row():
-        # 左列：输入和输出文本区域（3/4宽度）
         with gr.Column(scale=3):
-            # 原始文本的文本输入区域
             original_text = gr.Textbox(value='', label="Original Text", lines=10, max_lines=10, interactive=True)
-            # 分块结果的文本输出区域（只读）
             chunking_result = gr.Textbox(value='', label="Chunking Result", lines=10, max_lines=10, interactive=False)
             
-        # 右列：控制面板（1/4宽度）
         with gr.Column(scale=1):
-            # 选择分块方法的单选按钮
             base_model = gr.Radio(["PPL Chunking", "Margin Sampling Chunking"], 
                                 label="Chunking Method", value="PPL Chunking", interactive=True)
-            # 选择文本语言的单选按钮
             language = gr.Radio(["en", "zh"], label="Text Language", value="en", interactive=True)
             # 困惑度阈值滑块（用于PPL分块）
             ppl_threshold = gr.Slider(minimum=0, maximum=1.0, step=0.1, value=0, 
                                     label="Threshold", interactive=True)
-            # 最大块长度的文本输入
             chunk_length = gr.Textbox(lines=1, label="Chunk length", interactive=True)
     
-    # 触发分块过程的按钮
     button = gr.Button("⚡Click to Chunking")
 
-    # 将按钮点击连接到meta_chunking函数
     button.click(fn=meta_chunking,
                  inputs=[original_text,base_model,language,ppl_threshold,chunk_length],
                  outputs=[chunking_result])
     
-    # 示例部分
     gr.Markdown("## 示例 (点击选择)")
-    # 显示示例文本的数据集组件
     dataset = gr.Dataset(label="Meta-Chunking",
                          components=[gr.Textbox(visible=False, max_lines=3)],
                          samples=original_prompt_list,
                          type="index")
 
-    # 选择示例时加载示例数据的函数
     dataset.select(fn=lambda idx: (examples[idx]["original_text"],examples[idx]["base_model"],
                                  examples[idx]["language"],examples[idx]["ppl_threshold"],
                                  examples[idx]["chunk_length"]),
