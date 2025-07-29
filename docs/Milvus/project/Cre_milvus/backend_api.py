@@ -97,7 +97,7 @@ except ImportError as e:
     MilvusLoadTest = None
     TestDataGenerator = None
 
-# python -m uvicorn backend_api:app --reload --port 8506
+# python -m uvicorn backend_api:app --reload --port 8504
 app = FastAPI(title="Cre_milvus 整合版API", version="2.0.0")
 
 
@@ -255,7 +255,10 @@ async def upload(files: list[UploadFile] = File(...), folder_name: str = None):
             
             # 检查嵌入模型状态
             try:
-                from Search.embedding import embedder
+                from Search.embedding import get_embedder
+                embedder = get_embedder()
+                if not embedder.load_model():
+                    raise Exception("嵌入模型加载失败")
                 status = embedder.check_status()
                 logger.info(f"嵌入模型状态: {status}")
                 
@@ -705,7 +708,10 @@ async def get_system_status():
         # 检查嵌入模型状态
         embedding_status = {"available": False, "model_name": "unknown"}
         try:
-            from Search.embedding import embedder
+            from Search.embedding import get_embedder
+            embedder = get_embedder()
+            if not embedder.load_model():
+                raise Exception("嵌入模型加载失败")
             status = embedder.check_status()
             embedding_status = {
                 "available": status["model_loaded"] and status["tokenizer_loaded"],

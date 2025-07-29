@@ -24,7 +24,7 @@
 |          | [K-means](./docs/Milvus/chapter4/K-mean算法详解.md) | An efficient K-means clustering algorithm for massive data论文解读                 |    ⌛    |
 |          | [Meta-Chunking：一种新的文本切分策略](./docs//Milvus/chapter4/Meta-Chunking：一种新的文本切分策略.md) | Learning Text Segmentation and Semantic Completion via Logical Perception论文解读                 |    ⌛    |
 |      第五章   | [url分割处理](./docs/Milvus/project/url_process/README.md) | 视频数据存储过程中url分割与存放                 |   ✅     |
-|          | [Cre_Milvus](./docs/Milvus/project/Cre_milvus/PROJECT_STRUCTURE.md) | 实践                 |     ⌛   |
+|          | [Cre_Milvus](./docs/Milvus/project/Cre_milvus/PROJECT_STRUCTURE.md) | 综合实践                 |     ⌛   |
 |          | [Meta-chunking](./docs/Milvus/project/Meta_chunking/README.md) | Meta-chunking论文实现demo                 |     ✅   |
 |          | [Locust](./docs/Milvus/project/locustProj/README.md) | 基于Locust的Milvus性能测试工具                 |     ✅   |
 |     第六章     | [k8s部署Milvus监控](./docs/Milvus/project/k8s+loki/README.md) | 基于loki与Grafana的Milvus监控系统                 |     ✅   |

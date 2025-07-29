@@ -1,12 +1,12 @@
 chunking:
   chunk_length: 512
   language: zh
-  ppl_threshold: 0.3
-  strategy: meta_ppl
+  overlap: 50
+  strategy: traditional
 data:
-  data_location: ./data/upload/20250729
+  data_location: ./data/upload/20250009
 milvus:
-  collection_name: Test_one
+  collection_name: Test_ooo
   host: 127.0.0.1
   index_device: cpu
   index_name: IVF_FLAT
@@ -30,7 +30,7 @@ search:
   reorder_strategy: distance
   top_k: 20
 system:
-  insert_mode: append
+  insert_mode: overwrite
   url_split: false
 testing:
   enable_performance_test: true
