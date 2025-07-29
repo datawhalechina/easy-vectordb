@@ -7,7 +7,12 @@ import os
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
+embedder = None
+def get_embedder():
+    global embedder
+    if embedder is None:
+        embedder = SimpleEmbeddingGenerator()
+    return embedder
 class SimpleEmbeddingGenerator:
     def __init__(self, model_name="BAAI/bge-large-zh-v1.5"):
         self.device = torch.device("cpu")
@@ -16,7 +21,11 @@ class SimpleEmbeddingGenerator:
         self.model_name = model_name
         self.load_model()
     
+    import sys
+    sys.setrecursionlimit(3000)
     def load_model(self):
+        if self.model is not None:
+            return True
         """最可靠的模型加载方法"""
         try:
             logger.info(f"尝试加载模型: {self.model_name}")
@@ -44,7 +53,7 @@ class SimpleEmbeddingGenerator:
         except Exception as e:
             logger.error(f"模型加载失败: {str(e)}")
             return False
-    
+
     def get_embedding(self, text):
         """获取文本嵌入向量"""
         if self.model is None or self.tokenizer is None:

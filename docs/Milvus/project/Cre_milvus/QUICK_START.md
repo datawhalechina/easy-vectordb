@@ -20,7 +20,7 @@ python start_integrated_system.py
 
 # 3. 访问系统
 # 前端界面: http://localhost:8501
-# 后端API: http://localhost:8506
+# 后端API: http://localhost:8504
 ```
 
 系统会自动处理缺失的依赖，核心功能可以正常使用。
@@ -48,8 +48,8 @@ python start_integrated_system.py
 启动成功后，可以通过以下地址访问：
 
 - **前端界面**: http://localhost:8501
-- **后端API**: http://localhost:8506
-- **API文档**: http://localhost:8506/docs
+- **后端API**: http://localhost:8504
+- **API文档**: http://localhost:8504/docs
 
 ## 📦 依赖状态
 
@@ -113,7 +113,7 @@ python test_integration.py
 ### 常见问题
 
 1. **端口占用**
-   - 关闭占用8506或8501端口的程序
+   - 关闭占用8504或8501端口的程序
 
 2. **依赖缺失**
    - 运行：`pip install fastapi uvicorn streamlit pyyaml`

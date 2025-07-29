@@ -69,14 +69,14 @@ def Cre_VectorDataBaseStart(
     """
     try:
         # 初始化连接
-        log_event(f"初始化Milvus连接: {IP}:{Port}")
-        try:
-            # 直接连接 Milvus
-            milvus_connect_insert(CollectionName, None, ReplicaNum, [], url_split, IP, Port, insert_mode)
-        except Exception as e:
-            log_event(f"Milvus连接失败: {str(e)}")
-            return False
-        log_event("Milvus连接成功")
+        # log_event(f"初始化Milvus连接: {IP}:{Port}")
+        # try:
+        #     # 直接连接 Milvus
+        #     milvus_connect_insert(CollectionName, None, ReplicaNum, [], url_split, IP, Port, insert_mode)
+        # except Exception as e:
+        #     log_event(f"Milvus连接失败: {str(e)}")
+        #     return False
+        # log_event("Milvus连接成功")
         
         # 检查数据目录
         if not os.path.exists(Data_Location):
