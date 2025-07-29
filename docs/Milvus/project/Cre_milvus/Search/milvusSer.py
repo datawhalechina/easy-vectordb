@@ -37,29 +37,13 @@ def milvus_search(embedding, topK, host, port, collection_name):
         # 基础结果处理（避免使用Hit对象）
         search_results = []
         for result in results:
-            for i in range(len(result.ids)):
+            for hit in result:
                 item = {
-                    "id": result.ids[i],
-                    "distance": result.distances[i],
+                    "id": hit.id,
+                    "content": hit.entity.get("content", ""),
+                    "url": hit.entity.get("url", "") 
                 }
-                
-                # 手动获取内容字段
-                entity_data = Collection(collection_name).query(
-                    expr=f"id == {result.ids[i]}",
-                    output_fields=output_fields
-                )
-                
-                if entity_data:
-                    item["content"] = entity_data[0].get("content", "")
-                    item["embedding"] = entity_data[0].get("embedding", None)
-                    item["url"] = entity_data[0].get("url", "")
-                else:
-                    item["content"] = ""
-                    item["embedding"] = None
-                    item["url"] = ""
-                
-                
-                search_results.append(item)
+            search_results.append(item)
         
         logger.info(f"找到 {len(search_results)} 条搜索结果")
         return search_results

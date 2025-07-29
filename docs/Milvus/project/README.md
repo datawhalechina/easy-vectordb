@@ -1,13 +1,33 @@
 # 实践项目
 > 部分实践项目来自Milvus和ToWhere官方社区，本教程对其进行了部分修改和完善。
-1. 基于Milvus的文搜图系统：基于Towhere，实现文本搜索图像[文搜图实践](./text_search_pic/1_build_text_image_search_engine.ipynb)
-2. 文档的url切割处理：处理包含url的数据示例[url处理实践](./url_process/front.py)
-3. HDBSCAN聚类算法可视化：基于HDBSCAN算法，实现聚类可视化[聚类算法实践](./Milvus_HDBSCAN/hdbscan_clustering_with_milvus.ipynb)
-4. 通用向量化处理器：实现一键对pdf、md、txt、pic文件的向量化存储[Cre_milivus](./Cre_milvus/introduction.md)
-5. 基于 Kubernetes 部署 Grafana + Loki 监控 Milvus 日志[k8s+loki](./k8s+loki/README.md)
-6. Meta-chunking论文代码demo[Meta-chunking](./Meta_chunking/README.md)
-7. locust测试本地Milvus性能[locust](./locustProj/README.md)
+1. 文档的url切割处理：处理包含url的数据示例[url处理实践](./url_process/front.py)
+2. 通用向量化处理器：实现一键对pdf、md、txt、pic文件的向量化存储[Cre_milivus](./Cre_milvus/introduction.md)
+   * Cre_milvus作为本教程Milvus部分的主项目，
+   * 后续的k8s+loki将与之结合，
+   * 该项目包含Meta-Chunking中PPL、MSP、动态阈值、元块合并、语义补全
+   * PDF、TXT、MD、（结构化、非结构化）数据处理与存储
+   * PIC（JPG、PNG）图片的向量化存储
+   * Milvus的基本操作
+   * locust测试
+   * VectorDBench 测试
+   * FusionANNS的实践，包含codeBook、DistanceTable的构建、分层PQ、启发式重排序、反馈控制、IO去重
+3. 基于 Kubernetes 部署 Grafana + Loki 监控 Milvus 日志[k8s+loki](./k8s+loki/README.md)
+4. Meta-chunking论文代码demo[Meta-chunking](./Meta_chunking/README.md)
+5. locust测试本地Milvus性能[locust](./locustProj/README.md)
 
+任务流程安排：
+1. 关闭PIC
+2. 数据的向量化与插入
+3. Meta-chunking:PPL
+4. Meta-chunking:MSP,动态阈值、元块合并
+5. Meta-chunking:语义补全
+6. k8s+loki:日志地址
+7. 测试：locust
+8. 开启PIC，处理逻辑
+9. 测试：VectorDBench
+10. FusionANNS：启发式重排序和反馈控制模型
+11. ...
+12. FusionANNS
 
 
 
