@@ -1,24 +1,46 @@
-numpy
-scikit-learn
-hdbscan
-pyyaml
-pymilvus>=2.2.0
+# 原有依赖
+numpy>=1.21.0
+scikit-learn>=1.3.0
+hdbscan>=0.8.29
+pyyaml>=6.0
+pymilvus>=2.3.0
 elasticsearch>=7.0.0,<8.0.0
-redis
-redisvl
-fastapi
-uvicorn
-streamlit
-pandas
-markdown
-PyPDF2
-requests
-sentence-transformers
-umap-learn
-plotly
-pandas
-zhipuai
-modelscope
+redis>=4.0.0
+redisvl>=0.0.5
+fastapi>=0.104.0
+uvicorn>=0.24.0
+streamlit>=1.28.0
+pandas>=1.5.0
+markdown>=3.5.0
+PyPDF2>=3.0.0
+requests>=2.31.0
+sentence-transformers>=2.2.0
+umap-learn>=0.5.4
+plotly>=5.17.0
+zhipuai>=1.0.0
+modelscope>=1.9.0
+python-multipart>=0.0.6
+
+# 新增依赖 - 文本切分相关
+torch>=2.0.0
+transformers>=4.21.0
+nltk>=3.8
+jieba>=0.42.1
+
+# 新增依赖 - 多模态处理相关
+# CLIP需要从GitHub安装: pip install git+https://github.com/openai/CLIP.git
+pillow>=9.0.0
+opencv-python>=4.8.0
+ftfy>=6.1.1
+regex>=2022.7.9
+
+# 新增依赖 - 性能测试相关
+locust>=2.14.0
+psutil>=5.9.0
+
+# 可选依赖（用于更好的性能）
+# accelerate>=0.21.0  # 用于模型加速
+# bitsandbytes>=0.41.0  # 用于模型量化
 
 # 确保你的redis是7.0+ 版本，因为我用到了Redis向量库redisvl
 # pip install -r requirements.txt

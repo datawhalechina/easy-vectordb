@@ -1,17 +1,42 @@
+chunking:
+  chunk_length: 512
+  language: zh
+  ppl_threshold: 0.3
+  strategy: meta_ppl
 data:
-  data_location: ./data/upload/20250702
+  data_location: ./data/upload/20250729
 milvus:
-  collection_name: Test
+  collection_name: Test_one
   host: 127.0.0.1
   index_device: cpu
-  index_name: HNSW
+  index_name: IVF_FLAT
   port: '19530'
   replica_num: 1
   vector_name: default
+multimodal:
+  clip_model: ViT-B/32
+  enable_image: false
+  image_formats:
+  - jpg
+  - jpeg
+  - png
+  - bmp
+performance:
+  enable_custom_metrics: true
+  max_history: 1000
+  monitor_interval: 1.0
 search:
   col_choice: hdbscan
   reorder_strategy: distance
   top_k: 20
 system:
-  insert_mode: 追加（保留原有数据）
+  insert_mode: append
   url_split: false
+testing:
+  enable_performance_test: true
+  locust_config:
+    run_time: 60s
+    spawn_rate: 1
+    users: 10
+  test_collection_name: locust_test_collection
+  test_data_size: 10000

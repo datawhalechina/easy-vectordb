@@ -12,6 +12,7 @@ import hdbscan
 from sklearn.cluster import KMeans
 import numpy as np
 import yaml
+import os
 
 def load_config(config_path="config.yaml"):
     with open(config_path, "r", encoding="utf-8") as f:
@@ -20,58 +21,141 @@ def load_config(config_path="config.yaml"):
 config = load_config()
 
 def Cre_VectorDataBaseStart_from_config(config):
-    milvus_cfg = config["milvus"]
-    data_cfg = config["data"]
-    sys_cfg = config["system"]
+    try:
+        milvus_cfg = config.get("milvus", {})
+        data_cfg = config.get("data", {})
+        sys_cfg = config.get("system", {})
+        chunking_cfg = config.get("chunking", {})
+        multimodal_cfg = config.get("multimodal", {})
 
-    return Cre_VectorDataBaseStart(
-        C_G_Choic=milvus_cfg["index_device"],
-        IP=milvus_cfg["host"],
-        Port=milvus_cfg["port"],
-        VectorName=milvus_cfg["vector_name"],
-        CollectionName=milvus_cfg["collection_name"],
-        IndexName=milvus_cfg["index_name"],
-        ReplicaNum=milvus_cfg["replica_num"],
+        log_event(f"开始向量化存储，配置: {config}")
 
-        Data_Location=data_cfg["data_location"],
-        url_split=sys_cfg["url_split"],
-        insert_mode=sys_cfg["insert_mode"]
-    )
+        return Cre_VectorDataBaseStart(
+            C_G_Choic=milvus_cfg.get("index_device", "cpu"),
+            IP=milvus_cfg.get("host", "127.0.0.1"),
+            Port=milvus_cfg.get("port", "19530"),
+            VectorName=milvus_cfg.get("vector_name", "default"),
+            CollectionName=milvus_cfg.get("collection_name", "Test_one"),
+            IndexName=milvus_cfg.get("index_name", "IVF_FLAT"),
+            ReplicaNum=milvus_cfg.get("replica_num", 1),
+
+            Data_Location=data_cfg.get("data_location", "./data/upload"),
+            url_split=sys_cfg.get("url_split", False),
+            insert_mode=sys_cfg.get("insert_mode", "覆盖（删除原有数据）"),
+            
+            # 新增参数
+            chunking_strategy=chunking_cfg.get("strategy", "traditional"),
+            chunking_params={
+                "chunk_length": chunking_cfg.get("chunk_length", 512),
+                "ppl_threshold": chunking_cfg.get("ppl_threshold", 0.3),
+                "confidence_threshold": chunking_cfg.get("confidence_threshold", 0.7),
+                "similarity_threshold": chunking_cfg.get("similarity_threshold", 0.8),
+                "overlap": chunking_cfg.get("overlap", 50),  # 新增缺失参数
+                "language": chunking_cfg.get("language", "zh")
+            },
+            enable_multimodal=multimodal_cfg.get("enable_image", False)
+        )
+    except Exception as e:
+        log_event(f"配置解析失败: {e}")
+        raise
 
 def Cre_VectorDataBaseStart(
     C_G_Choic, IP, Port, VectorName, CollectionName,
-    IndexName, ReplicaNum, Data_Location, url_split,insert_mode
+    IndexName, ReplicaNum, Data_Location, url_split, insert_mode,
+    chunking_strategy="traditional", chunking_params=None, enable_multimodal=False
 ):
     """
     构建向量数据库并插入数据，参数全部由配置文件自动读取。
     """
-    # 初始化连接
-    init_milvus(VectorName, IP, Port)
-    log_event("开始数据处理")
-    # 数据处理加重试
-    dataList = retry_function(
-        lambda: data_process(
-            data_location=Data_Location,
-            url_split=url_split
-        )
-    )()
-    log_event(f"数据处理完成，数据量：{len(dataList)}")
+    try:
+        # 初始化连接
+        log_event(f"初始化Milvus连接: {IP}:{Port}")
+        try:
+            # 直接连接 Milvus
+            milvus_connect_insert(CollectionName, None, ReplicaNum, [], url_split, IP, Port, insert_mode)
+        except Exception as e:
+            log_event(f"Milvus连接失败: {str(e)}")
+            return False
+        log_event("Milvus连接成功")
+        
+        # 检查数据目录
+        if not os.path.exists(Data_Location):
+            raise FileNotFoundError(f"数据目录不存在: {Data_Location}")
+        
+        log_event(f"开始数据处理，目录: {Data_Location}")
+        log_event(f"分块策略: {chunking_strategy}, 参数: {chunking_params}")
+        
+        # 数据处理加重试
+        def process_data():
+            return data_process(
+                data_location=Data_Location,
+                url_split=url_split,
+                chunking_strategy=chunking_strategy,
+                chunking_params=chunking_params or {
+                    "chunk_length": 512,
+                    "ppl_threshold": 0.3,
+                    "confidence_threshold": 0.7,
+                    "similarity_threshold": 0.8,
+                    "overlap": 50,
+                    "language": "zh"
+                },
+                enable_multimodal=enable_multimodal
+            )
+        
+        dataList = retry_function(process_data)()
+        
+        if not dataList:
+            raise ValueError("数据处理结果为空，请检查数据目录和文件格式")
+        
+        log_event(f"数据处理完成，数据量：{len(dataList)}")
+        
+        # 验证数据质量
+        valid_data = []
+        for i, data in enumerate(dataList):
+            if not isinstance(data, dict):
+                log_event(f"跳过无效数据项 {i}: 不是字典格式")
+                continue
+            if "embedding" not in data or not data["embedding"]:
+                log_event(f"跳过无效数据项 {i}: 缺少embedding")
+                continue
+            if "content" not in data or not data["content"]:
+                log_event(f"跳过无效数据项 {i}: 缺少content")
+                continue
+            valid_data.append(data)
+        
+        if not valid_data:
+            raise ValueError("没有有效的数据可以插入")
+        
+        log_event(f"有效数据量：{len(valid_data)}")
 
-    # 构建索引参数
-    indexParam = indexParamBuilder(C_G_Choic, IndexName)
+        # 构建索引参数
+        log_event(f"构建索引参数: {IndexName}")
+        indexParam = indexParamBuilder(C_G_Choic, IndexName)
 
-    # 连接Milvus并插入数据
-    log_event("开始连接Milvus并插入数据")
-    def milvus_insert():
-        # 数据质量评估与分流插入
-        status = milvus_connect_insert(
-           CollectionName, indexParam, ReplicaNum, dataList, url_split,IP, Port,insert_mode
-        )
-    
-        return status
-    
-    milvus_insert()
-    log_event("Milvus插入流程完成")
+        # 连接Milvus并插入数据
+        log_event("开始连接Milvus并插入数据")
+        
+        def milvus_insert():
+            status = milvus_connect_insert(
+               CollectionName, indexParam, ReplicaNum, valid_data, url_split, IP, Port, insert_mode
+            )
+            return status
+        
+        result = milvus_insert()
+        log_event(f"Milvus插入流程完成: {result}")
+        
+        return {
+            "status": "success",
+            "message": "向量化存储完成",
+            "processed_files": len(valid_data),
+            "milvus_result": result
+        }
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        log_event(f"向量化存储失败: {e}\n详细错误: {error_details}")
+        raise Exception(f"向量化存储失败: {str(e)}")
 
 def Cre_Search(config, question):
     """
@@ -90,7 +174,7 @@ def Cre_Search(config, question):
     log_event(f"开始检索: {question}")
     
     data_cfg = config["system"]
-    url_split= data_cfg["url_split"],
+    url_split= data_cfg["url_split"]
 
     responseList = search(CollectionName, question, topK,url_split,host, port)
     print(f"Search results: {len(responseList)}")

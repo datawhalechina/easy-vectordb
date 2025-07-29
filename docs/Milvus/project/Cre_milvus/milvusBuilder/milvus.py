@@ -10,24 +10,38 @@ def milvus_connect_insert(CollectionName, IndexParam, ReplicaNum, dataList, url_
             port=Milvus_port
         )
         
+        # 动态获取向量维度
+        embedding_dim = 1024  # 默认维度
+        if dataList and len(dataList) > 0:
+            first_embedding = dataList[0].get("embedding", [])
+            if isinstance(first_embedding, list):  # 添加类型检查
+                embedding_dim = len(first_embedding)
+                logging.info(f"检测到向量维度: {embedding_dim}")
+        
         # 检查并创建 collection
         collection_name = CollectionName
         if url_split:
             fields = [
                 FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
                 FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=4096),
-                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=1024),
+                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim),
                 FieldSchema(name="url", dtype=DataType.VARCHAR, max_length=1024)
             ]
         else:
             fields = [
                 FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
                 FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=4096),
-                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=1024)
+                FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=embedding_dim)
             ]
         
         # 创建带动态字段支持的 schema
         schema = CollectionSchema(fields, collection_name, enable_dynamic_field=True)
+        
+        # 添加动态字段支持验证
+        if utility.has_collection(collection_name) and insert_mode != "覆盖（删除原有数据）":
+            existing_schema = Collection(collection_name).schema
+            if not existing_schema.enable_dynamic_field:
+                raise ValueError("无法追加到不支持动态字段的集合，请先删除原有集合")
         
         # 根据插入模式决定是否删除原有 collection
         if insert_mode == "覆盖（删除原有数据）":
@@ -39,8 +53,6 @@ def milvus_connect_insert(CollectionName, IndexParam, ReplicaNum, dataList, url_
                 collection = Collection(name=collection_name, schema=schema)
             else:
                 collection = Collection(name=collection_name)
-        
-        collection = Collection(name=collection_name, schema=schema)
         
         # 确保数据字段对齐
         for data in dataList:

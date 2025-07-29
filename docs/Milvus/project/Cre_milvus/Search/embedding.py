@@ -103,13 +103,28 @@ class SimpleEmbeddingGenerator:
             logger.error(f"批量生成嵌入失败: {str(e)}")
             return []
     
+    def get_embedding_dimension(self):
+        """获取嵌入向量维度"""
+        if self.model is None:
+            if not self.load_model():
+                return 1024  # 默认维度
+        
+        try:
+            # 使用测试文本获取维度
+            test_embedding = self.get_embedding("测试")
+            return len(test_embedding) if test_embedding else 1024
+        except Exception as e:
+            logger.error(f"获取嵌入维度失败: {e}")
+            return 1024  # 默认维度
+    
     def check_status(self):
         """检查模型状态"""
         return {
             "model_loaded": self.model is not None,
             "tokenizer_loaded": self.tokenizer is not None,
             "device": str(self.device),
-            "model_name": self.model_name
+            "model_name": self.model_name,
+            "embedding_dimension": self.get_embedding_dimension() if self.model else 1024
         }
 
 # 全局实例

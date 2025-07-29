@@ -1,34 +1,12 @@
 """
 chunk_rag.py - PPL困惑度分块的核心实现文件
 
-本文件包含了基于困惑度(Perplexity)的文本分块算法实现，主要功能包括：
-1. 文本预处理和句子分割
-2. 困惑度计算和局部极小值检测
-3. 基于困惑度的文本分块
-4. 支持长文本的批处理和KV缓存优化
-
-核心原理：
-- 计算每个句子在给定上下文下的困惑度
-- 找到困惑度序列中的局部极小值点
-- 在这些极小值点处进行文本分割，保持语义连贯性
-
-算法特点：
-- 多种分块策略：标准分块、重叠分块、动态阈值分块
-- 批处理优化：支持长文本的分批处理，避免内存溢出
-- KV缓存机制：重用计算结果，提高处理效率
-- 多语言支持：中文使用jieba分词，英文使用NLTK
-- 动态阈值：根据历史数据自适应调整分割阈值
-
-主要函数：
 - split_text_by_punctuation(): 按标点符号分割文本为句子
 - find_minima(): 寻找困惑度序列的局部极小值点
 - extract_by_html2text_db_nolist(): 标准PPL分块实现
 - extract_by_html2text_db_dynamic(): 动态阈值分块
 - extract_by_html2text_db_dynamic_batch(): 支持长文本的批处理分块
 
-作者：Meta-Chunking Team
-版本：1.0
-依赖：torch, transformers, nltk, jieba
 """
 
 from perplexity_chunking import Chunking
@@ -52,10 +30,6 @@ def split_text_by_punctuation(text, language):
     
     返回:
         sentences: 分割后的句子列表
-    
-    处理逻辑:
-    - 中文：使用jieba分词，然后按句号、感叹号、问号、分号重新组合
-    - 英文：使用NLTK的sent_tokenize，并限制句子长度防止过长
     """
     if language == 'zh': 
         # 中文文本处理
@@ -112,16 +86,6 @@ def find_minima(values, threshold):
     
     返回:
         minima_indices: 局部极小值点的索引列表
-    
-    算法逻辑:
-    1. 遍历序列中的每个点（除了首尾）
-    2. 检查是否为局部极小值：当前值小于左右邻居
-    3. 检查下降幅度是否足够显著（超过阈值）
-    4. 特殊情况：左边下降显著，右边持平
-    
-    理论基础:
-    - 困惑度的局部极小值通常对应语义连贯的区域
-    - 在这些点进行分割可以保持文本块的语义完整性
     """
     minima_indices = []  
     for i in range(1, len(values) - 1):  
@@ -154,10 +118,6 @@ def find_minima_dynamic(values, threshold, threshold_zlist):
         threshold: 更新后的阈值
         threshold_zlist: 更新后的历史阈值记录
     
-    动态调整机制:
-    - 记录每个有效极小值点的下降幅度
-    - 当历史记录达到100个时，使用历史最小值作为新阈值
-    - 这样可以自适应不同文本的困惑度变化特性
     """
     minima_indices = []  
     for i in range(1, len(values) - 1):  
@@ -198,9 +158,6 @@ def extract_by_html2text_db_chongdie(sub_text, model, tokenizer, threshold, lang
     返回:
         final_chunks: 分块后的文本列表
     
-    与nolist版本的区别:
-    - 在生成文本块时使用了不同的索引范围策略
-    - 可能会在分块边界处产生重叠内容
     """
     temp_para = sub_text
 
@@ -289,13 +246,6 @@ def extract_by_html2text_db_nolist(sub_text, model, tokenizer, threshold, langua
     返回:
         final_chunks: 分块后的文本列表，每个元素是一个语义连贯的文本块
     
-    算法流程:
-    1. 文本预处理和句子分割
-    2. 将所有句子编码为token序列
-    3. 批量计算每个token的困惑度
-    4. 计算每个句子的平均困惑度
-    5. 找到困惑度序列的局部极小值点
-    6. 在极小值点处分割文本，生成最终的文本块
     """
     temp_para = sub_text
 
@@ -419,11 +369,7 @@ def extract_by_html2text_db_dynamic(sub_text, model, tokenizer, threshold, thres
         final_chunks: 分块后的文本列表
         threshold: 更新后的动态阈值
         threshold_zlist: 更新后的历史阈值记录
-    
-    动态调整优势:
-    - 能够适应不同文本的困惑度变化特性
-    - 通过历史数据学习最优的分割阈值
-    - 提高分块质量的一致性
+
     """
     temp_para = sub_text 
     
@@ -517,11 +463,6 @@ def extract_by_html2text_db_dynamic_batch(sub_text, model, tokenizer, threshold,
         final_chunks: 分块后的文本列表
         threshold: 更新后的阈值
         threshold_zlist: 更新后的历史阈值记录
-    
-    核心优化:
-    1. 批处理：将长序列分成多个批次处理，避免内存溢出
-    2. KV缓存：重用之前计算的键值对，加速推理
-    3. 滚动窗口：当缓存过大时，丢弃最早的部分，保持内存可控
     """
     temp_para = sub_text
 
@@ -646,11 +587,6 @@ def extract_by_html2text_db_bench(sub_text, model, tokenizer, threshold, languag
     
     返回:
         final_chunks: 分块后的文本列表
-    
-    特点:
-    - 使用8192的大批处理大小，适合高性能GPU
-    - 包含详细的调试输出，便于性能分析
-    - 支持KV缓存和滚动窗口机制
     """
     temp_para = sub_text
     
