@@ -285,7 +285,7 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
             
             # 发送到后端
             try:
-                response = requests.post("http://localhost:8504/update_config", json=config_data)
+                response = requests.post("http://localhost:8507/update_config", json=config_data)
                 if response.status_code == 200:
                     st.success("✅ 配置已保存并生效")
                 else:
@@ -316,7 +316,7 @@ with st.expander("📁 上传数据文件夹", expanded=True):
                 files = [("files", (file.name, file, file.type)) for file in uploaded_files]
                 try:
                     response = requests.post(
-                        "http://localhost:8504/upload",
+                        "http://localhost:8507/upload",
                         params={"folder_name": folder_name},
                         files=files
                     )
@@ -343,7 +343,7 @@ with st.expander("📁 上传数据文件夹", expanded=True):
                         st.session_state.config["data"] = config_update["data"]
                         
                         # 发送更新请求
-                        update_response = requests.post("http://localhost:8504/update_config", json=config_update)
+                        update_response = requests.post("http://localhost:8507/update_config", json=config_update)
                         
                         if update_response.status_code != 200:
                             st.error(f"❌ 配置更新失败: {update_response.text}")
@@ -375,7 +375,7 @@ with st.expander("🔎 检索与可视化", expanded=True):
                 try:
                     # 1. 执行搜索
                     search_response = requests.post(
-                        "http://localhost:8504/search",
+                        "http://localhost:8507/search",
                         json={
                             "question": question, 
                             "col_choice": col_choice,
@@ -488,7 +488,7 @@ with st.expander("🔎 检索与可视化", expanded=True):
                         # 2. 执行可视化（仅限HDBSCAN）
                         if col_choice.lower() == "hdbscan" and "clusters" in search_result and search_result["clusters"]:
                             vis_response = requests.post(
-                                "http://localhost:8504/visualization",
+                                "http://localhost:8507/visualization",
                                 json={"collection_name": st.session_state.config["milvus"]["collection_name"]}
                             )
                             
@@ -543,7 +543,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
             with st.spinner("正在执行文本切分..."):
                 try:
                     response = requests.post(
-                        "http://localhost:8504/chunking/process",
+                        "http://localhost:8507/chunking/process",
                         json={
                             "text": test_text,
                             "strategy": test_strategy,
@@ -577,7 +577,7 @@ with st.expander("🖼️ 文搜图功能", expanded=False):
                 with st.spinner("正在搜索图像..."):
                     try:
                         response = requests.post(
-                            "http://localhost:8504/multimodal/text_to_image_search",
+                            "http://localhost:8507/multimodal/text_to_image_search",
                             json={
                                 "query_text": search_text,
                                 "top_k": search_top_k,
@@ -611,7 +611,7 @@ with st.expander("📊 性能监控", expanded=False):
     
     if st.button("🔄 刷新性能数据", key="refresh_perf_btn"):
         try:
-            response = requests.get("http://localhost:8504/performance/current")
+            response = requests.get("http://localhost:8507/performance/current")
             if response.status_code == 200:
                 metrics = response.json().get("metrics", {})
                 
@@ -633,7 +633,7 @@ with st.expander("📊 性能监控", expanded=False):
 with st.expander("🔧 系统状态", expanded=False):
     if st.button("📋 获取系统状态", key="system_status_btn"):
         try:
-            response = requests.get("http://localhost:8504/system/status")
+            response = requests.get("http://localhost:8507/system/status")
             if response.status_code == 200:
                 status_data = response.json()
                 st.success("✅ 系统运行正常")

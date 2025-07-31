@@ -2,27 +2,52 @@
 图像数据处理工具
 
 处理各种格式的图像文件，支持图像向量化和多模态搜索
+重构后的版本，充分利用multimodal包的功能，避免代码重复
 """
 
-import os
 import traceback
 from pathlib import Path
 from typing import List, Dict, Any, Optional
-from PIL import Image
 import logging
 
 from System.monitor import log_event
 
-# 尝试导入CLIP编码器
+# 导入multimodal包的功能
 try:
     from multimodal.clip_encoder import CLIPEncoder
-    from multimodal.image_processor import ImageProcessor
     MULTIMODAL_AVAILABLE = True
 except ImportError:
     MULTIMODAL_AVAILABLE = False
     print("Warning: 多模态模块不可用，图像将只保存基本信息")
 
 logger = logging.getLogger(__name__)
+
+# 全局变量，用于缓存编码器实例，避免重复初始化
+_clip_encoder_cache = None
+
+
+def _get_clip_encoder() -> Optional[CLIPEncoder]:
+    """
+    获取CLIP编码器实例，使用缓存避免重复初始化
+    
+    返回:
+        CLIPEncoder实例或None
+    """
+    global _clip_encoder_cache
+    
+    if not MULTIMODAL_AVAILABLE:
+        return None
+    
+    try:
+        if _clip_encoder_cache is None:
+            _clip_encoder_cache = CLIPEncoder()
+            log_event("CLIP编码器初始化成功")
+        
+        return _clip_encoder_cache
+    
+    except Exception as e:
+        logger.error(f"初始化CLIP编码器失败: {e}")
+        return None
 
 
 def process_img(img_path: str, use_clip: bool = True) -> List[Dict[str, Any]]:
@@ -37,6 +62,49 @@ def process_img(img_path: str, use_clip: bool = True) -> List[Dict[str, Any]]:
         包含图像信息的列表
     """
     try:
+        log_event(f"开始处理图像: {img_path}")
+        
+        # 基本图像处理
+        result = _process_img_basic(img_path)
+        
+        # 如果启用CLIP且可用，添加向量化
+        if use_clip and result:
+            clip_encoder = _get_clip_encoder()
+            if clip_encoder:
+                try:
+                    from PIL import Image
+                    image = Image.open(img_path).convert('RGB')
+                    image_vector = clip_encoder.encode_image(image)[0]
+                    result[0]['embedding'] = image_vector.tolist()
+                    result[0]['vector_dim'] = len(image_vector)
+                    log_event(f"图像向量化成功: {img_path}, 维度: {len(image_vector)}")
+                except Exception as e:
+                    logger.warning(f"图像向量化失败 {img_path}: {e}")
+                    result[0]['embedding_error'] = str(e)
+        
+        log_event(f"图像处理完成: {img_path}")
+        return result
+            
+    except Exception as e:
+        error_msg = f"处理图像失败: {img_path}\n错误: {str(e)}\n{traceback.format_exc()}"
+        log_event(error_msg)
+        print(error_msg)
+        return []
+
+
+def _process_img_basic(img_path: str) -> List[Dict[str, Any]]:
+    """
+    基本图像处理，获取图像基本信息
+    
+    参数:
+        img_path: 图像文件路径
+    
+    返回:
+        包含基本图像信息的列表
+    """
+    from PIL import Image
+    
+    try:
         img_path = Path(img_path)
         
         if not img_path.exists():
@@ -47,58 +115,31 @@ def process_img(img_path: str, use_clip: bool = True) -> List[Dict[str, Any]]:
         if img_path.suffix.lower() not in supported_formats:
             raise ValueError(f"不支持的图像格式: {img_path.suffix}")
         
-        log_event(f"开始处理图像: {img_path}")
-        
         # 基本图像信息处理
-        try:
-            image = Image.open(img_path).convert('RGB')
-            width, height = image.size
-            file_size = img_path.stat().st_size
-            
-            result = {
-                'id': img_path.stem,
-                'content': str(img_path),  # 图像路径作为内容
-                'source_file': str(img_path),
-                'content_type': 'image',
-                'image_info': {
-                    'width': width,
-                    'height': height,
-                    'format': image.format or img_path.suffix[1:].upper(),
-                    'mode': image.mode,
-                    'size_bytes': file_size,
-                    'aspect_ratio': round(width / height, 2) if height > 0 else 0
-                }
+        image = Image.open(img_path).convert('RGB')
+        width, height = image.size
+        file_size = img_path.stat().st_size
+        
+        result = {
+            'id': img_path.stem,
+            'content': str(img_path),
+            'source_file': str(img_path),
+            'content_type': 'image',
+            'image_info': {
+                'width': width,
+                'height': height,
+                'format': image.format or img_path.suffix[1:].upper(),
+                'mode': image.mode,
+                'size_bytes': file_size,
+                'aspect_ratio': round(width / height, 2) if height > 0 else 0
             }
-            
-            # 如果支持多模态且启用CLIP
-            if MULTIMODAL_AVAILABLE and use_clip:
-                try:
-                    # 初始化CLIP编码器
-                    clip_encoder = CLIPEncoder()
-                    
-                    # 编码图像
-                    image_vector = clip_encoder.encode_image(image)[0]
-                    result['embedding'] = image_vector.tolist()
-                    result['vector_dim'] = len(image_vector)
-                    
-                    log_event(f"图像向量化成功: {img_path}, 维度: {len(image_vector)}")
-                    
-                except Exception as e:
-                    logger.warning(f"图像向量化失败 {img_path}: {e}")
-                    result['embedding_error'] = str(e)
-            
-            log_event(f"图像处理完成: {img_path}")
-            return [result]
-            
-        except Exception as e:
-            logger.error(f"处理图像文件失败 {img_path}: {e}")
-            raise
-            
+        }
+        
+        return [result]
+        
     except Exception as e:
-        error_msg = f"处理图像失败: {img_path}\n错误: {str(e)}\n{traceback.format_exc()}"
-        log_event(error_msg)
-        print(error_msg)
-        return []
+        logger.error(f"基本图像处理失败 {img_path}: {e}")
+        raise
 
 
 def process_image_directory(directory_path: str, use_clip: bool = True) -> List[Dict[str, Any]]:
@@ -113,6 +154,8 @@ def process_image_directory(directory_path: str, use_clip: bool = True) -> List[
         所有图像信息的列表
     """
     try:
+        log_event(f"开始处理图像目录: {directory_path}")
+        
         directory_path = Path(directory_path)
         
         if not directory_path.exists():
@@ -129,39 +172,17 @@ def process_image_directory(directory_path: str, use_clip: bool = True) -> List[
         
         log_event(f"在目录 {directory_path} 中找到 {len(image_files)} 个图像文件")
         
-        # 批量处理图像
-        if MULTIMODAL_AVAILABLE and use_clip and image_files:
+        # 逐个处理图像
+        for img_file in image_files:
             try:
-                # 初始化处理器
-                clip_encoder = CLIPEncoder()
-                image_processor = ImageProcessor(clip_encoder)
-                
-                # 批量处理
-                for img_file in image_files:
-                    try:
-                        result = image_processor.process_file(str(img_file))
-                        all_results.append(result)
-                    except Exception as e:
-                        logger.error(f"批量处理图像失败 {img_file}: {e}")
-                        # 降级到基本处理
-                        basic_result = process_img(str(img_file), use_clip=False)
-                        all_results.extend(basic_result)
-                        
-            except Exception as e:
-                logger.error(f"批量图像处理失败: {e}")
-                # 降级到逐个处理
-                for img_file in image_files:
-                    result = process_img(str(img_file), use_clip=False)
-                    all_results.extend(result)
-        else:
-            # 逐个处理图像
-            for img_file in image_files:
                 result = process_img(str(img_file), use_clip)
                 all_results.extend(result)
+            except Exception as e:
+                logger.error(f"处理图像文件失败 {img_file}: {e}")
         
         log_event(f"目录图像处理完成: {directory_path}, 共处理 {len(all_results)} 个图像")
         return all_results
-        
+            
     except Exception as e:
         error_msg = f"处理图像目录失败: {directory_path}\n错误: {str(e)}\n{traceback.format_exc()}"
         log_event(error_msg)
@@ -180,6 +201,7 @@ def create_image_thumbnails(image_paths: List[str], thumbnail_size: tuple = (128
     返回:
         原图路径到缩略图路径的映射
     """
+    from PIL import Image
     thumbnail_map = {}
     
     for img_path in image_paths:
@@ -214,6 +236,8 @@ def get_image_statistics(directory_path: str) -> Dict[str, Any]:
     返回:
         统计信息字典
     """
+    from PIL import Image
+    
     try:
         directory_path = Path(directory_path)
         
@@ -275,6 +299,7 @@ def get_image_statistics(directory_path: str) -> Dict[str, Any]:
         if stats['total_images'] == 0:
             stats['min_size'] = {'width': 0, 'height': 0}
         
+        log_event(f"图像统计完成: {directory_path}, 共 {stats['total_images']} 张图像")
         return stats
         
     except Exception as e:

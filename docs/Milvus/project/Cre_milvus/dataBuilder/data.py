@@ -11,7 +11,6 @@ from .tools.txtmake import process_txt
 # 只有在不禁用图像处理时才导入图像相关模块
 if not DISABLE_IMAGE_PROCESSING:
     from .tools.imgmake import process_img, process_image_directory, get_image_statistics
-    from multimodal.image_processor import ImageProcessor
     from multimodal.clip_encoder import CLIPEncoder
 
 from .chunking.meta_chunking import MetaChunking
@@ -102,16 +101,14 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
             elif file_type == "txt":
                 return process_txt_with_strategy(file_path, url_split, chunking_strategy, chunking_params, chunking_manager)
             elif file_type == "img" and not DISABLE_IMAGE_PROCESSING:
-                # 初始化多模态处理器
-                image_processor = None
+                # 初始化CLIP编码器
                 clip_encoder = None
                 if enable_multimodal:
                     try:
                         clip_encoder = CLIPEncoder()
-                        image_processor = ImageProcessor(clip_encoder)
-                        log_event("多模态处理器初始化成功")
+                        log_event("CLIP编码器初始化成功")
                     except Exception as e:
-                        log_event(f"多模态处理器初始化失败: {e}")
+                        log_event(f"CLIP编码器初始化失败: {e}")
                         enable_multimodal = False
                 return process_img(img_path=file_path, use_clip=enable_multimodal)
         except Exception as e:

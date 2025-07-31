@@ -48,7 +48,17 @@ class ConfigManager:
                 "strategy": "traditional",
                 "chunk_length": 512,
                 "ppl_threshold": 0.3,
-                "language": "zh"
+                "language": "zh",
+                "model": {
+                    "enable_advanced_chunking": False,
+                    "use_api": True,
+                    "api_type": "openai",
+                    "api_key": "",
+                    "api_base": "",
+                    "model_name": "gpt-3.5-turbo",
+                    "max_tokens": 1000,
+                    "temperature": 0.1
+                }
             },
             "multimodal": {
                 "enable_image": False,
