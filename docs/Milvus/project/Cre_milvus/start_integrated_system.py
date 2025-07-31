@@ -55,11 +55,11 @@ def start_backend():
             sys.executable, "-m", "uvicorn", 
             "backend_api:app", 
             "--reload", 
-            "--port", "8504",
+            "--port", "8507",  # 后端使用8507端口
             "--host", "0.0.0.0"
         ], cwd=Path(__file__).parent)
         
-        logger.info("✅ 后端API服务已启动 (端口: 8504)")
+        logger.info("✅ 后端API服务已启动 (端口: 8507)")
         return backend_process
         
     except Exception as e:
@@ -79,11 +79,11 @@ def start_frontend():
         frontend_process = subprocess.Popen([
             sys.executable, "-m", "streamlit", "run", 
             "frontend.py",
-            "--server.port", "8501",
+            "--server.port", "8500",
             "--server.address", "0.0.0.0"
         ], cwd=Path(__file__).parent)
         
-        logger.info("✅ 前端界面已启动 (端口: 8501)")
+        logger.info("✅ 前端界面已启动 (端口: 8500)")
         return frontend_process
         
     except Exception as e:
@@ -96,11 +96,11 @@ def open_browser():
     time.sleep(5)  # 等待服务完全启动
     
     try:
-        webbrowser.open("http://localhost:8501")
+        webbrowser.open("http://localhost:8500")
         logger.info("🌐 浏览器已打开")
     except Exception as e:
         logger.warning(f"⚠️ 自动打开浏览器失败: {e}")
-        logger.info("请手动访问: http://localhost:8501")
+        logger.info("请手动访问: http://localhost:8500")
 
 
 def main():
@@ -132,9 +132,9 @@ def main():
     
     logger.info("=" * 60)
     logger.info("🎉 系统启动完成！")
-    logger.info("📊 后端API: http://localhost:8504")
-    logger.info("🎨 前端界面: http://localhost:8501")
-    logger.info("📚 API文档: http://localhost:8504/docs")
+    logger.info("📊 后端API: http://localhost:8507")
+    logger.info("🎨 前端界面: http://localhost:8500")
+    logger.info("📚 API文档: http://localhost:8507/docs")
     logger.info("=" * 60)
     logger.info("按 Ctrl+C 停止系统")
     

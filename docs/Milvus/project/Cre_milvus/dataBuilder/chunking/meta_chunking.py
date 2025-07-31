@@ -157,16 +157,19 @@ class MetaChunking:
     Meta-chunking主类，提供多种文本分块策略
     """
     
-    def __init__(self, model=None, tokenizer=None):
+    def __init__(self, model=None, tokenizer=None, api_client=None):
         """
         初始化Meta-chunking
         
         参数:
             model: 语言模型（用于PPL分块）
             tokenizer: 分词器
+            api_client: API客户端（用于API调用方式）
         """
         self.model = model
         self.tokenizer = tokenizer
+        self.api_client = api_client
+        
         if model and tokenizer:
             self.chunking = Chunking(model, tokenizer)
     
@@ -182,10 +185,14 @@ class MetaChunking:
         返回:
             分块后的文本列表
         """
-        if not self.model or not self.tokenizer:
-            raise ValueError("Model and tokenizer are required for PPL chunking")
-        
-        return self._extract_by_ppl(text, threshold, language)
+        if self.api_client:
+            # 使用API方式进行分块
+            return self._extract_by_ppl_api(text, threshold, language)
+        elif self.model and self.tokenizer:
+            # 使用本地模型方式
+            return self._extract_by_ppl(text, threshold, language)
+        else:
+            raise ValueError("Either API client or model/tokenizer is required for PPL chunking")
     
     def margin_sampling_chunking(self, text: str, language: str = 'zh', chunk_length: int = 512) -> List[str]:
         """
@@ -199,10 +206,14 @@ class MetaChunking:
         返回:
             分块后的文本列表
         """
-        if not self.model or not self.tokenizer:
-            raise ValueError("Model and tokenizer are required for margin sampling chunking")
-        
-        return self._extract_by_margin_sampling(text, language, chunk_length)
+        if self.api_client:
+            # 使用API方式进行分块
+            return self._extract_by_margin_sampling_api(text, language, chunk_length)
+        elif self.model and self.tokenizer:
+            # 使用本地模型方式
+            return self._extract_by_margin_sampling(text, language, chunk_length)
+        else:
+            raise ValueError("Either API client or model/tokenizer is required for margin sampling chunking")
     
     def traditional_chunking(self, text: str, chunk_size: int = 512, overlap: int = 50) -> List[str]:
         """
@@ -243,8 +254,13 @@ class MetaChunking:
             分块后的文本列表
         """
         if not self.model or not self.tokenizer:
-            # 降级到传统方法
-            return self.traditional_chunking(text, chunk_length, chunk_length // 10)
+            # 降级到语义切分方法（比传统方法更智能）
+            return self.semantic_chunking(
+                text, 
+                similarity_threshold=0.7, 
+                min_chunk_size=chunk_length // 4, 
+                max_chunk_size=chunk_length
+            )
         
         return self._extract_by_msp(text, language, chunk_length, confidence_threshold)
     
@@ -594,3 +610,147 @@ class MetaChunking:
             merged_chunks.append(current_chunk)
         
         return merged_chunks
+    
+    def _extract_by_ppl_api(self, text: str, threshold: float, language: str) -> List[str]:
+        """
+        使用API的PPL分块实现
+        
+        通过API调用大语言模型来判断文本的语义边界
+        """
+        # 句子分割
+        segments = split_text_by_punctuation(text, language)
+        segments = [item for item in segments if item.strip()]
+        
+        if len(segments) <= 1:
+            return [text]
+        
+        # 使用API判断分割点
+        split_points = [0]
+        
+        for i in range(1, len(segments)):
+            # 构建前文和当前句子
+            context = ''.join(segments[:i])
+            current_sentence = segments[i]
+            
+            # 构建提示
+            if language == 'zh':
+                prompt = f"""请判断以下文本是否应该在指定位置分割：
+
+前文：{context}
+当前句子：{current_sentence}
+
+如果在前文和当前句子之间分割能够保持语义完整性，请回答"1"；
+如果不应该分割，请回答"2"。
+
+请只回答数字1或2："""
+            else:
+                prompt = f"""Please determine if the following text should be split at the specified position:
+
+Context: {context}
+Current sentence: {current_sentence}
+
+If splitting between the context and current sentence maintains semantic integrity, answer "1";
+If it should not be split, answer "2".
+
+Please answer only 1 or 2:"""
+            
+            try:
+                messages = [{"role": "user", "content": prompt}]
+                response = self.api_client.chat_completion(messages)
+                
+                if response and response.strip() == "1":
+                    split_points.append(i)
+                    
+            except Exception as e:
+                logger.warning(f"API调用失败，跳过分割点 {i}: {e}")
+        
+        split_points.append(len(segments))
+        
+        # 生成文本块
+        final_chunks = []
+        for i in range(len(split_points) - 1):
+            start_idx = split_points[i]
+            end_idx = split_points[i + 1]
+            chunk_sentences = segments[start_idx:end_idx]
+            final_chunks.append(''.join(chunk_sentences))
+        
+        return final_chunks
+    
+    def _extract_by_margin_sampling_api(self, text: str, language: str, chunk_length: int) -> List[str]:
+        """
+        使用API的边际采样分块实现
+        
+        通过API调用来进行概率决策
+        """
+        full_segments = split_text_by_punctuation(text, language)
+        if len(full_segments) <= 1:
+            return [text]
+        
+        tmp = ''
+        final_chunks = []
+        threshold = 0.5  # 初始阈值
+        threshold_history = []
+        
+        for sentence in full_segments:
+            if tmp == '':
+                tmp += sentence
+            else:
+                # 使用API获取分割概率
+                prob_split = self._get_split_probability_api(tmp, sentence, language)
+                threshold_history.append(prob_split)
+                
+                if prob_split > threshold:
+                    # 分割
+                    final_chunks.append(tmp)
+                    tmp = sentence
+                else:
+                    # 不分割
+                    separator = ' ' if language == 'en' else ''
+                    tmp += separator + sentence
+                
+                # 动态调整阈值
+                if len(threshold_history) >= 3:
+                    recent_probs = threshold_history[-3:]
+                    threshold = sum(recent_probs) / len(recent_probs)
+        
+        if tmp:
+            final_chunks.append(tmp)
+        
+        # 长度控制
+        return self._merge_chunks_by_length(final_chunks, chunk_length, language)
+    
+    def _get_split_probability_api(self, text1: str, text2: str, language: str) -> float:
+        """
+        使用API获取分割概率
+        """
+        try:
+            if language == 'zh':
+                prompt = f"""请判断以下两个文本片段是否应该分开处理：
+
+文本1：{text1}
+文本2：{text2}
+
+如果这两个文本片段在语义上应该分开处理，请回答"分开"；
+如果应该合并在一起，请回答"合并"。
+
+请只回答"分开"或"合并"："""
+                
+                prob = self.api_client.binary_choice(prompt, "分开", "合并")
+            else:
+                prompt = f"""Please determine if the following two text segments should be processed separately:
+
+Text 1: {text1}
+Text 2: {text2}
+
+If these two text segments should be processed separately semantically, answer "separate";
+If they should be merged together, answer "merge".
+
+Please answer only "separate" or "merge":"""
+                
+                prob = self.api_client.binary_choice(prompt, "separate", "merge")
+            
+            return prob
+            
+        except Exception as e:
+            logger.warning(f"API概率获取失败: {e}")
+            return 0.5  # 默认概率

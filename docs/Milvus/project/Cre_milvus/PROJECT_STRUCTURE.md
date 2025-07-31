@@ -125,7 +125,7 @@ dataBuilder/tools/imgmake.py → multimodal/clip_encoder.py → multimodal/image
 
 ### 1. 后端API服务
 ```bash
-python -m uvicorn backend_api:app --reload --port 8504
+python -m uvicorn backend_api:app --reload --port 8500
 ```
 
 ### 2. 前端界面

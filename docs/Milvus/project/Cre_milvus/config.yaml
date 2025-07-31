@@ -4,9 +4,9 @@ chunking:
   overlap: 50
   strategy: traditional
 data:
-  data_location: ./data/upload/20250009
+  data_location: ./data/upload/20250002
 milvus:
-  collection_name: Test_ooo
+  collection_name: Test_one
   host: 127.0.0.1
   index_device: cpu
   index_name: IVF_FLAT

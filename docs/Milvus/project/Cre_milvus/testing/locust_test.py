@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 # 全局连接管理
 _connection_initialized = False
-_shared_connection = "locust_test"
+_shared_connection = "default"
 _shared_collection = None
 _shared_dimension = 256
 _connection_lock = threading.Lock()

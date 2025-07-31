@@ -131,24 +131,21 @@ def Cre_VectorDataBaseStart(
         # 构建索引参数
         log_event(f"构建索引参数: {IndexName}")
         indexParam = indexParamBuilder(C_G_Choic, IndexName)
-
+        log_event(f"索引参数详细: {indexParam}")
+        log_event(f"第一条数据embedding长度: {len(valid_data[0]['embedding']) if valid_data else 0}")
         # 连接Milvus并插入数据
-        log_event("开始连接Milvus并插入数据")
+        log_event(f"开始连接Milvus并插入数据,IP:{IP},Port:{Port},CollectionName:{CollectionName},IndexName:{IndexName},ReplicaNum:{ReplicaNum},Data_Location:{Data_Location},url_split:{url_split},insert_mode:{insert_mode}")
         
-        def milvus_insert():
-            status = milvus_connect_insert(
+        status = milvus_connect_insert(
                CollectionName, indexParam, ReplicaNum, valid_data, url_split, IP, Port, insert_mode
             )
-            return status
-        
-        result = milvus_insert()
-        log_event(f"Milvus插入流程完成: {result}")
+        log_event(f"Milvus插入流程完成: {status}")
         
         return {
             "status": "success",
             "message": "向量化存储完成",
             "processed_files": len(valid_data),
-            "milvus_result": result
+            "milvus_result": status
         }
         
     except Exception as e:

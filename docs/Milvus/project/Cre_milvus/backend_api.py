@@ -15,7 +15,6 @@ try:
     from System.start import load_config, Cre_VectorDataBaseStart_from_config, Cre_Search
 except ImportError as e:
     logger.warning(f"System模块导入失败: {e}")
-    # 提供fallback函数
     def load_config():
         try:
             with open("config.yaml", "r", encoding="utf-8") as f:
@@ -36,11 +35,9 @@ try:
     import pandas as pd
 except ImportError as e:
     logger.warning(f"可视化模块导入失败: {e}")
-    # 提供fallback函数
     def get_all_embeddings_and_texts(collection_name):
         return [], [], []
     
-    # 创建模拟的pandas DataFrame
     class MockDataFrame:
         def to_dict(self, orient="records"):
             return []
@@ -53,14 +50,12 @@ except ImportError as e:
 import logging
 from typing import List, Dict, Any, Optional
 
-# 导入新的模块（使用try-except避免导入失败）
 try:
     from dataBuilder.chunking import ChunkingManager, get_available_strategies
 except ImportError as e:
     logger.warning(f"chunking模块导入失败: {e}")
     class ChunkingManager:
         def chunk_text(self, text, strategy, **kwargs):
-            # 简单的传统切分fallback
             chunk_size = kwargs.get('chunk_size', 512)
             chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
             return chunks
@@ -71,12 +66,10 @@ except ImportError as e:
     def get_available_strategies():
         return [{"name": "traditional", "display_name": "传统切分", "description": "基础切分功能"}]
 try:
-    from .multimodal import CLIPEncoder, TextProcessor, ImageProcessor
+    from .multimodal import CLIPEncoder
 except ImportError as e:
     logger.warning(f"multimodal模块导入失败: {e}")
     CLIPEncoder = None
-    TextProcessor = None
-    ImageProcessor = None
 
 try:
     from testing import MilvusLoadTest, PerformanceMonitor, TestDataGenerator
@@ -97,14 +90,12 @@ except ImportError as e:
     MilvusLoadTest = None
     TestDataGenerator = None
 
-# python -m uvicorn backend_api:app --reload --port 8504
+# python -m uvicorn backend_api:app --reload --port 8507
 app = FastAPI(title="Cre_milvus 整合版API", version="2.0.0")
 
 
 def safe_load_config():
-    """安全的配置加载函数，避免阻塞"""
     try:
-        # 使用绝对路径而不是相对路径
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
         with open(config_path, "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
@@ -124,7 +115,6 @@ def safe_load_config():
             }
         }
 
-# 全局实例
 try:
     performance_monitor = PerformanceMonitor()
 except:
@@ -132,18 +122,14 @@ except:
 
 clip_encoder = None
 chunking_manager = None
-text_processor = None
-image_processor = None
 
 @app.on_event("startup")
 async def startup_event():
-    """应用启动时的初始化"""
     logger.info("后端API启动完成，模块将按需加载")
 
 
 def init_advanced_modules():
-    """按需初始化高级模块"""
-    global clip_encoder, chunking_manager, text_processor, image_processor
+    global clip_encoder, chunking_manager
     
     if chunking_manager is None:
         try:
@@ -152,21 +138,6 @@ def init_advanced_modules():
         except Exception as e:
             logger.warning(f"文本切分管理器初始化失败: {e}")
     
-    if text_processor is None:
-        try:
-            text_processor = TextProcessor(chunking_manager)
-            logger.info("文本处理器初始化成功")
-        except Exception as e:
-            logger.warning(f"文本处理器初始化失败: {e}")
-    
-    if image_processor is None:
-        try:
-            image_processor = ImageProcessor(clip_encoder)
-            logger.info("图像处理器初始化成功")
-        except Exception as e:
-            logger.warning(f"图像处理器初始化失败: {e}")
-    
-    # 初始化CLIP编码器（如果配置启用）
     if clip_encoder is None:
         try:
             config = safe_load_config()
@@ -179,7 +150,6 @@ def init_advanced_modules():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """应用关闭时的清理"""
     try:
         if performance_monitor:
             performance_monitor.stop_monitoring()
@@ -189,10 +159,8 @@ async def shutdown_event():
 
 @app.post("/update_config")
 async def update_config(request: Request):
-    """更新配置文件"""
     try:
         data = await request.json()
-        # 使用绝对路径而不是相对路径
         config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.yaml")
         
         with open(config_path, "r", encoding="utf-8") as f:
@@ -220,7 +188,6 @@ async def upload(files: list[UploadFile] = File(...), folder_name: str = None):
         logger.info(f"上传目录: {upload_dir}")
         os.makedirs(upload_dir, exist_ok=True)
         
-        # 第一步：上传文件
         uploaded_files = []
         file_types = {"text": [], "image": [], "other": []}
         
@@ -230,7 +197,6 @@ async def upload(files: list[UploadFile] = File(...), folder_name: str = None):
                 shutil.copyfileobj(file.file, f)
             uploaded_files.append(file.filename)
             
-            # 分类文件类型
             ext = os.path.splitext(file.filename)[1].lower()
             if ext in ['.txt', '.md', '.pdf']:
                 file_types["text"].append(file.filename)
@@ -243,17 +209,14 @@ async def upload(files: list[UploadFile] = File(...), folder_name: str = None):
         
         logger.info(f"文件分类统计: 文本文件{len(file_types['text'])}个, 图像文件{len(file_types['image'])}个, 其他文件{len(file_types['other'])}个")
         
-        # 第二步：尝试进行向量化存储
         try:
             logger.info("开始向量化存储...")
             config = safe_load_config()
             
-            # 更新配置中的数据位置
             if "data" not in config:
                 config["data"] = {}
             config["data"]["data_location"] = upload_dir
             
-            # 检查嵌入模型状态
             try:
                 from Search.embedding import get_embedder
                 embedder = get_embedder()
@@ -277,7 +240,6 @@ async def upload(files: list[UploadFile] = File(...), folder_name: str = None):
                     "status": "partial_success"
                 }
             
-            # 调用向量化存储函数
             logger.info("调用向量化存储函数...")
             result = Cre_VectorDataBaseStart_from_config(config)
             
@@ -379,11 +341,9 @@ async def cluster_visualization(collection_name: str = Form(...)):
         )
 
 
-# ==================== 新增API端点 ====================
 
 @app.get("/chunking/strategies")
 async def get_chunking_strategies():
-    """获取可用的文本切分策略"""
     try:
         strategies = get_available_strategies()
         return {"strategies": strategies, "status": "success"}
@@ -393,7 +353,6 @@ async def get_chunking_strategies():
 
 @app.get("/chunking/strategies/{strategy_name}/config")
 async def get_strategy_config(strategy_name: str):
-    """获取特定策略的配置参数"""
     try:
         init_advanced_modules()
         if chunking_manager:
@@ -408,9 +367,7 @@ async def get_strategy_config(strategy_name: str):
 
 @app.post("/chunking/process")
 async def process_chunking(request: Request):
-    """执行文本切分"""
     try:
-        # 按需初始化模块
         init_advanced_modules()
         
         data = await request.json()
@@ -422,7 +379,7 @@ async def process_chunking(request: Request):
             raise HTTPException(status_code=400, detail="文本内容不能为空")
         
         if not chunking_manager:
-            # 使用fallback切分
+            
             chunk_size = params.get('chunk_size', 512)
             chunks = [text[i:i+chunk_size] for i in range(0, len(text), chunk_size)]
         else:
@@ -442,9 +399,7 @@ async def process_chunking(request: Request):
 
 @app.post("/multimodal/encode_text")
 async def encode_text(request: Request):
-    """编码文本为向量"""
     try:
-        # 按需初始化模块
         init_advanced_modules()
         
         data = await request.json()
@@ -477,7 +432,6 @@ async def encode_image(files: List[UploadFile] = File(...)):
         if not clip_encoder:
             return {"error": "CLIP编码器不可用", "status": "not_available"}
         
-        # 临时保存上传的图像
         temp_paths = []
         for file in files:
             temp_path = f"temp_{file.filename}"
@@ -486,7 +440,6 @@ async def encode_image(files: List[UploadFile] = File(...)):
             temp_paths.append(temp_path)
         
         try:
-            # 编码图像
             vectors = clip_encoder.encode_image(temp_paths)
             
             return {
@@ -497,7 +450,6 @@ async def encode_image(files: List[UploadFile] = File(...)):
             }
         
         finally:
-            # 清理临时文件
             for temp_path in temp_paths:
                 if os.path.exists(temp_path):
                     os.remove(temp_path)
@@ -509,7 +461,6 @@ async def encode_image(files: List[UploadFile] = File(...)):
 
 @app.post("/multimodal/text_to_image_search")
 async def text_to_image_search(request: Request):
-    """文搜图功能"""
     try:
         data = await request.json()
         query_text = data.get("query_text", "")
@@ -526,8 +477,6 @@ async def text_to_image_search(request: Request):
                 "status": "not_available"
             }
         
-        # 这里需要从数据库获取图像特征
-        # 暂时返回模拟结果
         return {
             "query_text": query_text,
             "results": [],
@@ -542,12 +491,10 @@ async def text_to_image_search(request: Request):
 
 @app.get("/performance/current")
 async def get_current_performance():
-    """获取当前性能指标"""
     try:
         if performance_monitor:
             metrics = performance_monitor.get_current_metrics()
         else:
-            # 基础性能指标fallback
             import psutil
             metrics = {
                 "cpu": {"percent": psutil.cpu_percent()},
@@ -562,7 +509,6 @@ async def get_current_performance():
 
 @app.get("/performance/history")
 async def get_performance_history(metric: str = "cpu", duration: int = 300):
-    """获取性能历史数据"""
     try:
         if performance_monitor:
             history = performance_monitor.get_historical_data(metric, duration)
@@ -586,8 +532,6 @@ async def start_performance_test(request: Request):
     try:
         data = await request.json()
         config = safe_load_config()
-        
-        # 合并测试配置
         test_config = {
             "host": config.get("milvus", {}).get("host", "localhost"),
             "port": config.get("milvus", {}).get("port", "19530"),
@@ -637,7 +581,6 @@ async def create_test_data(request: Request):
 
 @app.post("/upload_with_progress")
 async def upload_with_progress(files: list[UploadFile] = File(...), folder_name: str = None):
-    """带进度反馈的文件上传和向量化存储"""
     try:
         if not folder_name:
             return {"message": "未指定目标文件夹名", "status": "error"}
@@ -646,7 +589,6 @@ async def upload_with_progress(files: list[UploadFile] = File(...), folder_name:
         logger.info(f"上传目录: {upload_dir}")
         os.makedirs(upload_dir, exist_ok=True)
         
-        # 进度跟踪
         progress = {
             "stage": "uploading",
             "current": 0,
@@ -683,7 +625,6 @@ async def upload_with_progress(files: list[UploadFile] = File(...), folder_name:
         # 在后台执行向量化
         with ThreadPoolExecutor() as executor:
             future = executor.submit(vectorize_data)
-            # 这里可以添加进度检查逻辑
             result = future.result(timeout=300)  # 5分钟超时
         
         return {
@@ -725,24 +666,30 @@ async def get_system_status():
         milvus_status = {"connected": False}
         try:
             from pymilvus import connections, utility
+            from milvusBuilder.milvus import test_milvus_connection
+            
             milvus_config = config.get("milvus", {})
             host = milvus_config.get("host", "127.0.0.1")
             port = milvus_config.get("port", "19530")
             
-            # 尝试连接
-            connections.connect(alias="status_check", host=host, port=port)
-            milvus_status = {
-                "connected": True,
-                "host": host,
-                "port": port,
-                "collections": utility.list_collections()
-            }
-            connections.disconnect("status_check")
+            # 先进行快速网络测试
+            if not test_milvus_connection(host, port, timeout=3):
+                milvus_status = {"connected": False, "error": f"无法连接到 {host}:{port}"}
+            else:
+                # 尝试连接
+                connections.connect(alias="status_check", host=host, port=port, timeout=5)
+                milvus_status = {
+                    "connected": True,
+                    "host": host,
+                    "port": port,
+                    "collections": utility.list_collections()
+                }
+                connections.disconnect("status_check")
         except Exception as e:
             logger.warning(f"检查Milvus连接状态失败: {e}")
             milvus_status = {"connected": False, "error": str(e)}
         
-        # 安全地检查性能监控状态
+        
         monitor_status = False
         try:
             if performance_monitor:

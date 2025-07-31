@@ -62,15 +62,97 @@ class ChunkingManager:
     切分管理器，提供统一的切分接口
     """
     
-    def __init__(self, model=None, tokenizer=None):
+    def __init__(self, model=None, tokenizer=None, config=None):
         """
         初始化切分管理器
         
         参数:
             model: 语言模型（用于智能切分策略）
             tokenizer: 分词器
+            config: 配置字典，用于自动加载模型或API客户端
         """
-        self.meta_chunking = MetaChunking(model, tokenizer)
+        api_client = None
+        
+        # 如果提供了配置，尝试创建API客户端或加载模型
+        if config:
+            api_client = self._create_api_client(config)
+            if not api_client and model is None and tokenizer is None:
+                model, tokenizer = self._load_model_from_config(config)
+        
+        self.meta_chunking = MetaChunking(model, tokenizer, api_client)
+        self.config = config or {}
+    
+    def _create_api_client(self, config):
+        """
+        从配置创建API客户端
+        
+        参数:
+            config: 配置字典
+        
+        返回:
+            API客户端实例或None
+        """
+        try:
+            from .api_client import create_api_client
+            return create_api_client(config.get("chunking", {}))
+        except Exception as e:
+            print(f"Warning: Failed to create API client: {e}")
+            return None
+    
+    def _load_model_from_config(self, config):
+        """
+        从配置加载模型和分词器
+        
+        参数:
+            config: 配置字典
+        
+        返回:
+            (model, tokenizer) 元组，如果加载失败则返回 (None, None)
+        """
+        try:
+            chunking_config = config.get("chunking", {})
+            model_config = chunking_config.get("model", {})
+            
+            # 检查是否启用高级分块
+            if not model_config.get("enable_advanced_chunking", False):
+                return None, None
+            
+            model_name = model_config.get("model_name")
+            tokenizer_name = model_config.get("tokenizer_name", model_name)
+            device = model_config.get("device", "auto")
+            
+            if not model_name:
+                return None, None
+            
+            # 尝试加载模型
+            try:
+                from transformers import AutoTokenizer, AutoModelForCausalLM
+                import torch
+                
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+                
+                # 设备选择
+                if device == "auto":
+                    device = "cuda" if torch.cuda.is_available() else "cpu"
+                
+                model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+                    device_map=device if device != "cpu" else None
+                )
+                
+                if device == "cpu":
+                    model = model.to(device)
+                
+                return model, tokenizer
+                
+            except Exception as e:
+                print(f"Warning: Failed to load model {model_name}: {e}")
+                return None, None
+                
+        except Exception as e:
+            print(f"Warning: Failed to load model from config: {e}")
+            return None, None
     
     def chunk_text(self, text: str, strategy: str, **kwargs) -> List[str]:
         """

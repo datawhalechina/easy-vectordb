@@ -93,7 +93,7 @@ def _initialize_module():
             dependencies.append("✗ 高级分块策略 (可选)")
         
         try:
-            from ..multimodal.clip_encoder import CLIPEncoder
+            from multimodal.clip_encoder import CLIPEncoder
             dependencies.append("✓ 多模态CLIP编码")
         except ImportError:
             dependencies.append("✗ 多模态CLIP编码 (可选)")
