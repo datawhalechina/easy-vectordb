@@ -90,7 +90,7 @@ except ImportError as e:
     MilvusLoadTest = None
     TestDataGenerator = None
 
-# python -m uvicorn backend_api:app --reload --port 8507
+# python -m uvicorn backend_api:app --reload --port 8509
 app = FastAPI(title="Cre_milvus 整合版API", version="2.0.0")
 
 

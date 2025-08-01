@@ -12,37 +12,17 @@ redis_client = None
 _lock = threading.Lock()
 
 def init_milvus(databaseName, host, port, timeout=5):
+    """
+    已弃用的Milvus初始化函数，现在使用新的连接管理器
+    为了兼容性保留此函数，但不执行实际连接操作
+    """
     global milvus_connected, milvus_connections
-    with _lock:
-        if not milvus_connected:
-            try:
-                # 添加超时参数并显式设置连接参数
-                status = connections.connect(
-                    alias="default",
-                    host=host,
-                    port=port,
-                    db_name=databaseName,
-                    timeout=timeout  # 添加超时设置
-                )
-                # 验证连接是否活跃
-                if connections.has_connection("default"):
-                    milvus_connected = True
-                    milvus_connections = connections
-                    print(f"Milvus连接成功: {host}:{port}")
-                    return True
-                else:
-                    print("Milvus连接失败：未建立有效连接")
-                    return False
-                    
-            except Exception as e:
-                print(f"Milvus连接异常: {str(e)}")
-                # 诊断网络问题
-                if "Connection refused" in str(e):
-                    print(f"请检查Milvus服务是否在 {host}:{port} 运行")
-                elif "timeout" in str(e).lower():
-                    print("连接超时，请检查网络或防火墙设置")
-                return False
-    return True  # 如果已经连接则直接返回
+    print(f"注意: init_milvus函数已弃用，现在使用新的连接管理器")
+    print(f"目标连接: {host}:{port}")
+    
+    # 直接返回True，表示"连接成功"，实际连接由新的连接管理器处理
+    milvus_connected = True
+    return True
 
 def init_es(host, timeout=5):
     global es_client

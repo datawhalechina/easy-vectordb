@@ -18,7 +18,8 @@ def load_config(config_path="config.yaml"):
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
-config = load_config()
+# 移除模块级别的配置加载，改为按需加载
+# config = load_config()  # 注释掉这行
 
 def Cre_VectorDataBaseStart_from_config(config):
     try:
@@ -68,16 +69,6 @@ def Cre_VectorDataBaseStart(
     构建向量数据库并插入数据，参数全部由配置文件自动读取。
     """
     try:
-        # 初始化连接
-        # log_event(f"初始化Milvus连接: {IP}:{Port}")
-        # try:
-        #     # 直接连接 Milvus
-        #     milvus_connect_insert(CollectionName, None, ReplicaNum, [], url_split, IP, Port, insert_mode)
-        # except Exception as e:
-        #     log_event(f"Milvus连接失败: {str(e)}")
-        #     return False
-        # log_event("Milvus连接成功")
-        
         # 检查数据目录
         if not os.path.exists(Data_Location):
             raise FileNotFoundError(f"数据目录不存在: {Data_Location}")
@@ -138,8 +129,8 @@ def Cre_VectorDataBaseStart(
         
         status = milvus_connect_insert(
                CollectionName, indexParam, ReplicaNum, valid_data, url_split, IP, Port, insert_mode
-            )
-        log_event(f"Milvus插入流程完成: {status}")
+        )
+        log_event(f"Milvus连接状态:{status}")
         
         return {
             "status": "success",

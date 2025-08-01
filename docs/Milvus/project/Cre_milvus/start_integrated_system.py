@@ -55,11 +55,11 @@ def start_backend():
             sys.executable, "-m", "uvicorn", 
             "backend_api:app", 
             "--reload", 
-            "--port", "8507",  # 后端使用8507端口
+            "--port", "8509",  # 后端使用8509端口
             "--host", "0.0.0.0"
         ], cwd=Path(__file__).parent)
         
-        logger.info("✅ 后端API服务已启动 (端口: 8507)")
+        logger.info("✅ 后端API服务已启动 (端口: 8509)")
         return backend_process
         
     except Exception as e:
@@ -132,9 +132,9 @@ def main():
     
     logger.info("=" * 60)
     logger.info("🎉 系统启动完成！")
-    logger.info("📊 后端API: http://localhost:8507")
+    logger.info("📊 后端API: http://localhost:8509")
     logger.info("🎨 前端界面: http://localhost:8500")
-    logger.info("📚 API文档: http://localhost:8507/docs")
+    logger.info("📚 API文档: http://localhost:8509/docs")
     logger.info("=" * 60)
     logger.info("按 Ctrl+C 停止系统")
     

@@ -60,82 +60,84 @@ def get_cluster_visualization_data(embeddings, labels, texts):
 
 from pymilvus import Collection, connections
 import numpy as np
+from milvusBuilder.lazy_connection import get_lazy_connection
 
-def get_all_embeddings_and_texts(collection_name):
+def get_all_embeddings_and_texts(collection_name, host="127.0.0.1", port="19530"):
     """
     从Milvus集合中获取所有嵌入向量和文本数据
     
     参数:
         collection_name: 集合名称
+        host: Milvus主机地址
+        port: Milvus端口
     
     返回:
         (ids, embeddings, texts): ID列表、嵌入向量数组、文本列表
     """
     try:
-        # 确保连接存在
-        if not connections.has_connection("default"):
-            # 这里应该从配置中读取连接信息，暂时使用默认值
-            connections.connect(alias="default", host="127.0.0.1", port="19530")
+        lazy_connection = get_lazy_connection()
         
-        collection = Collection(collection_name)
-        collection.load()
-        
-        # 使用query方法获取所有数据
-        # 注意：query_iterator在某些版本中可能不可用，使用query替代
-        try:
-            # 尝试使用query_iterator（推荐方式）
-            iterator = collection.query_iterator(
-                batch_size=1000, 
-                expr="id >= 0", 
-                output_fields=["id", "embedding", "content"]
-            )
+        # 使用延迟连接的上下文管理器
+        with lazy_connection.get_connection(host, port) as connection_alias:
+            collection = Collection(collection_name, using=connection_alias)
+            collection.load()
             
-            ids, embeddings, texts = [], [], []
-            while True:
-                batch = iterator.next()
-                if len(batch) == 0:
-                    break
-                for data in batch:
-                    ids.append(data["id"])
-                    embeddings.append(data["embedding"])
-                    texts.append(data["content"])
-                    
-        except (AttributeError, Exception):
-            # 如果query_iterator不可用，使用query方法
-            # 先获取总数
-            count_result = collection.query(
-                expr="id >= 0",
-                output_fields=["count(*)"],
-                limit=1
-            )
-            
-            # 分批查询所有数据
-            batch_size = 1000
-            offset = 0
-            ids, embeddings, texts = [], [], []
-            
-            while True:
-                batch_results = collection.query(
-                    expr="id >= 0",
-                    output_fields=["id", "embedding", "content"],
-                    limit=batch_size,
-                    offset=offset
+            # 使用query方法获取所有数据
+            # 注意：query_iterator在某些版本中可能不可用，使用query替代
+            try:
+                # 尝试使用query_iterator（推荐方式）
+                iterator = collection.query_iterator(
+                    batch_size=1000, 
+                    expr="id >= 0", 
+                    output_fields=["id", "embedding", "content"]
                 )
                 
-                if not batch_results:
-                    break
+                ids, embeddings, texts = [], [], []
+                while True:
+                    batch = iterator.next()
+                    if len(batch) == 0:
+                        break
+                    for data in batch:
+                        ids.append(data["id"])
+                        embeddings.append(data["embedding"])
+                        texts.append(data["content"])
+                        
+            except (AttributeError, Exception):
+                # 如果query_iterator不可用，使用query方法
+                # 先获取总数
+                count_result = collection.query(
+                    expr="id >= 0",
+                    output_fields=["count(*)"],
+                    limit=1
+                )
                 
-                for data in batch_results:
-                    ids.append(data["id"])
-                    embeddings.append(data["embedding"])
-                    texts.append(data["content"])
+                # 分批查询所有数据
+                batch_size = 1000
+                offset = 0
+                ids, embeddings, texts = [], [], []
                 
-                if len(batch_results) < batch_size:
-                    break
+                while True:
+                    batch_results = collection.query(
+                        expr="id >= 0",
+                        output_fields=["id", "embedding", "content"],
+                        limit=batch_size,
+                        offset=offset
+                    )
                     
-                offset += batch_size
-        
-        return ids, np.array(embeddings), texts
+                    if not batch_results:
+                        break
+                    
+                    for data in batch_results:
+                        ids.append(data["id"])
+                        embeddings.append(data["embedding"])
+                        texts.append(data["content"])
+                    
+                    if len(batch_results) < batch_size:
+                        break
+                        
+                    offset += batch_size
+            
+            return ids, np.array(embeddings), texts
         
     except Exception as e:
         print(f"获取集合数据失败: {e}")
