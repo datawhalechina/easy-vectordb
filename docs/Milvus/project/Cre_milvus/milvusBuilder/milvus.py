@@ -52,6 +52,7 @@ def milvus_connect_with_retry(alias, host, port, max_retries=3, timeout=10):
                 cleanup_all_connections()
                 
                 # 建立新连接
+                logging.info("尝试建立新连接")
                 connections.connect(
                     alias=alias,
                     host=host,
@@ -95,15 +96,18 @@ async def milvus_connect_insert_async(CollectionName, IndexParam, ReplicaNum, da
     return result
 
 def milvus_connect_insert(CollectionName, IndexParam, ReplicaNum, dataList, url_split, Milvus_host, Milvus_port,insert_mode="覆盖（删除原有数据）"):
-    """使用延迟连接进行安全的Milvus操作"""
-    lazy_connection = get_lazy_connection()
+    """使用延迟连接进行安全的Milvus操作 - 优化版本"""
     
     try:
         logging.info("进入Insert模块：开始连接Milvus")
-        print(f"milvus_connect_insert函数中：{Milvus_host}:{Milvus_port}")
+        logging.info(f"连接参数: {Milvus_host}:{Milvus_port}")
         
-        # 使用延迟连接的上下文管理器
-        with lazy_connection.get_connection(Milvus_host, Milvus_port, timeout=15) as connection_alias:
+        # 直接使用连接管理器，避免额外的延迟连接层
+        from .connection_manager import get_connection_manager
+        connection_manager = get_connection_manager()
+        
+        # 使用连接管理器的上下文管理器
+        with connection_manager.get_connection(Milvus_host, int(Milvus_port), timeout=10) as connection_alias:
             
             logging.info(f"已连接Milvus,现有集合为：{utility.list_collections(using=connection_alias)}")
             if not dataList:

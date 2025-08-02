@@ -6,6 +6,10 @@
 
 from enum import Enum
 from typing import List, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
+
 try:
     from .meta_chunking import MetaChunking
 except ImportError:
@@ -62,7 +66,7 @@ class ChunkingManager:
     切分管理器，提供统一的切分接口
     """
     
-    def __init__(self, model=None, tokenizer=None, config=None):
+    def __init__(self, model=None, tokenizer=None, config=None, api_client=None):
         """
         初始化切分管理器
         
@@ -70,11 +74,10 @@ class ChunkingManager:
             model: 语言模型（用于智能切分策略）
             tokenizer: 分词器
             config: 配置字典，用于自动加载模型或API客户端
+            api_client: 预创建的API客户端
         """
-        api_client = None
-        
-        # 如果提供了配置，尝试创建API客户端或加载模型
-        if config:
+        # 优先使用传入的api_client
+        if api_client is None and config:
             api_client = self._create_api_client(config)
             if not api_client and model is None and tokenizer is None:
                 model, tokenizer = self._load_model_from_config(config)
@@ -189,7 +192,15 @@ class ChunkingManager:
         """PPL困惑度切分"""
         threshold = kwargs.get('threshold', 0.3)
         language = kwargs.get('language', 'zh')
-        return self.meta_chunking.ppl_chunking(text, threshold, language)
+        
+        try:
+            return self.meta_chunking.ppl_chunking(text, threshold, language)
+        except Exception as e:
+            logger.error(f"PPL分块失败: {e}")
+            # 降级到传统分块
+            chunk_size = kwargs.get('chunk_size', 512)
+            overlap = kwargs.get('overlap', 50)
+            return self.meta_chunking.traditional_chunking(text, chunk_size, overlap)
     
     def _margin_sampling_chunking(self, text: str, **kwargs) -> List[str]:
         """边际采样切分"""
@@ -319,3 +330,37 @@ class ChunkingManager:
         }
         
         return configs.get(strategy, {})
+    
+    def update_api_client(self, api_client):
+        """
+        更新API客户端
+        
+        参数:
+            api_client: 新的API客户端实例
+        """
+        if self.meta_chunking:
+            self.meta_chunking.api_client = api_client
+            logger.info("ChunkingManager API客户端已更新")
+    
+    def get_llm_status(self) -> Dict[str, Any]:
+        """
+        获取LLM状态信息
+        
+        返回:
+            LLM状态字典
+        """
+        status = {
+            "api_client_available": self.meta_chunking.api_client is not None if self.meta_chunking else False,
+            "local_model_available": (self.meta_chunking.model is not None and 
+                                    self.meta_chunking.tokenizer is not None) if self.meta_chunking else False
+        }
+        
+        if self.meta_chunking and self.meta_chunking.api_client:
+            # 尝试获取API客户端类型
+            try:
+                client_type = type(self.meta_chunking.api_client).__name__
+                status["api_client_type"] = client_type
+            except:
+                status["api_client_type"] = "unknown"
+        
+        return status

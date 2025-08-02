@@ -9,7 +9,7 @@ import logging
 import uuid
 import socket
 from contextlib import contextmanager
-from pymilvus import connections, utility
+from pymilvus import MilvusClient,connections, utility
 from typing import Optional, Dict, Any
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,7 @@ class MilvusConnectionManager:
     """Milvus连接管理器，确保连接的线程安全和资源管理"""
     
     def __init__(self):
-        self._lock = threading.RLock()  # 使用可重入锁
+        self._lock = threading.Lock()  # 改为普通锁，避免可重入锁的复杂性
         self._active_connections: Dict[str, Dict[str, Any]] = {}
         self._connection_pool_size = 5
         
@@ -35,12 +35,11 @@ class MilvusConnectionManager:
             return False
     
     def cleanup_stale_connections(self):
-        """清理所有陈旧连接"""
+        """清理所有陈旧连接 - 简化版本避免线程复杂性"""
         try:
             existing_connections = connections.list_connections()
             logger.info(f"发现现有连接: {existing_connections}")
             
-            # connections.list_connections() 返回的是 [(alias, connection_info), ...] 格式
             if isinstance(existing_connections, list):
                 for conn_item in existing_connections:
                     try:
@@ -50,102 +49,102 @@ class MilvusConnectionManager:
                         else:
                             conn_alias = conn_item
                         
-                        connections.disconnect(conn_alias)
-                        logger.info(f"清理陈旧连接: {conn_alias}")
+                        # 直接断开连接，不使用额外线程
+                        try:
+                            connections.disconnect(conn_alias)
+                            logger.info(f"清理陈旧连接: {conn_alias}")
+                        except Exception as e:
+                            logger.warning(f"断开连接失败: {e}")
+                            # 继续处理其他连接，不要因为一个失败就停止
+                            continue
+                            
                     except Exception as e:
                         logger.warning(f"清理连接 {conn_item} 失败: {e}")
             
             # 清理内部记录
-            self._active_connections.clear()
-            time.sleep(0.5)  # 等待连接完全关闭
+            with self._lock:
+                self._active_connections.clear()
             
         except Exception as e:
             logger.warning(f"清理连接时出错: {e}")
     
     def create_connection(self, host: str, port: int, timeout: int = 10, max_retries: int = 3) -> str:
-        """创建新的Milvus连接，返回连接别名"""
-        import traceback
+        """创建新的Milvus连接，返回连接别名 - 简化版本避免阻塞"""
+        # 生成唯一连接别名
+        connection_alias = f"conn_{uuid.uuid4().hex[:8]}"
         
-        # 添加调用栈信息，帮助调试
-        stack_info = traceback.format_stack()
-        logger.info(f"连接请求来源: {stack_info[-3].strip()}")
-        
-        with self._lock:
-            # 生成唯一连接别名
-            connection_alias = f"conn_{uuid.uuid4().hex[:8]}"
-            
-            for attempt in range(max_retries):
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"创建Milvus连接 (第{attempt + 1}次): {host}:{port}")
+                
+                # 网络连通性测试 - 使用短超时
+                if not self.test_network_connection(host, port, timeout=2):
+                    raise ConnectionError(f"网络连接失败: {host}:{port}")
+                
+                # 如果不是第一次尝试，清理连接
+                if attempt > 0:
+                    logger.info("清理陈旧连接...")
+                    self.cleanup_stale_connections()
+                
+                # 直接创建连接，不使用额外线程避免复杂性
+                logger.info(f"建立Milvus连接: {connection_alias}")
+                connections.connect(
+                    alias=connection_alias,
+                    host=host,
+                    port=int(port),
+                    timeout=min(timeout, 8)  # 限制最大超时为8秒
+                )
+                
+                # 快速验证连接
                 try:
-                    logger.info(f"创建Milvus连接 (第{attempt + 1}次): {host}:{port}")
+                    collections = utility.list_collections(using=connection_alias)
+                    logger.info(f"连接成功 [{connection_alias}]: 集合数={len(collections)}")
                     
-                    # 网络连通性测试 - 使用更短的超时时间
-                    logger.info(f"测试网络连通性: {host}:{port}")
-                    if not self.test_network_connection(host, port, timeout=3):
-                        raise ConnectionError(f"网络连接失败: {host}:{port}")
-                    logger.info(f"网络连通性测试通过: {host}:{port}")
-                    
-                    # 如果是第一次尝试失败，清理所有连接
-                    if attempt > 0:
-                        logger.info("清理陈旧连接...")
-                        self.cleanup_stale_connections()
-                    
-                    # 创建连接
-                    logger.info(f"正在建立Milvus连接: {connection_alias}")
-                    connections.connect(
-                        alias=connection_alias,
-                        host=host,
-                        port=int(port),
-                        timeout=timeout
-                    )
-                    logger.info(f"Milvus连接已建立: {connection_alias}")
-                    
-                    # 验证连接 - 使用指定的连接别名
-                    try:
-                        logger.info(f"验证连接: {connection_alias}")
-                        collections = utility.list_collections(using=connection_alias)
-                        server_version = utility.get_server_version(using=connection_alias)
-                        logger.info(f"连接成功 [{connection_alias}]: 版本={server_version}, 集合={len(collections)}")
-                        
-                        # 记录连接信息
+                    # 记录连接信息
+                    with self._lock:
                         self._active_connections[connection_alias] = {
                             "host": host,
                             "port": port,
                             "created_at": time.time(),
                             "last_used": time.time()
                         }
-                        
-                        return connection_alias
-                        
-                    except Exception as verify_error:
-                        logger.error(f"连接验证失败: {verify_error}")
-                        try:
-                            connections.disconnect(connection_alias)
-                        except:
-                            pass
-                        raise verify_error
-                
-                except Exception as e:
-                    logger.warning(f"连接尝试 {attempt + 1} 失败: {e}")
-                    if attempt < max_retries - 1:
-                        wait_time = min((attempt + 1) * 2, 10)  # 最大等待10秒
-                        logger.info(f"等待 {wait_time} 秒后重试...")
-                        time.sleep(wait_time)
-                    else:
-                        raise ConnectionError(f"经过 {max_retries} 次尝试后仍无法连接: {e}")
-    
-    def release_connection(self, connection_alias: str):
-        """释放连接"""
-        with self._lock:
-            try:
-                if connection_alias in connections.list_connections():
-                    connections.disconnect(connection_alias)
-                    logger.info(f"释放连接: {connection_alias}")
-                
-                # 从记录中移除
-                self._active_connections.pop(connection_alias, None)
+                    
+                    return connection_alias
+                    
+                except Exception as verify_error:
+                    logger.error(f"连接验证失败: {verify_error}")
+                    # 立即断开失败的连接
+                    try:
+                        connections.disconnect(connection_alias)
+                    except:
+                        pass
+                    raise verify_error
                 
             except Exception as e:
-                logger.warning(f"释放连接失败 {connection_alias}: {e}")
+                logger.warning(f"连接尝试 {attempt + 1} 失败: {e}")
+                if attempt < max_retries - 1:
+                    wait_time = min((attempt + 1) * 1, 5)  # 减少等待时间
+                    logger.info(f"等待 {wait_time} 秒后重试...")
+                    time.sleep(wait_time)
+                else:
+                    raise ConnectionError(f"经过 {max_retries} 次尝试后仍无法连接: {e}")
+    
+    def release_connection(self, connection_alias: str):
+        """释放连接 - 简化版本"""
+        try:
+            # 直接尝试断开连接
+            try:
+                connections.disconnect(connection_alias)
+                logger.info(f"释放连接: {connection_alias}")
+            except Exception as e:
+                logger.warning(f"断开连接失败: {e}")
+            
+            # 从记录中移除
+            with self._lock:
+                self._active_connections.pop(connection_alias, None)
+                
+        except Exception as e:
+            logger.warning(f"释放连接失败 {connection_alias}: {e}")
     
     @contextmanager
     def get_connection(self, host: str, port: int, timeout: int = 10):
@@ -169,17 +168,39 @@ class MilvusConnectionManager:
     
     def force_cleanup_all(self):
         """强制清理所有连接（紧急情况使用）"""
+        logger.warning("执行强制连接清理...")
+        
+        # 先清理内部记录
         with self._lock:
-            logger.warning("执行强制连接清理...")
-            self.cleanup_stale_connections()
-            
-            # 额外的清理步骤
-            try:
-                import gc
-                gc.collect()  # 强制垃圾回收
-                time.sleep(1)
-            except:
-                pass
+            self._active_connections.clear()
+        
+        # 然后清理pymilvus连接（不在锁内）
+        try:
+            existing_connections = connections.list_connections()
+            for conn_item in existing_connections:
+                try:
+                    if isinstance(conn_item, tuple):
+                        conn_alias = conn_item[0]
+                    else:
+                        conn_alias = conn_item
+                    
+                    # 强制断开，不等待
+                    try:
+                        connections.disconnect(conn_alias)
+                        logger.info(f"强制清理连接: {conn_alias}")
+                    except:
+                        pass  # 忽略错误
+                except:
+                    pass
+        except:
+            pass
+        
+        # 额外的清理步骤
+        try:
+            import gc
+            gc.collect()  # 强制垃圾回收
+        except:
+            pass
 
 # 全局连接管理器实例
 _connection_manager = MilvusConnectionManager()

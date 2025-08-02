@@ -45,12 +45,57 @@ def check_basic_dependencies():
     return True
 
 
+def initialize_connections():
+    """初始化连接管理器（不强制连接）"""
+    logger.info("🔗 初始化系统连接管理器...")
+    
+    try:
+        from System.connection_initializer import startup_initialize
+        success = startup_initialize()
+        
+        if success:
+            logger.info("✅ 系统连接管理器初始化成功")
+            logger.info("📝 Milvus连接将在用户配置后建立")
+            return True
+        else:
+            logger.warning("⚠️ 系统连接管理器初始化失败，使用传统模式")
+            return True  # 允许继续使用传统模式
+            
+    except Exception as e:
+        logger.warning(f"⚠️ 新架构初始化失败，使用传统模式: {e}")
+        return True  # 允许继续使用传统模式
+
 def start_backend():
     """启动后端API服务"""
     logger.info("🚀 启动后端API服务...")
     
+    # 先尝试初始化新架构连接
+    connections_ready = initialize_connections()
+    
     try:
-        # 启动FastAPI后端
+        # 优先使用新架构API，如果初始化成功的话
+        if connections_ready:
+            try:
+                # 检查新架构API是否可用
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("new_backend_api", "new_backend_api.py")
+                if spec and spec.loader:
+                    logger.info("🆕 使用新架构API服务")
+                    backend_process = subprocess.Popen([
+                        sys.executable, "-m", "uvicorn", 
+                        "new_backend_api:app", 
+                        "--reload", 
+                        "--port", "8509",  # 保持原端口
+                        "--host", "0.0.0.0"
+                    ], cwd=Path(__file__).parent)
+                    
+                    logger.info("✅ 新架构API服务已启动 (端口: 8509)")
+                    return backend_process
+            except Exception as e:
+                logger.warning(f"⚠️ 新架构API启动失败，使用传统API: {e}")
+        
+        # 回退到传统API
+        logger.info("📡 使用传统API服务")
         backend_process = subprocess.Popen([
             sys.executable, "-m", "uvicorn", 
             "backend_api:app", 
@@ -59,7 +104,7 @@ def start_backend():
             "--host", "0.0.0.0"
         ], cwd=Path(__file__).parent)
         
-        logger.info("✅ 后端API服务已启动 (端口: 8509)")
+        logger.info("✅ 传统API服务已启动 (端口: 8509)")
         return backend_process
         
     except Exception as e:
