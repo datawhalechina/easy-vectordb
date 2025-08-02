@@ -2,9 +2,10 @@ chunking:
   chunk_length: 512
   language: zh
   overlap: 50
+  ppl_threshold: 0.3
   strategy: traditional
 data:
-  data_location: ./data/upload/20250002
+  data_location: ./data/upload/0250803
 milvus:
   collection_name: Test_one
   host: 127.0.0.1
