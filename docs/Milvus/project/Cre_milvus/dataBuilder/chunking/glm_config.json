@@ -1,0 +1,8 @@
+{
+  "model_name": "glm-4.5-flash",
+  "api_key": "",
+  "api_endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+  "is_active": true,
+  "created_at": "2025-08-04T22:40:04.230147",
+  "last_validated": "2025-08-04T22:40:04.230147"
+}

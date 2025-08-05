@@ -5,11 +5,244 @@ Meta-chunking实现模块
 """
 
 import logging
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 import re
 import math
 
 logger = logging.getLogger(__name__)
+
+class DependencyChecker:
+    """PPL分块依赖检查器"""
+    
+    def __init__(self):
+        self._dependency_cache = {}
+        self._last_check_time = 0
+        self._cache_duration = 60  # 缓存60秒
+    
+    def check_ppl_dependencies(self) -> Dict[str, bool]:
+        """检查PPL分块所需依赖"""
+        import time
+        current_time = time.time()
+        
+        # 检查缓存
+        if (current_time - self._last_check_time) < self._cache_duration and self._dependency_cache:
+            return self._dependency_cache
+        
+        dependencies = {
+            "torch": False,
+            "torch_functional": False,
+            "chunking_class": False,
+            "nltk": False,
+            "jieba": False,
+            "perplexity_chunking": False
+        }
+        
+        # 检查PyTorch
+        try:
+            import torch
+            import torch.nn.functional as F
+            dependencies["torch"] = True
+            dependencies["torch_functional"] = True
+        except ImportError:
+            pass
+        
+        # 检查Chunking类
+        try:
+            from .perplexity_chunking import Chunking
+            dependencies["chunking_class"] = True
+            dependencies["perplexity_chunking"] = True
+        except ImportError:
+            try:
+                from perplexity_chunking import Chunking
+                dependencies["chunking_class"] = True
+                dependencies["perplexity_chunking"] = True
+            except ImportError:
+                pass
+        
+        # 检查NLP库
+        try:
+            from nltk.tokenize import sent_tokenize
+            dependencies["nltk"] = True
+        except ImportError:
+            pass
+        
+        try:
+            import jieba
+            dependencies["jieba"] = True
+        except ImportError:
+            pass
+        
+        self._dependency_cache = dependencies
+        self._last_check_time = current_time
+        return dependencies
+    
+    def get_missing_dependencies(self) -> List[str]:
+        """获取缺失的依赖"""
+        deps = self.check_ppl_dependencies()
+        missing = []
+        
+        if not deps["torch"]:
+            missing.append("torch")
+        if not deps["chunking_class"]:
+            missing.append("perplexity_chunking模块")
+        if not deps["nltk"]:
+            missing.append("nltk")
+        if not deps["jieba"]:
+            missing.append("jieba")
+        
+        return missing
+    
+    def suggest_installation_commands(self) -> List[str]:
+        """建议安装命令"""
+        missing = self.get_missing_dependencies()
+        commands = []
+        
+        if "torch" in missing:
+            commands.append("pip install torch")
+        if "nltk" in missing:
+            commands.append("pip install nltk")
+        if "jieba" in missing:
+            commands.append("pip install jieba")
+        if "perplexity_chunking模块" in missing:
+            commands.append("确保perplexity_chunking.py文件存在于当前目录")
+        
+        return commands
+    
+    def validate_glm_api_availability(self) -> bool:
+        """验证GLM API可用性"""
+        try:
+            # 这里应该检查GLM API配置
+            # 暂时返回True，实际实现需要检查API配置
+            return True
+        except Exception:
+            return False
+    
+    def is_ppl_chunking_available(self) -> bool:
+        """检查PPL分块是否可用"""
+        deps = self.check_ppl_dependencies()
+        # PPL分块需要torch和chunking_class
+        return deps["torch"] and deps["chunking_class"]
+    
+    def get_dependency_status_message(self) -> str:
+        """获取依赖状态消息"""
+        if self.is_ppl_chunking_available():
+            return "✅ PPL分块依赖已满足"
+        else:
+            missing = self.get_missing_dependencies()
+            return f"❌ PPL分块依赖缺失: {', '.join(missing)}"
+
+class ChunkingStrategyResolver:
+    """分块策略智能选择器"""
+    
+    def __init__(self, dependency_checker: DependencyChecker):
+        self.dependency_checker = dependency_checker
+        self._strategy_fallbacks = {
+            "meta_ppl": ["semantic", "traditional"],
+            "msp": ["margin_sampling", "semantic", "traditional"],
+            "margin_sampling": ["semantic", "traditional"],
+            "semantic": ["traditional"],
+            "traditional": []  # 传统方法是最后的fallback
+        }
+    
+    def resolve_strategy(self, requested: str, config: Dict) -> str:
+        """
+        智能选择可用的分块策略
+        
+        参数:
+            requested: 用户请求的策略
+            config: 配置信息（包含GLM API等）
+        
+        返回:
+            实际可用的策略名称
+        """
+        # 检查请求的策略是否可用
+        if self._is_strategy_available(requested, config):
+            return requested
+        
+        # 如果不可用，尝试fallback策略
+        fallbacks = self._strategy_fallbacks.get(requested, ["traditional"])
+        
+        for fallback in fallbacks:
+            if self._is_strategy_available(fallback, config):
+                logger.info(f"策略 {requested} 不可用，使用 {fallback} 作为替代")
+                return fallback
+        
+        # 最后的fallback
+        logger.warning(f"所有策略都不可用，使用传统分块")
+        return "traditional"
+    
+    def get_fallback_strategy(self, failed_strategy: str) -> str:
+        """获取失败策略的fallback"""
+        fallbacks = self._strategy_fallbacks.get(failed_strategy, ["traditional"])
+        return fallbacks[0] if fallbacks else "traditional"
+    
+    def log_strategy_decision(self, decision: Dict) -> None:
+        """记录策略决策日志"""
+        requested = decision.get("requested")
+        actual = decision.get("actual")
+        reason = decision.get("reason", "")
+        
+        if requested == actual:
+            logger.info(f"使用请求的策略: {actual}")
+        else:
+            logger.warning(f"策略降级: {requested} -> {actual}, 原因: {reason}")
+    
+    def _is_strategy_available(self, strategy: str, config: Dict) -> bool:
+        """检查策略是否可用"""
+        if strategy == "traditional":
+            return True  # 传统策略总是可用
+        
+        if strategy == "semantic":
+            return True  # 语义分块不依赖外部库
+        
+        if strategy in ["meta_ppl", "msp", "margin_sampling"]:
+            # 这些策略需要GLM API或本地模型
+            has_glm_api = config.get("glm_configured", False)
+            has_local_deps = self.dependency_checker.is_ppl_chunking_available()
+            
+            # 检查是否有API客户端可用
+            has_api_client = False
+            try:
+                from .glm_config import get_glm_config_service
+                service = get_glm_config_service()
+                glm_config = service.get_active_config()
+                has_api_client = glm_config is not None
+            except Exception:
+                pass
+            
+            return has_glm_api or has_local_deps or has_api_client
+        
+        return False
+    
+    def get_strategy_requirements(self, strategy: str) -> Dict[str, Any]:
+        """获取策略的依赖要求"""
+        requirements = {
+            "traditional": {
+                "dependencies": [],
+                "description": "无特殊依赖，基于固定长度切分"
+            },
+            "semantic": {
+                "dependencies": [],
+                "description": "基于语义相似度切分，无外部依赖"
+            },
+            "meta_ppl": {
+                "dependencies": ["torch", "perplexity_chunking", "GLM API"],
+                "description": "基于困惑度的智能切分，需要模型支持"
+            },
+            "msp": {
+                "dependencies": ["GLM API"],
+                "description": "边际采样分块，需要GLM API支持"
+            },
+            "margin_sampling": {
+                "dependencies": ["GLM API"],
+                "description": "边际采样切分，需要GLM API支持"
+            }
+        }
+        
+        return requirements.get(strategy, {
+            "dependencies": ["未知"],
+            "description": "未知策略"
+        })
 
 try:
     from .perplexity_chunking import Chunking
@@ -187,9 +420,66 @@ class MetaChunking:
         self.model = model
         self.tokenizer = tokenizer
         self.api_client = api_client
+        self.dependency_checker = DependencyChecker()
+        
+        # 如果没有提供API客户端，尝试从GLM配置创建
+        if not self.api_client:
+            try:
+                from .glm_config import create_glm_api_client
+                self.api_client = create_glm_api_client()
+                if self.api_client:
+                    logger.info("成功创建GLM API客户端")
+            except Exception as e:
+                logger.warning(f"创建GLM API客户端失败: {e}")
         
         if model and tokenizer:
             self.chunking = Chunking(model, tokenizer)
+    
+    def smart_chunking(self, text: str, strategy: str, config: Dict, **kwargs) -> List[str]:
+        """
+        智能分块方法，自动选择最佳可用策略
+        
+        参数:
+            text: 输入文本
+            strategy: 请求的策略
+            config: 配置信息
+            **kwargs: 策略特定参数
+        
+        返回:
+            分块后的文本列表
+        """
+        resolver = ChunkingStrategyResolver(self.dependency_checker)
+        actual_strategy = resolver.resolve_strategy(strategy, config)
+        
+        # 记录策略决策
+        decision = {
+            "requested": strategy,
+            "actual": actual_strategy,
+            "reason": "依赖检查" if strategy != actual_strategy else "策略可用"
+        }
+        resolver.log_strategy_decision(decision)
+        
+        # 执行实际策略
+        if actual_strategy == "meta_ppl":
+            # PPL分块参数
+            ppl_kwargs = {k: v for k, v in kwargs.items() if k in ['threshold', 'language']}
+            return self.ppl_chunking(text, **ppl_kwargs)
+        elif actual_strategy == "msp":
+            # MSP分块参数
+            msp_kwargs = {k: v for k, v in kwargs.items() if k in ['threshold', 'language']}
+            return self.msp_chunking(text, **msp_kwargs)
+        elif actual_strategy == "margin_sampling":
+            # 边际采样分块参数
+            margin_kwargs = {k: v for k, v in kwargs.items() if k in ['language', 'chunk_length']}
+            return self.margin_sampling_chunking(text, **margin_kwargs)
+        elif actual_strategy == "semantic":
+            # 语义分块参数
+            semantic_kwargs = {k: v for k, v in kwargs.items() if k in ['similarity_threshold', 'min_chunk_size', 'max_chunk_size']}
+            return self.semantic_chunking(text, **semantic_kwargs)
+        else:  # traditional
+            # 传统分块参数
+            traditional_kwargs = {k: v for k, v in kwargs.items() if k in ['chunk_size', 'overlap']}
+            return self.traditional_chunking(text, **traditional_kwargs)
     
     def ppl_chunking(self, text: str, threshold: float = 0.3, language: str = 'zh') -> List[str]:
         """
@@ -204,6 +494,22 @@ class MetaChunking:
             分块后的文本列表
         """
         try:
+            # 检查依赖
+            if not self.dependency_checker.is_ppl_chunking_available():
+                missing_deps = self.dependency_checker.get_missing_dependencies()
+                install_commands = self.dependency_checker.suggest_installation_commands()
+                
+                logger.warning(f"PPL分块依赖缺失: {', '.join(missing_deps)}")
+                logger.info(f"建议安装命令: {'; '.join(install_commands)}")
+                
+                # 如果有API客户端，优先使用API方式
+                if self.api_client:
+                    logger.info("使用API方式进行PPL分块")
+                    return self._extract_by_ppl_api(text, threshold, language)
+                else:
+                    logger.warning("降级到语义分块")
+                    return self.semantic_chunking(text, similarity_threshold=0.7)
+            
             if self.api_client:
                 # 使用API方式进行分块
                 return self._extract_by_ppl_api(text, threshold, language)
