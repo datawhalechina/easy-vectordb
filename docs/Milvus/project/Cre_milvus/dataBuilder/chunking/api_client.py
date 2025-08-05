@@ -185,6 +185,94 @@ class LocalModelClient(LLMAPIClient):
             return 0.5
 
 
+class ZhipuClient(LLMAPIClient):
+    """智谱AI API客户端"""
+    
+    def __init__(self, api_key: str, model: str = "glm-4.5-flash", api_endpoint: str = None):
+        self.api_key = api_key
+        self.model = model
+        self.api_endpoint = api_endpoint or "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+        
+        try:
+            import zhipuai
+            self.client = zhipuai.ZhipuAI(api_key=api_key)
+        except ImportError:
+            logger.warning("zhipuai库未安装，尝试使用requests直接调用")
+            self.client = None
+            try:
+                import requests
+                self.session = requests.Session()
+            except ImportError:
+                raise ImportError("请安装zhipuai库: pip install zhipuai 或 requests库: pip install requests")
+    
+    def chat_completion(self, messages: List[Dict[str, str]], **kwargs) -> str:
+        """智谱AI聊天完成"""
+        try:
+            if self.client:
+                # 使用官方SDK
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    max_tokens=kwargs.get('max_tokens', 10),
+                    temperature=kwargs.get('temperature', 0.1),
+                    **kwargs
+                )
+                return response.choices[0].message.content.strip()
+            else:
+                # 使用requests直接调用
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+                
+                payload = {
+                    "model": self.model,
+                    "messages": messages,
+                    "max_tokens": kwargs.get('max_tokens', 10),
+                    "temperature": kwargs.get('temperature', 0.1)
+                }
+                
+                response = self.session.post(
+                    self.api_endpoint,
+                    headers=headers,
+                    json=payload,
+                    timeout=30
+                )
+                response.raise_for_status()
+                
+                result = response.json()
+                return result["choices"][0]["message"]["content"].strip()
+                
+        except Exception as e:
+            logger.error(f"智谱AI API调用失败: {e}")
+            raise
+    
+    def binary_choice(self, prompt: str, option1: str, option2: str) -> float:
+        """智谱AI二元选择"""
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            response = self.chat_completion(messages, max_tokens=5)
+            
+            # 解析响应中的选择
+            response_lower = response.lower().strip()
+            
+            # 直接匹配数字
+            if "1" in response_lower and "2" not in response_lower:
+                return 0.8  # 选择选项1的概率高
+            elif "2" in response_lower and "1" not in response_lower:
+                return 0.2  # 选择选项2的概率高
+            elif option1.lower() in response_lower:
+                return 0.8
+            elif option2.lower() in response_lower:
+                return 0.2
+            else:
+                return 0.5  # 无法确定时返回中性概率
+                
+        except Exception as e:
+            logger.error(f"智谱AI二元选择失败: {e}")
+            return 0.5
+
+
 class MockClient(LLMAPIClient):
     """模拟客户端（用于测试和降级）"""
     
@@ -246,6 +334,12 @@ def create_api_client(config: Dict[str, Any]) -> Optional[LLMAPIClient]:
                 api_key=config.get("api_key", ""),
                 model=config.get("model", "claude-3-haiku-20240307")
             )
+        elif provider == "zhipu":
+            return ZhipuClient(
+                api_key=config.get("api_key", ""),
+                model=config.get("model_name", config.get("model", "glm-4.5-flash")),
+                api_endpoint=config.get("api_endpoint")
+            )
         elif provider == "local":
             return LocalModelClient(
                 base_url=config.get("base_url", "http://localhost:8000"),
@@ -280,6 +374,14 @@ def get_available_providers() -> List[Dict[str, Any]]:
             "models": ["claude-3-haiku-20240307", "claude-3-sonnet-20240229", "claude-3-opus-20240229"],
             "required_fields": ["api_key"],
             "optional_fields": []
+        },
+        {
+            "name": "zhipu",
+            "display_name": "智谱AI",
+            "description": "智谱AI GLM模型",
+            "models": ["glm-4.5-flash", "glm-4", "glm-3-turbo"],
+            "required_fields": ["api_key"],
+            "optional_fields": ["api_endpoint"]
         },
         {
             "name": "local",

@@ -1,11 +1,20 @@
+active_llm_config: glm_default
 chunking:
   chunk_length: 512
   language: zh
-  overlap: 50
   ppl_threshold: 0.3
-  strategy: traditional
+  strategy: meta_ppl
 data:
-  data_location: ./data/upload/0250803
+  data_location: ./data/upload/20250628
+glm:
+  api_key: 
+  model_name: glm-4.5-flash
+llm_configs:
+  glm_default:
+    api_endpoint: https://open.bigmodel.cn/api/paas/v4/chat/completions
+    api_key: 
+    model_name: glm-4.5-flash
+    provider: zhipu
 milvus:
   collection_name: Test_one
   host: 127.0.0.1
@@ -29,7 +38,7 @@ performance:
 search:
   col_choice: hdbscan
   reorder_strategy: distance
-  top_k: 20
+  top_k: 29
 system:
   insert_mode: overwrite
   url_split: false

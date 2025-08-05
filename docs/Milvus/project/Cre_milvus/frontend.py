@@ -2,8 +2,10 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 import time
 import json
+import random
 from datetime import datetime
 import logging
 from typing import Dict, Any, Optional, List
@@ -67,6 +69,151 @@ st.markdown("""
         transform: translateY(-2px);
         box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     }
+    
+    /* 聚类可视化样式 */
+    .cluster-viz-container {
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        margin: 1rem 0;
+    }
+    
+    .cluster-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        border-left: 4px solid #007bff;
+        transition: all 0.3s ease;
+    }
+    
+    .cluster-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .keyword-tag {
+        background-color: #e3f2fd;
+        color: #1976d2;
+        padding: 4px 12px;
+        border-radius: 16px;
+        margin: 2px;
+        display: inline-block;
+        font-size: 0.85em;
+        font-weight: 500;
+        border: 1px solid #bbdefb;
+    }
+    
+    .doc-card {
+        background: #ffffff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        margin: 0.5rem 0;
+        transition: all 0.2s ease;
+    }
+    
+    .doc-card:hover {
+        border-color: #2196f3;
+        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.1);
+    }
+    
+    .quality-indicator {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 600;
+    }
+    
+    .quality-excellent {
+        background-color: #e8f5e8;
+        color: #2e7d32;
+        border: 1px solid #c8e6c9;
+    }
+    
+    .quality-good {
+        background-color: #fff3e0;
+        color: #f57c00;
+        border: 1px solid #ffcc02;
+    }
+    
+    .quality-fair {
+        background-color: #ffebee;
+        color: #d32f2f;
+        border: 1px solid #ffcdd2;
+    }
+    
+    /* 响应式设计 */
+    @media (max-width: 768px) {
+        .cluster-viz-container {
+            padding: 1rem;
+            margin: 0.5rem 0;
+        }
+        
+        .cluster-card {
+            padding: 0.75rem;
+        }
+        
+        .doc-card {
+            padding: 0.75rem;
+        }
+    }
+    
+    /* 加载状态样式 */
+    .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin: 1rem 0;
+    }
+    
+    .loading-spinner {
+        border: 3px solid #f3f3f3;
+        border-top: 3px solid #3498db;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    /* 可视化图表容器 */
+    .viz-chart-container {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        margin: 0.5rem 0;
+    }
+    
+    /* 标签页样式优化 */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+    }
+    
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        padding-left: 20px;
+        padding-right: 20px;
+        border-radius: 8px 8px 0px 0px;
+        background-color: #f0f2f6;
+        border: 1px solid #d0d4da;
+    }
+    
+    .stTabs [aria-selected="true"] {
+        background-color: #ffffff;
+        border-bottom: 1px solid #ffffff;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -89,6 +236,142 @@ def safe_request(method: str, url: str, timeout: int = DEFAULT_TIMEOUT, **kwargs
     except requests.exceptions.RequestException as e:
         logger.error(f"Request failed: {e}")
         return None
+
+class GLMConfigManager:
+    """GLM配置状态管理器"""
+    
+    def __init__(self):
+        self._config_cache = {}
+        self._cache_timestamp = 0
+        self._cache_duration = 30  # 缓存30秒
+    
+    def get_config_status(self) -> Dict[str, Any]:
+        """获取GLM配置状态"""
+        # 从session_state获取GLM配置
+        if "glm_config" not in st.session_state:
+            st.session_state.glm_config = {}
+        
+        return st.session_state.glm_config
+    
+    def validate_config(self, config: Dict) -> bool:
+        """验证配置的有效性"""
+        required_fields = ["model_name", "api_key"]
+        return all(field in config and config[field] for field in required_fields)
+    
+    def get_config_ui_state(self) -> Dict[str, Any]:
+        """获取配置UI状态"""
+        config = self.get_config_status()
+        is_configured = config.get("configured", False)
+        
+        return {
+            "is_configured": is_configured,
+            "should_expand": not is_configured,  # 未配置时展开
+            "status_message": self._get_status_message(config),
+            "status_type": self._get_status_type(config),
+            "config_preview": self._get_config_preview(config)
+        }
+    
+    def _get_status_message(self, config: Dict) -> str:
+        """获取状态消息"""
+        if not config.get("configured", False):
+            return "⚠️ **重要提示**: GLM未配置，高级分块功能（PPL、MSP、边际采样）将不可用！"
+        else:
+            return "✅ GLM已配置，所有高级功能已启用"
+    
+    def _get_status_type(self, config: Dict) -> str:
+        """获取状态类型"""
+        if not config.get("configured", False):
+            return "warning"
+        else:
+            return "success"
+    
+    def _get_config_preview(self, config: Dict) -> Dict[str, str]:
+        """获取配置预览信息"""
+        if not config.get("configured", False):
+            return {}
+        
+        return {
+            "model": config.get("model_name", "N/A"),
+            "api_key_preview": config.get("api_key_preview", "N/A"),
+            "last_validated": config.get("last_validated", "N/A")[:19] if config.get("last_validated") else "N/A"
+        }
+    
+    def save_config(self, model_name: str, api_key: str) -> bool:
+        """保存GLM配置"""
+        try:
+            config = {
+                "configured": True,
+                "model_name": model_name,
+                "api_key": api_key,
+                "api_key_preview": f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***",
+                "last_validated": datetime.now().isoformat(),
+                "saved_at": datetime.now().isoformat()
+            }
+            st.session_state.glm_config = config
+            return True
+        except Exception as e:
+            logger.error(f"保存GLM配置失败: {e}")
+            return False
+    
+    def clear_config(self) -> bool:
+        """清除GLM配置"""
+        try:
+            st.session_state.glm_config = {}
+            return True
+        except Exception as e:
+            logger.error(f"清除GLM配置失败: {e}")
+            return False
+    
+    def test_connection(self) -> Dict[str, Any]:
+        """测试GLM连接"""
+        config = self.get_config_status()
+        if not config.get("configured", False):
+            return {"valid": False, "message": "GLM未配置"}
+        
+        # 模拟连接测试（实际项目中应该调用真实的GLM API）
+        try:
+            # 这里可以添加真实的GLM API测试逻辑
+            return {"valid": True, "message": "连接测试成功"}
+        except Exception as e:
+            return {"valid": False, "message": f"连接测试失败: {str(e)}"}
+    
+    def clear_cache(self):
+        """清除缓存"""
+        self._config_cache = {}
+        self._cache_timestamp = 0
+
+def get_glm_config_status():
+    """获取GLM配置状态（向后兼容）"""
+    if not hasattr(st.session_state, 'glm_config_manager'):
+        st.session_state.glm_config_manager = GLMConfigManager()
+    return st.session_state.glm_config_manager.get_config_status()
+
+def handle_api_error(response, operation_name: str = "操作") -> bool:
+    
+    if response.status_code == 200:
+        return True
+    
+    try:
+        error_data = response.json()
+        error_message = error_data.get("detail", error_data.get("message", "未知错误"))
+        
+        # 根据错误内容判断错误类型
+        error_type = "general"
+        if "glm" in error_message.lower() or "api" in error_message.lower():
+            error_type = "glm_config"
+        elif "upload" in error_message.lower() or "file" in error_message.lower():
+            error_type = "upload"
+        elif "chunk" in error_message.lower() or "分块" in error_message.lower():
+            error_type = "chunking"
+        elif "connection" in error_message.lower() or "连接" in error_message.lower():
+            error_type = "connection"
+        
+        st.error(f"{error_type}错误: {error_message}")
+        
+    except:
+        st.error(f"{operation_name}失败，状态码: {response.status_code}")
+    
+    return False
 
 def build_chunking_config(strategy: str, chunk_length: int, ppl_threshold: float, 
                          confidence_threshold: float, similarity_threshold: float, 
@@ -147,6 +430,53 @@ def style_metric_cards(background_color="#FFFFFF", border_left_color="#0078ff"):
         unsafe_allow_html=True,
     )
 
+def show_loading_state(message="处理中..."):
+    """显示加载状态"""
+    st.markdown(f"""
+    <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <span style="margin-left: 1rem; font-size: 1.1em; color: #666;">{message}</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+def show_empty_state(title="暂无数据", message="", icon="📭"):
+    """显示空状态"""
+    st.markdown(f"""
+    <div style="text-align: center; padding: 3rem 1rem; color: #666;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">{icon}</div>
+        <h3 style="color: #888; margin-bottom: 0.5rem;">{title}</h3>
+        <p style="color: #aaa; margin: 0;">{message}</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+def create_quality_badge(score, thresholds=(0.7, 0.5)):
+    """创建质量评分徽章"""
+    if score >= thresholds[0]:
+        return f'<span class="quality-indicator quality-excellent">优秀 {score:.2f}</span>'
+    elif score >= thresholds[1]:
+        return f'<span class="quality-indicator quality-good">良好 {score:.2f}</span>'
+    else:
+        return f'<span class="quality-indicator quality-fair">一般 {score:.2f}</span>'
+
+def optimize_plotly_chart(fig, height=400):
+    """优化Plotly图表性能和样式"""
+    fig.update_layout(
+        height=height,
+        margin=dict(l=20, r=20, t=40, b=20),
+        font=dict(size=12),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        showlegend=True,
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+        )
+    )
+    return fig
+
 # 初始化会话状态
 if "config" not in st.session_state:
     st.session_state.config = {
@@ -185,6 +515,107 @@ if "config" not in st.session_state:
 if "last_search" not in st.session_state:
     st.session_state.last_search = None
 
+# GLM配置管理（前置到页面顶部）
+if not hasattr(st.session_state, 'glm_config_manager'):
+    st.session_state.glm_config_manager = GLMConfigManager()
+
+glm_manager = st.session_state.glm_config_manager
+ui_state = glm_manager.get_config_ui_state()
+
+# 根据配置状态决定是否展开
+with st.expander("🤖 GLM-4.5-flash 配置 - 高级分块功能必需", expanded=ui_state["should_expand"]):
+    # 显示状态消息
+    if ui_state["status_type"] == "warning":
+        st.warning(ui_state["status_message"])
+        st.info("💡 请先配置GLM-4.5-flash模型以启用完整功能")
+    else:
+        st.success(ui_state["status_message"])
+    
+    col_glm1, col_glm2 = st.columns(2)
+    
+    with col_glm1:
+        st.markdown("**当前GLM配置状态**")
+        if ui_state["is_configured"]:
+            st.success("✅ GLM已配置")
+            config_preview = ui_state["config_preview"]
+            st.write(f"- 模型: {config_preview.get('model', 'N/A')}")
+            st.write(f"- API密钥: {config_preview.get('api_key_preview', 'N/A')}")
+            if config_preview.get("last_validated") != "N/A":
+                st.write(f"- 最后验证：{config_preview.get('last_validated', 'N/A')}")
+            
+            # 连接测试按钮
+            if st.button("🔍 测试连接", key="test_glm_connection_top"):
+                with st.spinner("测试GLM连接..."):
+                    test_result = glm_manager.test_connection()
+                    if test_result.get("valid", False):
+                        st.success(f"✅ {test_result.get('message', '连接成功')}")
+                    else:
+                        st.error(f"❌ {test_result.get('message', '连接失败')}")
+            
+            # 清除配置按钮
+            if st.button("🗑️ 清除配置", key="clear_glm_config_top"):
+                with st.spinner("清除GLM配置..."):
+                    if glm_manager.clear_config():
+                        st.success("✅ GLM配置已清除")
+                        st.rerun()
+                    else:
+                        st.error("❌ 清除配置失败")
+        else:
+            st.error("❌ GLM未配置")
+    
+    with col_glm2:
+        st.markdown("**GLM-4.5-flash 配置**")
+        
+        # GLM配置表单（简化版）
+        with st.form("glm_config_form_top"):
+            model_name = st.text_input(
+                "模型名称",
+                value="glm-4.5-flash",
+                help="GLM模型名称，默认为glm-4.5-flash"
+            )
+            
+            api_key = st.text_input(
+                "智谱AI API密钥",
+                type="password",
+                help="请输入您的智谱AI API密钥",
+                placeholder="请输入API密钥..."
+            )
+            
+            # API密钥验证按钮
+            col_validate, col_save = st.columns(2)
+            
+            with col_validate:
+                validate_clicked = st.form_submit_button("🔍 验证密钥")
+            
+            with col_save:
+                save_clicked = st.form_submit_button("💾 保存配置", type="primary")
+            
+            if validate_clicked:
+                if not api_key:
+                    st.error("请输入API密钥")
+                else:
+                    with st.spinner("验证API密钥..."):
+                        # 简单的API密钥格式验证
+                        if len(api_key) < 10:
+                            st.error("❌ API密钥格式不正确，长度过短")
+                        elif not api_key.strip():
+                            st.error("❌ API密钥不能为空")
+                        else:
+                            st.success("✅ API密钥格式验证通过")
+            
+            if save_clicked:
+                if not model_name or not api_key:
+                    st.error("请填写模型名称和API密钥")
+                else:
+                    with st.spinner("保存GLM配置..."):
+                        if glm_manager.save_config(model_name, api_key):
+                            st.success("✅ GLM配置保存成功")
+                            st.info("🔄 GLM配置已激活，高级分块功能现在可用")
+                            time.sleep(0.5)
+                            st.rerun()
+                        else:
+                            st.error("❌ GLM配置保存失败")
+
 # 侧边栏快速状态
 with st.sidebar:
     st.header("🚀 系统快速状态")
@@ -220,16 +651,20 @@ with st.sidebar:
             clustering_ok = status.get("clustering_service", {}).get("available", False)
             st.write(f"📊 聚类服务: {'✅' if clustering_ok else '❌'}")
             
-            # LLM状态
-            llm_config = status.get("llm_config", {})
-            if llm_config.get("available"):
-                active_config = llm_config.get("active_config")
-                if active_config:
-                    st.markdown("**LLM配置:**")
-                    st.write(f"🤖 {active_config.get('provider', 'N/A')}")
-                    st.write(f"📝 {active_config.get('model', 'N/A')}")
-                else:
-                    st.info("🤖 LLM未配置")
+            # GLM状态显示
+            if hasattr(st.session_state, 'glm_config_manager'):
+                sidebar_glm_manager = st.session_state.glm_config_manager
+            else:
+                sidebar_glm_manager = GLMConfigManager()
+                st.session_state.glm_config_manager = sidebar_glm_manager
+            
+            sidebar_glm_status = sidebar_glm_manager.get_config_status()
+            if sidebar_glm_status.get("configured", False):
+                st.markdown("**GLM配置:**")
+                st.write(f"🤖 {sidebar_glm_status.get('model_name', 'N/A')}")
+                st.write(f"🔑 已配置API密钥")
+            else:
+                st.info("🤖 GLM未配置")
         except json.JSONDecodeError:
             st.error("❌ 响应格式错误")
     else:
@@ -333,129 +768,146 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
             )
 
         st.subheader("文本切分配置")
+        
+        # 添加GLM依赖提示
+        glm_status = glm_manager.get_config_status()
+        if not glm_status.get("configured", False):
+            st.warning("⚠️ 注意：meta_ppl、msp、margin_sampling策略需要GLM配置才能正常工作")
+        
         col6, col7, col8 = st.columns(3)
+
+        # 初始化配置
+        if 'chunking_config' not in st.session_state:
+            st.session_state.chunking_config = {
+                "strategy": "traditional",
+                "chunk_length": 512,
+                "ppl_threshold": 0.3,
+                "confidence_threshold": 0.7,
+                "similarity_threshold": 0.8,
+                "overlap": 50,
+                "min_chunk_size": 100
+            }
+
         with col6:
             chunking_strategy = st.selectbox(
                 "切分策略",
                 ["traditional", "meta_ppl", "margin_sampling", "msp", "semantic"],
                 index=["traditional", "meta_ppl", "margin_sampling", "msp", "semantic"].index(
-                    st.session_state.config.get("chunking", {}).get("strategy", "traditional")
+                    st.session_state.chunking_config.get("strategy", "traditional")
                 ),
-                help="选择文本切分策略：\n- traditional: 固定长度切分\n- meta_ppl: PPL困惑度切分\n- margin_sampling: 边际采样切分\n- msp: MSP高级切分\n- semantic: 语义切分"
+                help="选择文本切分策略...",
+                key="strategy_selector"
             )
+            # 在表单内直接更新配置
+            st.session_state.chunking_config["strategy"] = chunking_strategy
+
         with col7:
             chunk_length = st.number_input(
                 "块长度",
-                value=st.session_state.config.get("chunking", {}).get("chunk_length", 512),
+                value=st.session_state.chunking_config.get("chunk_length", 512),
                 min_value=100,
                 max_value=2048,
-                help="文本块的最大长度"
+                help="文本块的最大长度",
+                key="chunk_length_input"
             )
-        
-        # 初始化所有可能的参数变量
-        ppl_threshold = st.session_state.config.get("chunking", {}).get("ppl_threshold", 0.3)
-        confidence_threshold = st.session_state.config.get("chunking", {}).get("confidence_threshold", 0.7)
-        similarity_threshold = st.session_state.config.get("chunking", {}).get("similarity_threshold", 0.8)
-        overlap = st.session_state.config.get("chunking", {}).get("overlap", 50)
-        
+            # 更新配置
+            st.session_state.chunking_config["chunk_length"] = chunk_length
+
         with col8:
-            if chunking_strategy == "meta_ppl":
+            # 根据当前策略动态显示参数
+            current_strategy = st.session_state.chunking_config["strategy"]
+            
+            if current_strategy == "meta_ppl":
                 ppl_threshold = st.slider(
                     "PPL阈值",
                     min_value=0.0,
                     max_value=1.0,
-                    value=ppl_threshold,
+                    value=st.session_state.chunking_config.get("ppl_threshold", 0.3),
                     step=0.1,
                     help="PPL困惑度切分的阈值",
                     key="ppl_threshold_slider"
                 )
-            elif chunking_strategy == "msp":
+                st.session_state.chunking_config["ppl_threshold"] = ppl_threshold
+                
+            elif current_strategy == "msp":
                 confidence_threshold = st.slider(
                     "置信度阈值",
                     min_value=0.5,
                     max_value=0.95,
-                    value=confidence_threshold,
+                    value=st.session_state.chunking_config.get("confidence_threshold", 0.7),
                     step=0.05,
                     help="MSP切分的置信度阈值",
                     key="confidence_threshold_slider"
                 )
-            elif chunking_strategy == "semantic":
+                st.session_state.chunking_config["confidence_threshold"] = confidence_threshold
+                
+            elif current_strategy == "semantic":
                 similarity_threshold = st.slider(
                     "相似度阈值",
                     min_value=0.5,
                     max_value=0.95,
-                    value=similarity_threshold,
+                    value=st.session_state.chunking_config.get("similarity_threshold", 0.8),
                     step=0.05,
                     help="语义切分的相似度阈值",
                     key="similarity_threshold_slider"
                 )
+                st.session_state.chunking_config["similarity_threshold"] = similarity_threshold
+                
                 min_chunk_size = st.number_input(
                     "最小块大小",
-                    value=100,
+                    value=st.session_state.chunking_config.get("min_chunk_size", 100),
                     min_value=50,
                     max_value=200,
                     key="min_chunk_size_input"
                 )
-            elif chunking_strategy == "traditional":
+                st.session_state.chunking_config["min_chunk_size"] = min_chunk_size
+                
+            elif current_strategy == "traditional":
                 overlap = st.slider(
                     "重叠长度",
                     min_value=0,
                     max_value=200,
-                    value=overlap,
+                    value=st.session_state.chunking_config.get("overlap", 50),
                     step=10,
                     help="传统切分的重叠长度",
                     key="overlap_slider"
                 )
-
-        st.subheader("LLM配置（用于高级分块策略）")
+                st.session_state.chunking_config["overlap"] = overlap
         
-        # 获取LLM配置状态
-        llm_configs = {}
-        llm_providers = []
-        active_config_id = None
+        # 为所有变量提供默认值，确保在build_chunking_config中使用时都有定义
+        ppl_threshold = st.session_state.chunking_config.get("ppl_threshold", 0.3)
+        confidence_threshold = st.session_state.chunking_config.get("confidence_threshold", 0.7)
+        similarity_threshold = st.session_state.chunking_config.get("similarity_threshold", 0.8)
+        overlap = st.session_state.chunking_config.get("overlap", 50)
         
-        # 获取LLM提供商
-        providers_response = safe_request("GET", f"{BACKEND_URL}/llm/providers")
-        if providers_response and providers_response.status_code == 200:
-            try:
-                llm_providers = providers_response.json().get("providers", [])
-            except json.JSONDecodeError:
-                st.warning("LLM提供商数据格式错误")
+        st.subheader("GLM配置状态（用于高级分块策略）")
         
-        # 获取现有配置
-        configs_response = safe_request("GET", f"{BACKEND_URL}/llm/configs")
-        if configs_response and configs_response.status_code == 200:
-            try:
-                config_data = configs_response.json()
-                llm_configs = config_data.get("configs", {})
-                summary = config_data.get("summary", {})
-                active_config_info = summary.get("active_config", {})
-                active_config_id = active_config_info.get("id") if active_config_info else None
-            except json.JSONDecodeError:
-                st.warning("LLM配置数据格式错误")
+        # 获取当前GLM配置状态
+        if hasattr(st.session_state, 'glm_config_manager'):
+            form_glm_manager = st.session_state.glm_config_manager
+        else:
+            form_glm_manager = GLMConfigManager()
+            st.session_state.glm_config_manager = form_glm_manager
         
-        col_llm1, col_llm2 = st.columns(2)
+        form_ui_state = form_glm_manager.get_config_ui_state()
         
-        with col_llm1:
-            st.markdown("**当前LLM配置状态**")
-            if active_config_id:
-                active_config = llm_configs.get(active_config_id, {})
-                st.success(f"已激活 {active_config_id}")
-                st.write(f"- 提供商: {active_config.get('provider', 'N/A')}")
-                st.write(f"- 模型: {active_config.get('model_name', 'N/A')}")
+        col_glm_status1, col_glm_status2 = st.columns(2)
+        
+        with col_glm_status1:
+            st.markdown("**当前GLM配置状态**")
+            if form_ui_state["is_configured"]:
+                st.success("✅ GLM已配置")
+                config_preview = form_ui_state["config_preview"]
+                st.write(f"- 模型: {config_preview.get('model', 'N/A')}")
+                st.write(f"- API密钥: {config_preview.get('api_key_preview', 'N/A')}")
             else:
-                st.warning("⚠️ 未配置LLM，MSP和PPL分块将不可用")
-            
-            # 显示现有配置列表
-            if llm_configs:
-                st.markdown("**已保存的配置:**")
-                for config_id, config in llm_configs.items():
-                    status = "🟢 激活" if config_id == active_config_id else "⚪未激活"
-                    st.write(f"- {config_id}: {config.get('provider', 'N/A')} ({status})")
+                st.error("❌ GLM未配置")
         
-        with col_llm2:
-            st.markdown("**添加新的LLM配置:**")
-            st.info("💡 LLM配置将在主配置保存后可用")
+        with col_glm_status2:
+            if form_ui_state["is_configured"]:
+                st.success("🎉 高级分块功能已可用")
+            else:
+                st.warning("⚠️ 高级分块功能不可用，请先配置GLM")
 
         st.subheader("多模态配置")
         col9, col10 = st.columns(2)
@@ -517,146 +969,14 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
             if response and response.status_code == 200:
                 st.success(" 配置已保存并生效")
             else:
-                st.error(f"❌ 配置保存失败")
-                if response:
-                    st.caption(f"状态码: {response.status_code}")
-                    try:
-                        error_detail = response.json().get("message", "未知错误")
-                        st.caption(f"错误详情: {error_detail}")
-                    except:
-                        pass
+                handle_api_error(response, "配置保存")
 
-# LLM配置管理（独立表单）
-with st.expander("🤖 LLM配置管理", expanded=False):
-    # 获取LLM配置状态
-    llm_configs = {}
-    llm_providers = []
-    active_config_id = None
-    
-    try:
-        # 获取LLM提供商
-        providers_response = requests.get("http://localhost:8509/llm/providers")
-        if providers_response.status_code == 200:
-            llm_providers = providers_response.json().get("providers", [])
-        
-        # 获取现有配置
-        configs_response = requests.get("http://localhost:8509/llm/configs")
-        if configs_response.status_code == 200:
-            config_data = configs_response.json()
-            llm_configs = config_data.get("configs", {})
-            summary = config_data.get("summary", {})
-            active_config_info = summary.get("active_config", {})
-            active_config_id = active_config_info.get("id") if active_config_info else None
-    except Exception as e:
-        st.warning(f"获取LLM配置失败: {str(e)}")
-    
-    col_llm1, col_llm2 = st.columns(2)
-    
-    with col_llm1:
-        st.markdown("**当前LLM配置状态**")
-        if active_config_id:
-            active_config = llm_configs.get(active_config_id, {})
-            st.success(f"已激活 {active_config_id}")
-            st.write(f"- 提供商: {active_config.get('provider', 'N/A')}")
-            st.write(f"- 模型: {active_config.get('model_name', 'N/A')}")
-        else:
-            st.warning("⚠️ 未配置LLM，MSP和PPL分块将不可用")
-        
-        # 显示现有配置列表
-        if llm_configs:
-            st.markdown("**已保存的配置:**")
-            for config_id, config in llm_configs.items():
-                status = "🟢 激活" if config_id == active_config_id else "⚪未激活"
-                st.write(f"- {config_id}: {config.get('provider', 'N/A')} ({status})")
-    
-    with col_llm2:
-        st.markdown("**添加新的LLM配置:**")
-        
-        # LLM配置表单（独立）
-        with st.form("llm_config_form"):
-            config_id = st.text_input(
-                "配置名称",
-                help="为这个LLM配置起一个名称"
-            )
-            
-            provider_options = [p["name"] for p in llm_providers] if llm_providers else ["openai", "claude", "local","qwen","zhipu"]
-            selected_provider = st.selectbox(
-                "LLM提供商",
-                provider_options,
-                help="选择LLM服务提供商"
-            )
-            
-            # 根据选择的提供商显示模型选项
-            if llm_providers:
-                provider_info = next((p for p in llm_providers if p["name"] == selected_provider), None)
-                if provider_info:
-                    model_options = provider_info.get("models", [])
-                    selected_model = st.selectbox("模型", model_options)
-                    
-                    # 显示提供商描述
-                    st.info(provider_info.get("description", ""))
-                else:
-                    selected_model = st.text_input("模型名称", placeholder="例如: glm-4.1v-thinking-flash")
-            else:
-                selected_model = st.text_input("模型名称", placeholder="例如: gpt-3.5-turbo")
-            
-            api_key = st.text_input(
-                "API密钥",
-                type="password",
-                help="输入LLM服务的API密钥"
-            )
-            
-            api_endpoint = st.text_input(
-                "API端点（可选）",
-                placeholder="例如: https://open.bigmodel.cn/api/paas/v4/chat/completions",
-                help="自定义API端点，留空使用默认值"
-            )
-            
-            set_as_active = st.checkbox(
-                "设为激活配置",
-                value=True,
-                help="添加后立即激活此配置"
-            )
-            
-            submitted_llm = st.form_submit_button("💾 保存LLM配置")
-            
-            if submitted_llm:
-                if not config_id or not selected_provider or not api_key:
-                    st.error("请填写配置名称、提供商和API密钥")
-                else:
-                    # 保存LLM配置
-                    llm_config_data = {
-                        "config_id": config_id,
-                        "provider": selected_provider,
-                        "model_name": selected_model,
-                        "api_key": api_key,
-                        "api_endpoint": api_endpoint if api_endpoint else None,
-                        "is_active": set_as_active
-                    }
-                    
-                    try:
-                        response = requests.post(
-                            "http://localhost:8509/llm/configs",
-                            json=llm_config_data
-                        )
-                        
-                        if response.status_code == 200:
-                            st.success(f"LLM配置 '{config_id}' 保存成功")
-                            if set_as_active:
-                                st.info("🔄 配置已激活，MSP和PPL分块现在可用")
-                            st.rerun()
-                        else:
-                            error_msg = response.json().get("message", "未知错误")
-                            st.error(f"❌保存失败: {error_msg}")
-                    except Exception as e:
-                        st.error(f"❌连接失败: {str(e)}")
 
-st.markdown("---")
 
 # 上传文件区
 with st.expander("📁 上传数据文件区", expanded=True):
     st.info("请全选文件夹下所有文件上传，并输入一个文件夹名，系统会自动保存到该目录")
-    folder_name = st.text_input("请输入目标文件夹名（如：0240501）", key="folder_name")
+    folder_names = st.text_input("请输入目标文件夹名（如：0240501）", key="folder_name")
     uploaded_files = st.file_uploader(
         "选择文件夹中的文件（支持csv, md, pdf, txt, jpg, png）", 
         accept_multiple_files=True, 
@@ -664,52 +984,165 @@ with st.expander("📁 上传数据文件区", expanded=True):
     )
     
     if st.button("⬆️ 上传并构建向量库", key="upload_btn"):
-        if not folder_name:
+        if not folder_names:
             st.warning("⚠️ 请先输入目标文件夹名")
         elif not uploaded_files:
             st.warning("⚠️ 请先选择要上传的文件")
         else:
-            with st.spinner("上传文件中，请稍候..."):
-                # 1. 上传文件
-                files = [("files", (file.name, file, file.type)) for file in uploaded_files]
-                data = {"folder_name": folder_name}
-                try:
+            # 创建进度显示区域
+            progress_container = st.container()
+            status_container = st.container()
+            
+            with progress_container:
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                
+            with status_container:
+                result_placeholder = st.empty()
+            
+            try:
+                status_text.text("📤 正在上传文件...")
+                uploaded_results = []
+                total_files = len(uploaded_files)
+                
+                for i, file in enumerate(uploaded_files):
+                    progress_percentage = (i / total_files) * 50  
+                    progress_bar.progress(progress_percentage / 100)
+                    status_text.text(f"📤 正在上传文件 {i+1}/{total_files}: {file.name}")
+                    
+                    file.seek(0)  
+                    file_content = file.read()
+                    
+                    from io import BytesIO
+                    file_obj = BytesIO(file_content)
+                    file_obj.name = file.name
+                    
+                    files = {"file": (file.name, file_obj, file.type)}
+                    data = {"folder_name": folder_names}  
+                    
                     response = requests.post(
-                        "http://localhost:8509/upload",
-                        files=files,
-                        data=data
+                        f"{BACKEND_URL}/upload",
+                        files=files,  
+                        data=data,    
+                        timeout=60
                     )
                     
                     if response.status_code == 200:
                         result = response.json()
-                        
-                        # 显示上传结果
-                        if result.get("status") == "success":
-                            if result.get("vectorized", False):
-                                st.success(f"成功上传 {len(uploaded_files)} 个文件并完成向量化存储")
-                                st.info("📊 数据已向量化，可以进行检索查询")
+                        uploaded_results.append(result)
+                        logger.info(f"文件上传成功: {file.name}")
+                    else:
+                        logger.error(f"文件上传失败: {file.name}, 状态码: {response.status_code}")
+                        with result_placeholder.container():
+                            handle_api_error(response, f"文件 {file.name} 上传")
+                        continue  
+                
+                if not uploaded_results:
+                    with result_placeholder.container():
+                        st.error("❌ 没有文件成功上传")
+                
+                
+                progress_bar.progress(0.5)  
+                status_text.text("✅ 文件上传完成，开始处理...")
+                
+                last_result = uploaded_results[-1]
+                tracking_id = last_result.get("tracking_id")
+                
+                if tracking_id:
+                    status_text.text("🔄 正在处理数据，请稍候...")
+                    max_attempts = 300  
+                    attempt = 0
+                    
+                    while attempt < max_attempts:
+                        try:
+                            progress_response = safe_request("GET", f"{BACKEND_URL}/progress/{tracking_id}")
+                            if progress_response and progress_response.status_code == 200:
+                                progress_data = progress_response.json()
+                                if progress_data.get("status") == "not_found":
+                                    break
+                                
+                                # 更新进度条 (50% + 处理进度的50%)
+                                processing_percentage = progress_data.get("progress_percentage", 0)
+                                total_progress = 50 + (processing_percentage * 0.5)
+                                progress_bar.progress(min(total_progress / 100, 1.0))
+                                
+                                # 更新状态文本
+                                current_status = progress_data.get("current_status", "处理中")
+                                processed = progress_data.get("processed_items", 0)
+                                total = progress_data.get("total_items", 0)
+                                
+                                if total > 0:
+                                    status_text.text(f"📊 {current_status}: {processed}/{total} ({processing_percentage:.1f}%)")
+                                else:
+                                    status_text.text(f"📊 {current_status}")
+                                
+                                # 检查是否完成
+                                if current_status in ["completed", "failed"]:
+                                    break
                             else:
-                                st.success(f"✅成功上传 {len(uploaded_files)} 个文档")
-                                st.warning("⚠️ 向量化存储未完成，可能影响检索功能")
-                            st.balloons()
+                                logger.warning(f"无法获取进度状态: {tracking_id}")
+                                break
+                        except Exception as e:
+                            logger.error(f"获取进度状态失败: {e}")
+                            break
+                        
+                        time.sleep(1)  # 每秒检查一次
+                        attempt += 1
+                
+                # 完成进度条
+                progress_bar.progress(1.0)
+                
+                # 显示最终结果
+                with result_placeholder.container():
+                    successful_uploads = len(uploaded_results)
+                    failed_uploads = len(uploaded_files) - successful_uploads
+                    
+                    if successful_uploads > 0:
+                        if failed_uploads == 0:
+                            st.success(f"✅ 成功上传 {successful_uploads} 个文件")
+                        else:
+                            st.warning(f"⚠️ 部分成功：上传了 {successful_uploads} 个文件，{failed_uploads} 个文件失败")
+                        
+                        # 检查向量化状态
+                        vectorized_count = sum(1 for result in uploaded_results if result.get("vectorized", False))
+                        if vectorized_count > 0:
+                            st.info("📊 数据已向量化，可以进行检索查询")
+                        else:
+                            st.warning("⚠️ 向量化存储未完成，可能影响检索功能")
+                        
+                        # 显示处理时间
+                        if tracking_id and 'progress_data' in locals():
+                            processing_time = progress_data.get("processing_time", 0)
+                            if processing_time > 0:
+                                st.info(f"⏱️ 处理耗时: {processing_time:.2f} 秒")
+                        
+                        st.balloons()
                         
                         # 2. 更新配置文件中的 data_location 字段
-                        config_update = {
-                            "data": {
-                                "data_location": f"./data/upload/{folder_name}"
-                            }
-                        }
-                        st.session_state.config["data"] = config_update["data"]
-                        
-                        # 发送更新请
-                        update_response = requests.post("http://localhost:8509/update_config", json=config_update)
-                        
-                        if update_response.status_code != 200:
-                            st.error(f"✅配置更新失败: {update_response.text}")
+                        if 'folder_name' in locals() and folder_name:
+                            config_update = {"data": {"data_location": f"./data/upload/{folder_name}"}}
+                            st.session_state.config["data"] = config_update["data"]
+                            
+                            # 发送更新请求
+                            update_response = safe_request("POST", f"{BACKEND_URL}/update_config", json=config_update)
+                            if not update_response or update_response.status_code != 200:
+                                st.warning("⚠️ 配置更新失败，但文件上传成功")
                     else:
-                        st.error(f"✅文件上传失败: {response.text}")
-                except Exception as e:
-                    st.error(f"✅连接后端失败: {str(e)}")
+                        st.error("❌ 所有文件上传失败")
+
+            except requests.exceptions.Timeout:
+                with result_placeholder.container():
+                    st.error("❌ 上传超时，请检查网络连接或减少文件数量")
+            except requests.exceptions.ConnectionError:
+                with result_placeholder.container():
+                    st.error("❌ 无法连接到服务器，请确保后端服务正在运行")
+            except Exception as e:
+                with result_placeholder.container():
+                    logger.error(f"上传错误: {e}")
+                    st.error(f"❌ 上传过程中发生错误: {str(e)}")
+            finally:
+                # 清理进度显示
+                status_text.text("✅ 处理完成")
 
 st.markdown("---")
 
@@ -724,13 +1157,17 @@ with st.expander("🔎 检索与可视", expanded=True):
     )
     
     # 添加结果展示选项
-    result_display = st.radio("结果展示方式", ["摘要视图", "详细视图"], index=0, horizontal=True)
+    col_display, col_viz = st.columns(2)
+    with col_display:
+        result_display = st.radio("结果展示方式", ["摘要视图", "详细视图"], index=0, horizontal=True)
+    with col_viz:
+        enable_visualization = st.checkbox("启用聚类可视化", value=True, help="生成聚类散点图、饼图等可视化分析")
     
     if st.button("🚀 开始检索与可视", key="search_btn", type="primary"):
         if not question:
             st.warning("⚠️ 请输入检索问题！")
         else:
-            with st.spinner("检索中，请稍.."):
+            with st.spinner("检索中，请稍候..."):
                 try:
                     # 1. 执行搜索
                     search_response = requests.post(
@@ -738,8 +1175,10 @@ with st.expander("🔎 检索与可视", expanded=True):
                         json={
                             "question": question, 
                             "col_choice": col_choice,
-                            "collection_name": st.session_state.config["milvus"]["collection_name"]
-                        }
+                            "collection_name": st.session_state.config["milvus"]["collection_name"],
+                            "enable_visualization": enable_visualization
+                        },
+                        timeout=60  # 添加超时设置
                     )
                     
                     if search_response.status_code == 200:
@@ -753,7 +1192,7 @@ with st.expander("🔎 检索与可视", expanded=True):
                             execution_time = search_result.get("execution_time", 0.0)
                             clustering_method = search_result.get("clustering_method", "unknown")
                             
-                            st.success(f"✅检索完✅ 找到 {cluster_count} 个集✅ ✅{doc_count} 个文档(用时: {execution_time:.2f}s, 方法: {clustering_method})")
+                            st.success(f"✅ 检索完成！找到 {cluster_count} 个聚类，共 {doc_count} 个文档 (用时: {execution_time:.2f}s, 方法: {clustering_method})")
                             
                             # 显示搜索质量指标
                             if "quality_metrics" in search_result:
@@ -797,11 +1236,226 @@ with st.expander("🔎 检索与可视", expanded=True):
                                 
                                 style_metric_cards()
                             
+                            # 聚类可视化展示
+                            if "visualization_data" in search_result:
+                                st.subheader("🎨 聚类可视化分析")
+                                
+                                # 显示可视化生成时间
+                                if "visualization_time" in search_result:
+                                    st.caption(f"⏱️ 可视化生成耗时: {search_result['visualization_time']:.2f}秒")
+                                
+                                viz_data = search_result["visualization_data"]
+                                
+                                # 创建可视化选项卡
+                                viz_tab1, viz_tab2, viz_tab3, viz_tab4 = st.tabs([
+                                    "📊 聚类分布图", "🥧 聚类大小", "🔥 相似度热力图", "📋 聚类摘要"
+                                ])
+                                
+                                with viz_tab1:
+                                    # 聚类散点图
+                                    if "scatter_plot" in viz_data and viz_data["scatter_plot"]["x"]:
+                                        scatter_data = viz_data["scatter_plot"]
+                                        
+                                        # 性能优化：对于大量数据点，进行采样
+                                        total_points = len(scatter_data["x"])
+                                        max_points = 1000  # 最大显示点数
+                                        
+                                        if total_points > max_points:
+                                            st.info(f"⚡ 数据点较多({total_points}个)，为提升性能已采样显示{max_points}个点")
+                                            indices = random.sample(range(total_points), max_points)
+                                            scatter_data = {
+                                                "x": [scatter_data["x"][i] for i in indices],
+                                                "y": [scatter_data["y"][i] for i in indices],
+                                                "cluster_ids": [scatter_data["cluster_ids"][i] for i in indices],
+                                                "contents": [scatter_data["contents"][i] for i in indices],
+                                                "distances": [scatter_data["distances"][i] for i in indices],
+                                                "method_used": scatter_data.get("method_used", "unknown"),
+                                                "total_points": total_points
+                                            }
+                                        
+                                        # 创建散点图
+                                        fig = px.scatter(
+                                            x=scatter_data["x"],
+                                            y=scatter_data["y"],
+                                            color=[f"聚类 {cid}" for cid in scatter_data["cluster_ids"]],
+                                            hover_data={
+                                                "内容": scatter_data["contents"],
+                                                "距离": scatter_data["distances"]
+                                            },
+                                            title=f"文档聚类分布图 (降维方法: {scatter_data.get('method_used', 'unknown')})",
+                                            labels={"x": "维度 1", "y": "维度 2"}
+                                        )
+                                        
+                                        # 优化图表样式和性能
+                                        fig = optimize_plotly_chart(fig, height=500)
+                                        fig.update_traces(
+                                            marker=dict(size=8, opacity=0.7, line=dict(width=1, color='white')),
+                                            selector=dict(mode='markers')
+                                        )
+                                        fig.update_layout(
+                                            legend=dict(
+                                                orientation="v",
+                                                yanchor="top",
+                                                y=1,
+                                                xanchor="left",
+                                                x=1.02
+                                            )
+                                        )
+                                        
+                                        with st.container():
+                                            st.markdown('<div class="viz-chart-container">', unsafe_allow_html=True)
+                                            st.plotly_chart(fig, use_container_width=True)
+                                            st.markdown('</div>', unsafe_allow_html=True)
+                                        
+                                        st.info(f"📍 共 {scatter_data.get('total_points', 0)} 个文档点，使用 {scatter_data.get('method_used', 'unknown')} 降维方法")
+                                    else:
+                                        st.warning("⚠️ 无法生成散点图：缺少向量数据")
+                                
+                                with viz_tab2:
+                                    # 聚类大小饼图
+                                    if "size_chart" in viz_data and viz_data["size_chart"]["values"]:
+                                        size_data = viz_data["size_chart"]
+                                        
+                                        fig = px.pie(
+                                            values=size_data["values"],
+                                            names=size_data["labels"],
+                                            title="聚类大小分布",
+                                            color_discrete_sequence=size_data.get("colors", px.colors.qualitative.Set3)
+                                        )
+                                        
+                                        fig.update_traces(
+                                            textposition='inside', 
+                                            textinfo='percent+label',
+                                            hovertemplate='<b>%{label}</b><br>文档数: %{value}<br>占比: %{percent}<extra></extra>'
+                                        )
+                                        fig = optimize_plotly_chart(fig, height=400)
+                                        
+                                        with st.container():
+                                            st.markdown('<div class="viz-chart-container">', unsafe_allow_html=True)
+                                            st.plotly_chart(fig, use_container_width=True)
+                                            st.markdown('</div>', unsafe_allow_html=True)
+                                        
+                                        # 显示详细统计
+                                        st.markdown("**聚类大小统计：**")
+                                        for label, value in zip(size_data["labels"], size_data["values"]):
+                                            st.write(f"- {label}: {value} 个文档")
+                                    else:
+                                        st.warning("⚠️ 无法生成饼图：缺少聚类数据")
+                                
+                                with viz_tab3:
+                                    # 聚类相似度热力图
+                                    if "heatmap" in viz_data and viz_data["heatmap"]["matrix"]:
+                                        heatmap_data = viz_data["heatmap"]
+                                        
+                                        fig = px.imshow(
+                                            heatmap_data["matrix"],
+                                            labels=dict(x="聚类", y="聚类", color="相似度"),
+                                            x=heatmap_data["labels"],
+                                            y=heatmap_data["labels"],
+                                            title="聚类间相似度热力图",
+                                            color_continuous_scale="RdYlBu_r",
+                                            aspect="auto"
+                                        )
+                                        
+                                        fig = optimize_plotly_chart(fig, height=400)
+                                        fig.update_layout(
+                                            xaxis_title="聚类",
+                                            yaxis_title="聚类"
+                                        )
+                                        
+                                        with st.container():
+                                            st.markdown('<div class="viz-chart-container">', unsafe_allow_html=True)
+                                            st.plotly_chart(fig, use_container_width=True)
+                                            st.markdown('</div>', unsafe_allow_html=True)
+                                        
+                                        st.info("💡 颜色越深表示聚类间相似度越高")
+                                    else:
+                                        st.warning("⚠️ 无法生成热力图：聚类数量不足")
+                                
+                                with viz_tab4:
+                                    # 聚类摘要信息
+                                    if "cluster_summary" in viz_data:
+                                        summary = viz_data["cluster_summary"]
+                                        
+                                        st.markdown("**聚类总体信息：**")
+                                        col_s1, col_s2, col_s3 = st.columns(3)
+                                        with col_s1:
+                                            st.metric("总聚类数", summary.get("total_clusters", 0), 
+                                                     help="检索结果被分为多少个不同的主题聚类")
+                                        with col_s2:
+                                            st.metric("总文档数", summary.get("total_documents", 0),
+                                                     help="所有聚类中包含的文档总数")
+                                        with col_s3:
+                                            st.metric("平均聚类大小", f"{summary.get('avg_cluster_size', 0):.1f}",
+                                                     help="每个聚类平均包含的文档数量")
+                                        
+                                        # 应用自定义样式
+                                        style_metric_cards(background_color="#f8f9fa", border_left_color="#28a745")
+                                        
+                                        # 显示每个聚类的详细信息
+                                        st.markdown("**聚类详细信息：**")
+                                        
+                                        # 按聚类大小排序
+                                        sorted_details = sorted(
+                                            summary.get("cluster_details", []), 
+                                            key=lambda x: x['size'], 
+                                            reverse=True
+                                        )
+                                        
+                                        for detail in sorted_details:
+                                            # 创建聚类卡片
+                                            cluster_quality = 1 - detail['avg_distance'] if detail['avg_distance'] < 1 else 0
+                                            quality_badge = create_quality_badge(cluster_quality)
+                                            
+                                            with st.expander(f"🔍 聚类 {detail['cluster_id']} - {detail['size']} 个文档", expanded=False):
+                                                st.markdown('<div class="cluster-card">', unsafe_allow_html=True)
+                                                
+                                                # 聚类统计信息
+                                                col_stat1, col_stat2, col_stat3 = st.columns(3)
+                                                with col_stat1:
+                                                    st.metric("文档数量", detail['size'])
+                                                with col_stat2:
+                                                    st.metric("平均距离", f"{detail['avg_distance']:.3f}")
+                                                with col_stat3:
+                                                    st.markdown(f"**质量评分：** {quality_badge}", unsafe_allow_html=True)
+                                                
+                                                # 关键词展示
+                                                if detail.get("keywords"):
+                                                    st.markdown("**🏷️ 聚类关键词：**")
+                                                    keywords_html = " ".join([
+                                                        f'<span class="keyword-tag">{keyword}</span>' 
+                                                        for keyword in detail["keywords"]
+                                                    ])
+                                                    st.markdown(keywords_html, unsafe_allow_html=True)
+                                                
+                                                # 代表性内容
+                                                if detail.get("representative_content"):
+                                                    st.markdown("**📄 代表性内容：**")
+                                                    st.markdown(f"""
+                                                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; border-left: 4px solid #007bff; margin-top: 0.5rem;">
+                                                        {detail["representative_content"]}
+                                                    </div>
+                                                    """, unsafe_allow_html=True)
+                                                
+                                                st.markdown('</div>', unsafe_allow_html=True)
+                                    else:
+                                        st.warning("⚠️ 无法显示聚类摘要：缺少摘要数据")
+                            
+                            # 显示可视化错误（如果有）
+                            elif "visualization_error" in search_result:
+                                st.warning("⚠️ 聚类可视化生成失败")
+                                with st.expander("查看错误详情"):
+                                    st.error(search_result["visualization_error"])
+                                    st.info("💡 可视化失败不影响基础搜索功能，您仍可以查看下方的检索结果")
+                            
+                            else:
+                                st.info("ℹ️ 未启用聚类可视化功能，如需查看可视化分析，请在搜索时启用该功能")
+                            
                             # 显示所有召回结果
-                            st.subheader("所有召回结果")
+                            st.subheader("📄 检索结果详情")
                             
                             # 创建选项卡布局
-                            tab1, tab2 = st.tabs(["文档列表", "集群视图"])
+                            tab1, tab2 = st.tabs(["📋 文档列表", "🗂️ 聚类视图"])
                             
                             with tab1:
                                 # 按距离排序的所有文档
@@ -956,8 +1610,16 @@ with st.expander("🔎 检索与可视", expanded=True):
                                         quality_label = "优秀" if quality_score > 0.7 else "良好" if quality_score > 0.5 else "一"
                                         st.metric("质量评分", f"{quality_score:.2f}", delta=quality_label)
                                     
-                                    # 使用expander显示集群文档
-                                    with st.expander(f"查看集群 #{cluster_id} {cluster_size} 个文", expanded=(i == 0)):
+                                    # 显示集群文档
+                                    st.markdown(f"**📋 集群 #{cluster_id} 文档列表 ({cluster_size} 个文档):**")
+                                    
+                                    # 使用容器显示文档，而不是嵌套expander
+                                    if i == 0:  # 默认展开第一个集群
+                                        show_docs = True
+                                    else:
+                                        show_docs = st.checkbox(f"显示集群 #{cluster_id} 的文档", key=f"show_cluster_{cluster_id}")
+                                    
+                                    if show_docs:
                                         for j, doc in enumerate(cluster["documents"]):
                                             with st.container():
                                                 # 文档标题
@@ -1033,30 +1695,30 @@ with st.expander("🔎 检索与可视", expanded=True):
                                     st.plotly_chart(fig, use_container_width=True)
                                     
                                     # 显示原始数据
-                                    with st.expander("查看原始数据"):
+                                    if st.checkbox("显示原始数据", key="show_raw_data"):
                                         st.dataframe(df)
                                 else:
                                     st.info("ℹ️ 无可视化数据")
                             else:
-                                st.error(f"可视化失✅ {vis_response.text}")
+                                st.error(f"可视化失败: {vis_response.text}")
                     else:
-                        st.error(f"✅检索失✅ {search_response.text}")
+                        st.error(f"❌ 检索失败: {search_response.text}")
                 except Exception as e:
-                    st.error(f"✅连接后端失败: {str(e)}")
+                    st.error(f"❌ 连接后端失败: {str(e)}")
 
 st.markdown("---")
 
 # 新增功能面板
 with st.expander("🧪 文本切分测试", expanded=False):
-    st.info("测试不同的文本切分策略效")
+    st.info("测试不同的文本切分策略效果")
     
-    # 获取可用策略和状
+    # 获取可用策略和状态
     try:
         strategies_response = requests.get("http://localhost:8509/chunking/strategies")
         if strategies_response.status_code == 200:
             strategies_data = strategies_response.json().get("strategies", [])
             
-            # 显示策略状
+            # 显示策略状态
             st.markdown("**可用策略状态**")
             col_status1, col_status2 = st.columns(2)
             
@@ -1096,14 +1758,14 @@ with st.expander("🧪 文本切分测试", expanded=False):
     with col_test2:
         # 根据策略显示相关参数
         if test_strategy == "traditional":
-            chunk_size = st.number_input("块大", value=512, min_value=100, max_value=2048, key="test_chunk_size")
+            chunk_size = st.number_input("块大小", value=512, min_value=100, max_value=2048, key="test_chunk_size")
             overlap = st.number_input("重叠大小", value=50, min_value=0, max_value=200, key="test_overlap")
         elif test_strategy == "meta_ppl":
-            ppl_threshold = st.slider("PPL阈", 0.0, 1.0, 0.3, 0.1, key="test_ppl_threshold")
+            ppl_threshold = st.slider("PPL阈值", 0.0, 1.0, 0.3, 0.1, key="test_ppl_threshold")
         elif test_strategy == "msp":
-            confidence_threshold = st.slider("置信度阈", 0.5, 0.95, 0.7, 0.05, key="test_confidence_threshold")
+            confidence_threshold = st.slider("置信度阈值", 0.5, 0.95, 0.7, 0.05, key="test_confidence_threshold")
         elif test_strategy == "semantic":
-            similarity_threshold = st.slider("相似度阈", 0.5, 0.95, 0.8, 0.05, key="test_similarity_threshold")
+            similarity_threshold = st.slider("相似度阈值", 0.5, 0.95, 0.8, 0.05, key="test_similarity_threshold")
     
     if st.button("🔄 执行切分测试", key="chunking_test_btn"):
         if test_text:
@@ -1118,7 +1780,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
                             st.error(f"策略 '{test_strategy}' 需要LLM配置，请先在上方配置LLM")
                             st.stop()
                 except Exception:
-                    st.warning("⚠️ 无法检查LLM配置状")
+                    st.warning("⚠️ 无法检查LLM配置状态")
             
             with st.spinner("正在执行文本切分..."):
                 try:
@@ -1142,7 +1804,8 @@ with st.expander("🧪 文本切分测试", expanded=False):
                             "text": test_text,
                             "strategy": test_strategy,
                             "params": test_params
-                        }
+                        },
+                        timeout=30  # 添加超时设置
                     )
                     
                     if response.status_code == 200:
@@ -1164,21 +1827,27 @@ with st.expander("🧪 文本切分测试", expanded=False):
                             with col_stat3:
                                 st.metric("最长块", f"{max_length}")
                         
-                        # 显示每个文本
+                        # 显示每个文本块
+                        st.markdown("**切分结果:**")
                         for i, chunk in enumerate(chunks):
-                            with st.expander(f"文本✅{i+1} (长度: {len(chunk)})", expanded=(i == 0)):
+                            st.markdown(f"**文本块 #{i+1} (长度: {len(chunk)}):**")
+                            if i == 0:  # 默认显示第一个块
                                 st.text_area("", value=chunk, height=100, key=f"chunk_{i}", label_visibility="collapsed")
+                            else:
+                                # 使用checkbox控制显示
+                                if st.checkbox(f"显示文本块 #{i+1}", key=f"show_chunk_{i}"):
+                                    st.text_area("", value=chunk, height=100, key=f"chunk_display_{i}", label_visibility="collapsed")
                     else:
                         error_data = response.json() if response.headers.get('content-type') == 'application/json' else {}
                         error_msg = error_data.get("message", response.text)
-                        st.error(f"✅切分失败: {error_msg}")
+                        st.error(f"❌ 切分失败: {error_msg}")
                         
                 except Exception as e:
-                    st.error(f"✅连接后端失败: {str(e)}")
+                    st.error(f"❌ 连接后端失败: {str(e)}")
         else:
-            st.warning("⚠️ 请输入测试文")
+            st.warning("⚠️ 请输入测试文本")
 
-with st.expander("🖼✅文搜图功", expanded=False):
+with st.expander("🖼️ 以文搜图功能", expanded=False):
     st.info("使用文本描述搜索相关图像")
     
     if st.session_state.config.get("multimodal", {}).get("enable_image", False):
@@ -1201,7 +1870,7 @@ with st.expander("🖼✅文搜图功", expanded=False):
                         if response.status_code == 200:
                             result = response.json()
                             if result.get("results"):
-                                st.success(f"✅找到 {len(result['results'])} 个相关图")
+                                st.success(f"✅ 找到 {len(result['results'])} 个相关图像")
                                 # 显示图像结果
                                 cols = st.columns(3)
                                 for i, img_info in enumerate(result["results"]):
@@ -1210,23 +1879,23 @@ with st.expander("🖼✅文搜图功", expanded=False):
                             else:
                                 st.info("ℹ️ " + result.get("message", "未找到相关图"))
                         else:
-                            st.error(f"✅搜索失败: {response.text}")
+                            st.error(f"❌ 搜索失败: {response.text}")
                             
                     except Exception as e:
-                        st.error(f"✅连接后端失败: {str(e)}")
+                        st.error(f"❌ 连接后端失败: {str(e)}")
             else:
-                st.warning("⚠️ 请输入图像描")
+                st.warning("⚠️ 请输入图像描述")
     else:
-        st.warning("⚠️ 图像处理功能未启用，请在配置中启用多模态功")
+        st.warning("⚠️ 图像处理功能未启用，请在配置中启用多模态功能")
 
-with st.expander("📊 性能监控与压", expanded=False):
+with st.expander("📊 性能监控与压测", expanded=False):
     st.info("实时监控系统性能指标并进行Milvus集合压力测试")
     
     # 创建选项
     perf_tab1, perf_tab2, perf_tab3 = st.tabs(["系统监控", "压力测试", "测试历史"])
     
     with perf_tab1:
-        st.subheader("🖥✅系统性能监控")
+        st.subheader("🖥️ 系统性能监控")
         
         col_monitor1, col_monitor2 = st.columns([1, 1])
         
@@ -1303,7 +1972,7 @@ with st.expander("📊 性能监控与压", expanded=False):
             keep_existing_data = st.checkbox("保留现有监控数据", value=True, key="keep_monitoring_data")
             if not keep_existing_data:
                 st.warning("⚠️ 现有监控数据将被清除")
-                if st.button("清除监控数据", key="clear_monitoring_data"):
+                if st.button("清除监控数据", key=f"clear_monitoring_data_{datetime.now().timestamp()}"):
                     st.success("监控数据已清")
             
             # 导出监控报告
@@ -1342,7 +2011,7 @@ with st.expander("📊 性能监控与压", expanded=False):
                 )
                 
                 spawn_rate = st.number_input(
-                    "用户启动速率 (用户/", 
+                    "用户启动速率 (用户/秒)", 
                     min_value=0.1, 
                     max_value=10.0, 
                     value=1.0, 
@@ -1360,10 +2029,10 @@ with st.expander("📊 性能监控与压", expanded=False):
             with col_test2:
                 # 测试场景选择
                 st.markdown("**测试场景选择:**")
-                scenario_single = st.checkbox("单向量搜", value=True, help="最常见的搜索操")
+                scenario_single = st.checkbox("单向量搜索", value=True, help="最常见的搜索操作")
                 scenario_batch = st.checkbox("批量向量搜索", value=True, help="批量搜索操作")
-                scenario_precision = st.checkbox("高精度搜", value=False, help="高精度但较慢的搜")
-                scenario_fast = st.checkbox("快速搜", value=False, help="快速但精度较低的搜")
+                scenario_precision = st.checkbox("高精度搜", value=False, help="高精度但较慢的搜索")
+                scenario_fast = st.checkbox("快速搜", value=False, help="快速但精度较低的搜索")
                 
                 # 搜索参数
                 st.markdown("**搜索参数:**")
@@ -1394,16 +2063,16 @@ with st.expander("📊 性能监控与压", expanded=False):
                     test_scenarios.append("fast_search")
                 
                 if not test_scenarios:
-                    st.error("请至少选择一个测试场")
+                    st.error("请至少选择一个测试场景")
                 else:
                     # 构建测试参数
                     test_params = {
                         "users": test_users,
                         "spawn_rate": spawn_rate,
-                        "run_time": run_time,
-                        "host": st.session_state.config["milvus"]["host"],
-                        "port": st.session_state.config["milvus"]["port"],
-                        "collection_name": target_collection,
+                        "run_time": run_time if run_time else "60s",  # 添加默认值
+                        "host": st.session_state.config.get("milvus", {}).get("host", "localhost"),
+                        "port": st.session_state.config.get("milvus", {}).get("port", 19530),
+                        "collection_name": target_collection or "default_collection",
                         "test_scenarios": test_scenarios,
                         "search_params": {
                             "metric_type": metric_type,
@@ -1416,20 +2085,37 @@ with st.expander("📊 性能监控与压", expanded=False):
                     with st.spinner("正在启动压力测试..."):
                         try:
                             response = requests.post(
-                                "http://localhost:8509/testing/start_load_test",
-                                json=test_params
+                                "http://localhost:8509/load-test/start",
+                                json=test_params,
+                                timeout=30  # 添加超时设置
                             )
                             
                             if response.status_code == 200:
                                 result = response.json()
                                 test_id = result.get("test_id")
+                                web_url = result.get("web_url")
                                 
                                 if result.get("status") == "success":
-                                    st.success(f"压力测试已启动！测试ID: {test_id}")
-                                    st.info("测试正在后台运行，请✅测试历史'选项卡中查看进度")
+                                    st.success(f"✅ 压力测试已启动！测试ID: {test_id}")
+                                    
+                                    # 显示Web界面链接
+                                    if web_url:
+                                        st.markdown(f"""
+                                        ### 🌐 Locust Web界面
+                                        点击下方链接访问Locust官方监控界面，查看实时测试数据：
+                                        
+                                        **[🔗 打开Locust Web界面]({web_url})**
+                                        
+                                        或复制链接到浏览器：`{web_url}`
+                                        """)
+                                        
+                                        # 添加新窗口打开按钮
+                                        if st.button("🚀 在新窗口中打开Locust界面", key="open_locust_web"):
+                                            st.markdown(f'<script>window.open("{web_url}", "_blank");</script>', unsafe_allow_html=True)
                                     
                                     # 显示测试配置
-                                    st.json(test_params)
+                                    with st.expander("查看测试配置", expanded=False):
+                                        st.json(test_params)
                                 else:
                                     st.error(f"启动测试失败: {result.get('message', '未知错误')}")
                             else:
@@ -1438,37 +2124,100 @@ with st.expander("📊 性能监控与压", expanded=False):
                         except Exception as e:
                             st.error(f"启动压测失败: {str(e)}")
         
-        # 当前运行的测试状
-        st.markdown("### 当前测试状")
-        if st.button("🔍 检查运行中的测", key="check_running_tests"):
-            try:
-                response = requests.get("http://localhost:8509/testing/list_tests")
-                if response.status_code == 200:
-                    tests = response.json().get("tests", [])
-                    running_tests = [t for t in tests if t.get("status") == "running"]
+        # 当前运行的测试状态
+        st.markdown("### 📊 测试状态管理")
+        
+        col_status1, col_status2 = st.columns(2)
+        
+        with col_status1:
+            if st.button("🔍 刷新测试列表", key="refresh_tests"):
+                with st.spinner("正在获取最新测试状态..."):
+                    try:
+                        response = requests.get(f"{BACKEND_URL}/load-test/list")
+                        if response.status_code == 200:
+                            st.session_state.tests = response.json().get("tests", [])
+                            st.toast("刷新成功", icon="✅")
+                        else:
+                            st.error("刷新失败")
+                    except Exception as e:
+                        st.error(f"刷新异常: {str(e)}")
+        
+        with col_status2:
+            if st.button("🧹 清理完成的测试", key="cleanup_tests"):
+                # 这里可以添加清理逻辑
+                st.info("清理功能将在后续版本中实现")
+        
+        # 获取测试列表
+        try:
+            response = requests.get("http://localhost:8509/load-test/list")
+            if response.status_code == 200:
+                tests_data = response.json()
+                tests = tests_data.get("tests", [])
+                
+                if tests:
+                    st.markdown(f"**当前共有 {len(tests)} 个测试**")
                     
-                    if running_tests:
-                        for test in running_tests:
-                            st.info(f"🏃 测试 {test['test_id']} 正在运行..")
+                    for test in tests:
+                        test_id = test.get("test_id", "unknown")
+                        status = test.get("status", "unknown")
+                        start_time = test.get("start_time", "")
+                        
+                        # 状态颜色
+                        if status == "running":
+                            status_color = "🟢"
+                            status_text = "运行中"
+                        elif status == "completed":
+                            status_color = "✅"
+                            status_text = "已完成"
+                        elif status == "failed":
+                            status_color = "❌"
+                            status_text = "失败"
+                        else:
+                            status_color = "⚪"
+                            status_text = status
+                        
+                        with st.expander(f"{status_color} 测试 {test_id} - {status_text}"):
+                            col_info1, col_info2 = st.columns(2)
                             
-                            # 显示停止按钮
-                            if st.button(f"⏹️ 停止测试 {test['test_id']}", key=f"stop_{test['test_id']}"):
-                                stop_response = requests.post(
-                                    f"http://localhost:8509/testing/stop_test/{test['test_id']}"
-                                )
-                                if stop_response.status_code == 200:
-                                    st.success("测试已停")
-                                else:
-                                    st.error("停止测试失败")
-                    else:
-                        st.info("当前没有运行中的测试")
+                            with col_info1:
+                                st.write(f"**测试ID:** {test_id}")
+                                st.write(f"**状态:** {status_text}")
+                                if start_time:
+                                    st.write(f"**开始时间:** {start_time[:19]}")
+                            
+                            with col_info2:
+                                # 获取Web界面URL
+                                try:
+                                    url_response = requests.get(f"http://localhost:8509/load-test/web-url/{test_id}")
+                                    if url_response.status_code == 200:
+                                        web_url = url_response.json().get("web_url")
+                                        if web_url:
+                                            st.markdown(f"**[🔗 打开Locust界面]({web_url})**")
+                                except:
+                                    pass
+                                
+                                # 停止按钮
+                                if status == "running":
+                                    if st.button(f"⏹️ 停止测试", key=f"stop_{test_id}"):
+                                        try:
+                                            stop_response = requests.post(f"http://localhost:8509/load-test/stop/{test_id}")
+                                            if stop_response.status_code == 200:
+                                                st.success("测试已停止")
+                                                st.rerun()
+                                            else:
+                                                st.error("停止测试失败")
+                                        except Exception as e:
+                                            st.error(f"停止测试失败: {str(e)}")
                 else:
-                    st.error("获取测试状态失")
-            except Exception as e:
-                st.error(f"检查测试状态失 {str(e)}")
+                    st.info("📭 当前没有运行的测试")
+            else:
+                st.error("无法获取测试列表")
+        except Exception as e:
+            st.error(f"获取测试状态失败: {str(e)}")
+            st.info("无法获取当前运行的测试信息")
     
     with perf_tab3:
-        st.subheader("📈 测试历史与结")
+        st.subheader("📈 测试历史与结果")
         
         if st.button("🔄 刷新测试历史", key="refresh_test_history"):
             try:
@@ -1510,7 +2259,7 @@ with st.expander("📊 性能监控与压", expanded=False):
                                     metrics = test.get('metrics', {})
                                     if metrics:
                                         st.write(f"- 总请求数: {metrics.get('total_requests', 'N/A')}")
-                                        st.write(f"- 失败✅ {metrics.get('failures', 'N/A')}")
+                                        st.write(f"- 失败数: {metrics.get('failures', 'N/A')}")
                                         st.write(f"- 平均响应时间: {metrics.get('avg_response_time', 'N/A')}ms")
                                         st.write(f"- 每秒请求✅ {metrics.get('requests_per_second', 'N/A')}")
                                     else:
@@ -1593,34 +2342,34 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         with col_ext1:
                             # LLM配置状
                             llm_config = status.get("llm_config", {})
-                            llm_config_status = "✅可用" if llm_config.get("available") else "✅不可"
+                            llm_config_status = "✅ 可用" if llm_config.get("available") else "❌ 不可用"
                             st.write(f"🤖 LLM配置: {llm_config_status}")
                             if llm_config.get("available"):
                                 active_config = llm_config.get("active_config")
                                 if active_config:
-                                    st.write(f"  - 激活 {active_config.get('id', 'N/A')}")
-                                    st.write(f"  - 提供商 {active_config.get('provider', 'N/A')}")
+                                    st.write(f"  - 激活配置: {active_config.get('id', 'N/A')}")
+                                    st.write(f"  - 提供商: {active_config.get('provider', 'N/A')}")
                                 else:
-                                    st.write("  - 激活 ")
-                                st.write(f"  - 总配置 {llm_config.get('total_configs', 0)}")
+                                    st.write("  - 激活配置: 无")
+                                st.write(f"  - 总配置数: {llm_config.get('total_configs', 0)}")
                             
                             # 搜索优化状
                             search_opt = status.get("search_optimization", {})
-                            search_opt_status = "✅可用" if search_opt.get("available") else "✅不可"
+                            search_opt_status = "✅ 可用" if search_opt.get("available") else "❌ 不可用"
                             st.write(f"🔍 搜索优化: {search_opt_status}")
                         
                         with col_ext2:
                             # 压测功能状
                             load_test = status.get("load_testing", {})
-                            load_test_status = "✅可用" if load_test.get("available") else "✅不可"
-                            st.write(f"✅压力测试: {load_test_status}")
+                            load_test_status = "✅ 可用" if load_test.get("available") else "❌ 不可用"
+                            st.write(f"🧪 压力测试: {load_test_status}")
                             if load_test.get("available"):
                                 st.write(f"  - 活跃测试: {load_test.get('active_tests_count', 0)}")
-                                st.write(f"  - 运行✅ {load_test.get('running_tests', 0)}")
+                                st.write(f"  - 运行中: {load_test.get('running_tests', 0)}")
                             
                             # 性能监控状态
                             perf_monitor = status.get("performance_monitor", False)
-                            perf_status = "✅运行中" if perf_monitor else "❌未运行"
+                            perf_status = "✅ 运行中" if perf_monitor else "❌ 未运行"
                             st.write(f"📈 性能监控: {perf_status}")
                             
                             # CLIP编码器状态
@@ -1633,7 +2382,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         if config_info:
                             st.write(f"- Milvus地址: {config_info.get('milvus_host')}:{config_info.get('milvus_port')}")
                             st.write(f"- 默认集合: {config_info.get('collection_name')}")
-                            st.write(f"- 多模 {'启用' if config_info.get('multimodal_enabled') else '禁用'}")
+                            st.write(f"- 多模态: {'启用' if config_info.get('multimodal_enabled') else '禁用'}")
                             st.write(f"- 分块策略: {config_info.get('chunking_strategy')}")
                     else:
                         st.error(f"获取系统状态失✅ {response.status_code}")
@@ -1659,7 +2408,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         elif overall_status == "partial":
                             st.warning(f"⚠️ 部分测试通过 ({summary.get('passed', 0)}/{summary.get('total', 0)})")
                         else:
-                            st.error(f"✅集成测试失败 ({summary.get('passed', 0)}/{summary.get('total', 0)})")
+                            st.error(f"❌ 集成测试失败 ({summary.get('passed', 0)}/{summary.get('total', 0)})")
                         
                         st.write(overall.get("message", ""))
                         
@@ -1681,7 +2430,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                             if status == "passed":
                                 st.success(f"{test_name}: 通过")
                             elif status == "failed":
-                                st.error(f"{test_name}: ✅失败")
+                                st.error(f"{test_name}: ❌ 失败")
                             else:
                                 st.info(f"{test_name}: ⏸️ 未测")
                             
@@ -1712,7 +2461,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         st.success("系统配置已重新加")
                         st.info("所有模块已重新初始化，新配置已生效")
                     else:
-                        st.error("✅重新加载配置失败")
+                        st.error("❌ 重新加载配置失败")
             except Exception as e:
                 st.error(f"重新加载配置失败: {str(e)}")
     

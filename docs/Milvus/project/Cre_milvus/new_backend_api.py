@@ -6,27 +6,660 @@
 
 from fastapi import FastAPI, UploadFile, File, Form, Request, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import shutil
 import os
 import yaml
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import time
+from datetime import datetime
+from pydantic import BaseModel
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # 创建FastAPI应用
+app = FastAPI(
+    title="Cre_milvus API",
+    description="向量数据库管理API，支持预连接架构",
+    version="2.0.0"
+)
+
+# 添加CORS中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 请求模型
+class MilvusConfig(BaseModel):
+    host: str
+    port: str
+    collection_name: str
+    vector_name: str = "default"
+    index_name: str = "IVF_FLAT"
+    replica_num: int = 1
+    index_device: str = "cpu"
+
+class SystemConfig(BaseModel):
+    url_split: bool = False
+    insert_mode: str = "覆盖（删除原有数据）"
+
+class SearchConfig(BaseModel):
+    top_k: int = 20
+    col_choice: str = "hdbscan"
+    reorder_strategy: str = "distance"
+
+class DataConfig(BaseModel):
+    data_location: str
+
+class ChunkingConfig(BaseModel):
+    strategy: str = "traditional"
+    chunk_length: int = 512
+    ppl_threshold: float = 0.3
+    language: str = "zh"
+
+class ConfigRequest(BaseModel):
+    milvus: MilvusConfig
+    system: SystemConfig
+    search: SearchConfig
+    data: DataConfig
+    chunking: ChunkingConfig
+
+class CollectionStateManager:
+    """集合状态管理器"""
+    
+    def __init__(self):
+        self._collection_states = {}
+        self._state_lock = {}
+    
+    def ensure_collection_loaded(self, collection_name: str) -> bool:
+        """确保集合已加载"""
+        try:
+            # 检查集合是否存在
+            if not self._collection_exists(collection_name):
+                logger.info(f"集合 {collection_name} 不存在，尝试创建")
+                return self._create_collection_if_needed(collection_name)
+            
+            # 检查集合是否已加载
+            if not self._is_collection_loaded(collection_name):
+                logger.info(f"集合 {collection_name} 未加载，开始加载")
+                return self.load_collection_with_retry(collection_name)
+            
+            logger.info(f"集合 {collection_name} 已加载")
+            return True
+            
+        except Exception as e:
+            logger.error(f"确保集合加载失败: {e}")
+            return False
+    
+    def get_collection_status(self, collection_name: str) -> Dict[str, Any]:
+        """获取集合状态"""
+        try:
+            exists = self._collection_exists(collection_name)
+            loaded = self._is_collection_loaded(collection_name) if exists else False
+            
+            status = {
+                "name": collection_name,
+                "exists": exists,
+                "loaded": loaded,
+                "last_checked": datetime.now().isoformat(),
+                "status": "ready" if (exists and loaded) else "not_ready"
+            }
+            
+            if collection_name in self._collection_states:
+                status.update(self._collection_states[collection_name])
+            
+            return status
+            
+        except Exception as e:
+            logger.error(f"获取集合状态失败: {e}")
+            return {
+                "name": collection_name,
+                "exists": False,
+                "loaded": False,
+                "error": str(e),
+                "status": "error"
+            }
+    
+    def create_collection_if_not_exists(self, collection_name: str, schema: Dict = None) -> bool:
+        """如果集合不存在则创建"""
+        try:
+            if self._collection_exists(collection_name):
+                return True
+            
+            logger.info(f"创建集合: {collection_name}")
+            return self._create_collection_if_needed(collection_name, schema)
+            
+        except Exception as e:
+            logger.error(f"创建集合失败: {e}")
+            return False
+    
+    def load_collection_with_retry(self, collection_name: str, max_retries: int = 3) -> bool:
+        """带重试的集合加载"""
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"尝试加载集合 {collection_name} (第 {attempt + 1} 次)")
+                
+                # 更新状态
+                self._collection_states[collection_name] = {
+                    "load_status": "loading",
+                    "load_attempt": attempt + 1,
+                    "last_load_time": datetime.now().isoformat()
+                }
+                
+                # 执行加载
+                success = self._load_collection(collection_name)
+                
+                if success:
+                    self._collection_states[collection_name].update({
+                        "load_status": "loaded",
+                        "loaded_at": datetime.now().isoformat()
+                    })
+                    logger.info(f"集合 {collection_name} 加载成功")
+                    return True
+                else:
+                    logger.warning(f"集合 {collection_name} 加载失败，尝试 {attempt + 1}/{max_retries}")
+                    
+            except Exception as e:
+                logger.error(f"加载集合时出错 (尝试 {attempt + 1}): {e}")
+                
+            # 等待后重试
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)  # 指数退避
+        
+        # 所有重试都失败
+        self._collection_states[collection_name] = {
+            "load_status": "failed",
+            "error": "加载重试次数已用完",
+            "failed_at": datetime.now().isoformat()
+        }
+        return False
+    
+    def _collection_exists(self, collection_name: str) -> bool:
+        """检查集合是否存在"""
+        try:
+            from milvusBuilder.fast_insert import check_collection_exists
+            return check_collection_exists(collection_name)
+        except ImportError:
+            # 如果没有fast_insert模块，尝试其他方式
+            try:
+                from milvusBuilder.persistent_connection import get_persistent_connection
+                from pymilvus import utility
+                conn = get_persistent_connection()
+                connection_alias = conn.get_connection_alias()
+                if connection_alias:
+                    return utility.has_collection(collection_name, using=connection_alias)
+                else:
+                    logger.error("没有可用的Milvus连接")
+                    return False
+            except Exception as e:
+                logger.error(f"检查集合存在性失败: {e}")
+                return False
+    
+    def _is_collection_loaded(self, collection_name: str) -> bool:
+        """检查集合是否已加载"""
+        try:
+            from milvusBuilder.fast_insert import is_collection_loaded
+            return is_collection_loaded(collection_name)
+        except ImportError:
+            # 如果没有fast_insert模块，尝试其他方式
+            try:
+                from milvusBuilder.persistent_connection import get_persistent_connection
+                from pymilvus import Collection
+                conn = get_persistent_connection()
+                connection_alias = conn.get_connection_alias()
+                if connection_alias:
+                    # 检查集合是否存在
+                    if not self._collection_exists(collection_name):
+                        return False
+                    # 检查集合是否已加载
+                    collection = Collection(collection_name, using=connection_alias)
+                    return collection.is_loaded
+                else:
+                    logger.error("没有可用的Milvus连接")
+                    return False
+            except Exception as e:
+                logger.error(f"检查集合加载状态失败: {e}")
+                return False
+    
+    def _load_collection(self, collection_name: str) -> bool:
+        """加载集合"""
+        try:
+            from milvusBuilder.fast_insert import load_collection
+            return load_collection(collection_name)
+        except ImportError:
+            # 如果没有fast_insert模块，尝试其他方式
+            try:
+                from milvusBuilder.persistent_connection import get_persistent_connection
+                from pymilvus import Collection
+                conn = get_persistent_connection()
+                connection_alias = conn.get_connection_alias()
+                if connection_alias:
+                    collection = Collection(collection_name, using=connection_alias)
+                    collection.load()
+                    logger.info(f"集合 {collection_name} 加载成功")
+                    return True
+                else:
+                    logger.error("没有可用的Milvus连接")
+                    return False
+            except Exception as e:
+                logger.error(f"加载集合失败: {e}")
+                return False
+    
+    def _create_collection_if_needed(self, collection_name: str, schema: Dict = None) -> bool:
+        """创建集合（如果需要）"""
+        try:
+            from milvusBuilder.fast_insert import create_collection_with_schema
+            return create_collection_with_schema(collection_name, schema)
+        except ImportError:
+            # 如果没有fast_insert模块，尝试其他方式
+            try:
+                from milvusBuilder.persistent_connection import get_persistent_connection
+                from pymilvus import Collection, FieldSchema, CollectionSchema, DataType
+                conn = get_persistent_connection()
+                connection_alias = conn.get_connection_alias()
+                if connection_alias:
+                    # 如果没有提供schema，使用默认schema
+                    if schema is None:
+                        # 创建默认schema
+                        fields = [
+                            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=True),
+                            FieldSchema(name="vector", dtype=DataType.FLOAT_VECTOR, dim=768),
+                            FieldSchema(name="text", dtype=DataType.VARCHAR, max_length=65535)
+                        ]
+                        schema = CollectionSchema(fields, "Default collection schema", enable_dynamic_field=True)
+                    
+                    collection = Collection(name=collection_name, schema=schema, using=connection_alias)
+                    logger.info(f"集合 {collection_name} 创建成功")
+                    return True
+                else:
+                    logger.error("没有可用的Milvus连接")
+                    return False
+            except Exception as e:
+                logger.error(f"创建集合失败: {e}")
+                return False
+
+class InsertProgressTracker:
+    """插入进度跟踪器"""
+    
+    def __init__(self):
+        self._progress_data = {}
+        self._tracking_counter = 0
+    
+    def start_tracking(self, total_items: int) -> str:
+        """开始跟踪插入进度"""
+        self._tracking_counter += 1
+        tracking_id = f"insert_{self._tracking_counter}_{int(time.time())}"
+        
+        self._progress_data[tracking_id] = {
+            "tracking_id": tracking_id,
+            "total_items": total_items,
+            "processed_items": 0,
+            "failed_items": 0,
+            "start_time": datetime.now(),
+            "estimated_completion": None,
+            "current_status": "preparing",
+            "error_details": [],
+            "last_update": datetime.now()
+        }
+        
+        logger.info(f"开始跟踪插入进度: {tracking_id}, 总项目数: {total_items}")
+        return tracking_id
+    
+    def update_progress(self, tracking_id: str, processed: int, failed: int = 0, status: str = "inserting") -> None:
+        """更新插入进度"""
+        if tracking_id not in self._progress_data:
+            logger.warning(f"跟踪ID {tracking_id} 不存在")
+            return
+        
+        progress = self._progress_data[tracking_id]
+        progress["processed_items"] = processed
+        progress["failed_items"] = failed
+        progress["current_status"] = status
+        progress["last_update"] = datetime.now()
+        
+        # 计算预估完成时间
+        if processed > 0:
+            elapsed_time = (datetime.now() - progress["start_time"]).total_seconds()
+            items_per_second = processed / elapsed_time
+            remaining_items = progress["total_items"] - processed
+            
+            if items_per_second > 0:
+                from datetime import timedelta
+                estimated_seconds = remaining_items / items_per_second
+                progress["estimated_completion"] = datetime.now() + timedelta(seconds=estimated_seconds)
+        
+        logger.debug(f"更新进度 {tracking_id}: {processed}/{progress['total_items']} 项已处理")
+    
+    def get_progress_status(self, tracking_id: str) -> Dict[str, Any]:
+        """获取插入进度状态"""
+        if tracking_id not in self._progress_data:
+            return {
+                "error": "跟踪ID不存在",
+                "status": "not_found"
+            }
+        
+        progress = self._progress_data[tracking_id]
+        
+        # 计算进度百分比
+        progress_percentage = 0
+        if progress["total_items"] > 0:
+            progress_percentage = (progress["processed_items"] / progress["total_items"]) * 100
+        
+        # 计算处理速度
+        elapsed_time = (datetime.now() - progress["start_time"]).total_seconds()
+        items_per_second = progress["processed_items"] / elapsed_time if elapsed_time > 0 else 0
+        
+        return {
+            "tracking_id": tracking_id,
+            "total_items": progress["total_items"],
+            "processed_items": progress["processed_items"],
+            "failed_items": progress["failed_items"],
+            "progress_percentage": round(progress_percentage, 2),
+            "current_status": progress["current_status"],
+            "start_time": progress["start_time"].isoformat(),
+            "last_update": progress["last_update"].isoformat(),
+            "estimated_completion": progress["estimated_completion"].isoformat() if progress["estimated_completion"] else None,
+            "items_per_second": round(items_per_second, 2),
+            "error_details": progress["error_details"],
+            "status": "active"
+        }
+    
+    def finish_tracking(self, tracking_id: str, success: bool, final_message: str = "") -> Dict[str, Any]:
+        """完成插入进度跟踪"""
+        if tracking_id not in self._progress_data:
+            return {
+                "error": "跟踪ID不存在",
+                "status": "not_found"
+            }
+        
+        progress = self._progress_data[tracking_id]
+        progress["current_status"] = "completed" if success else "failed"
+        progress["last_update"] = datetime.now()
+        
+        if final_message:
+            progress["final_message"] = final_message
+        
+        # 计算最终统计
+        elapsed_time = (datetime.now() - progress["start_time"]).total_seconds()
+        from datetime import timedelta
+        final_stats = {
+            "tracking_id": tracking_id,
+            "success": success,
+            "total_items": progress["total_items"],
+            "processed_items": progress["processed_items"],
+            "failed_items": progress["failed_items"],
+            "success_rate": (progress["processed_items"] / progress["total_items"]) * 100 if progress["total_items"] > 0 else 0,
+            "total_time_seconds": round(elapsed_time, 2),
+            "average_items_per_second": round(progress["processed_items"] / elapsed_time, 2) if elapsed_time > 0 else 0,
+            "final_message": final_message,
+            "completed_at": datetime.now().isoformat()
+        }
+        
+        logger.info(f"插入跟踪完成 {tracking_id}: 成功={success}, 处理={progress['processed_items']}/{progress['total_items']}")
+        
+        return final_stats
+    
+    def add_error(self, tracking_id: str, error_message: str) -> None:
+        """添加错误信息"""
+        if tracking_id in self._progress_data:
+            self._progress_data[tracking_id]["error_details"].append({
+                "timestamp": datetime.now().isoformat(),
+                "message": error_message
+            })
+    
+    def cleanup_old_tracking(self, max_age_hours: int = 24) -> None:
+        """清理旧的跟踪数据"""
+        from datetime import timedelta
+        cutoff_time = datetime.now() - timedelta(hours=max_age_hours)
+        
+        to_remove = []
+        for tracking_id, progress in self._progress_data.items():
+            if progress["last_update"] < cutoff_time:
+                to_remove.append(tracking_id)
+        
+        for tracking_id in to_remove:
+            del self._progress_data[tracking_id]
+            logger.info(f"清理旧的跟踪数据: {tracking_id}")
+
+class ErrorRecoveryManager:
+    """错误恢复管理器"""
+    
+    def __init__(self):
+        self._error_history = []
+        self._recovery_strategies = {
+            "glm_config_error": self._handle_glm_config_error,
+            "chunking_error": self._handle_chunking_error,
+            "collection_error": self._handle_collection_error,
+            "connection_error": self._handle_connection_error
+        }
+    
+    def handle_error(self, error_type: str, error: Exception, context: Dict[str, Any] = None) -> Dict[str, Any]:
+        """统一错误处理入口"""
+        if context is None:
+            context = {}
+        
+        # 记录错误
+        error_record = {
+            "timestamp": datetime.now().isoformat(),
+            "error_type": error_type,
+            "error_message": str(error),
+            "context": context,
+            "recovery_attempted": False
+        }
+        
+        self._error_history.append(error_record)
+        logger.error(f"处理错误 [{error_type}]: {str(error)}")
+        
+        # 尝试恢复
+        recovery_action = self._attempt_recovery(error_type, error, context)
+        error_record["recovery_attempted"] = True
+        error_record["recovery_action"] = recovery_action
+        
+        return recovery_action
+    
+    def _attempt_recovery(self, error_type: str, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
+        """尝试错误恢复"""
+        handler = self._recovery_strategies.get(error_type)
+        
+        if handler:
+            try:
+                return handler(error, context)
+            except Exception as recovery_error:
+                logger.error(f"恢复策略执行失败: {recovery_error}")
+                return {
+                    "action": "manual_intervention_required",
+                    "success": False,
+                    "message": f"自动恢复失败: {str(recovery_error)}",
+                    "suggestions": ["请检查系统配置", "联系技术支持"]
+                }
+        else:
+            return {
+                "action": "no_recovery_strategy",
+                "success": False,
+                "message": f"未找到 {error_type} 的恢复策略",
+                "suggestions": ["请手动处理此错误"]
+            }
+    
+    def _handle_glm_config_error(self, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
+        """处理GLM配置错误"""
+        error_msg = str(error).lower()
+        
+        if "api" in error_msg and "key" in error_msg:
+            return {
+                "action": "invalid_api_key",
+                "success": False,
+                "message": "API密钥无效或已过期",
+                "suggestions": [
+                    "检查API密钥是否正确",
+                    "确认API密钥是否有足够的调用额度",
+                    "尝试重新生成API密钥"
+                ],
+                "recovery_steps": [
+                    "访问智谱AI开放平台",
+                    "检查API密钥状态",
+                    "更新配置中的API密钥"
+                ]
+            }
+        elif "network" in error_msg or "connection" in error_msg:
+            return {
+                "action": "network_issue",
+                "success": False,
+                "message": "网络连接问题",
+                "suggestions": [
+                    "检查网络连接",
+                    "确认防火墙设置",
+                    "稍后重试"
+                ]
+            }
+        else:
+            return {
+                "action": "general_glm_error",
+                "success": False,
+                "message": "GLM配置错误",
+                "suggestions": [
+                    "检查GLM配置是否完整",
+                    "验证模型名称是否正确",
+                    "重新配置GLM设置"
+                ]
+            }
+    
+    def _handle_chunking_error(self, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
+        """处理分块错误"""
+        error_msg = str(error).lower()
+        
+        if "dependency" in error_msg or "import" in error_msg:
+            return {
+                "action": "missing_dependencies",
+                "success": False,
+                "message": "分块依赖缺失",
+                "suggestions": [
+                    "安装缺失的Python包",
+                    "检查torch是否正确安装",
+                    "验证perplexity_chunking模块"
+                ],
+                "recovery_steps": [
+                    "pip install torch",
+                    "pip install nltk jieba",
+                    "确保perplexity_chunking.py文件存在"
+                ]
+            }
+        elif "glm" in error_msg or "api" in error_msg:
+            return {
+                "action": "fallback_to_traditional",
+                "success": True,
+                "message": "GLM不可用，已降级到传统分块",
+                "suggestions": [
+                    "配置GLM以启用高级分块功能",
+                    "当前使用传统分块方法"
+                ]
+            }
+        else:
+            return {
+                "action": "chunking_fallback",
+                "success": True,
+                "message": "分块策略已降级",
+                "suggestions": [
+                    "检查分块策略配置",
+                    "使用传统分块作为备选方案"
+                ]
+            }
+    
+    def _handle_collection_error(self, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
+        """处理集合错误"""
+        error_msg = str(error).lower()
+        collection_name = context.get("collection_name", "未知")
+        
+        if "not exist" in error_msg or "not found" in error_msg:
+            return {
+                "action": "create_collection",
+                "success": False,
+                "message": f"集合 {collection_name} 不存在",
+                "suggestions": [
+                    "创建新集合",
+                    "检查集合名称是否正确",
+                    "确认Milvus连接正常"
+                ],
+                "recovery_steps": [
+                    "自动创建集合",
+                    "使用默认schema",
+                    "重新尝试操作"
+                ]
+            }
+        elif "load" in error_msg:
+            return {
+                "action": "retry_load_collection",
+                "success": False,
+                "message": f"集合 {collection_name} 加载失败",
+                "suggestions": [
+                    "重试加载集合",
+                    "检查Milvus服务状态",
+                    "确认集合schema正确"
+                ],
+                "recovery_steps": [
+                    "等待2秒后重试",
+                    "最多重试3次",
+                    "如果仍失败，请手动检查"
+                ]
+            }
+        else:
+            return {
+                "action": "general_collection_error",
+                "success": False,
+                "message": f"集合 {collection_name} 操作失败",
+                "suggestions": [
+                    "检查Milvus连接状态",
+                    "验证集合配置",
+                    "查看Milvus日志"
+                ]
+            }
+    
+    def _handle_connection_error(self, error: Exception, context: Dict[str, Any]) -> Dict[str, Any]:
+        """处理连接错误"""
+        return {
+            "action": "retry_connection",
+            "success": False,
+            "message": "连接失败",
+            "suggestions": [
+                "检查服务是否运行",
+                "验证网络连接",
+                "确认端口配置正确"
+            ],
+            "recovery_steps": [
+                "重试连接",
+                "检查服务状态",
+                "验证配置文件"
+            ]
+        }
+    
+    def get_error_history(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """获取错误历史"""
+        return self._error_history[-limit:]
+    
+    def clear_error_history(self) -> None:
+        """清除错误历史"""
+        self._error_history.clear()
+        logger.info("错误历史已清除")
+
+# 创建FastAPI应用
 app = FastAPI(title="Cre_milvus 新架构API", version="3.0.0")
 
 # 全局状态
 _app_initialized = False
+_collection_manager = None
+_progress_tracker = None
+_error_manager = None
 
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化连接"""
-    global _app_initialized
+    global _app_initialized, _collection_manager
     
     logger.info("=" * 60)
     logger.info("🚀 API服务启动，初始化连接...")
@@ -38,7 +671,13 @@ async def startup_event():
         
         if success:
             _app_initialized = True
+            _collection_manager = CollectionStateManager()
+            _progress_tracker = InsertProgressTracker()
+            _error_manager = ErrorRecoveryManager()
             logger.info("✅ API服务初始化成功")
+            logger.info("✅ 集合状态管理器已初始化")
+            logger.info("✅ 插入进度跟踪器已初始化")
+            logger.info("✅ 错误恢复管理器已初始化")
         else:
             logger.error("❌ API服务初始化失败")
             
@@ -146,22 +785,11 @@ async def update_config(request: Request):
             detail=f"配置更新失败: {str(e)}"
         )
 
+
 @app.post("/upload")
-async def upload_files(files: List[UploadFile] = File(...), folder_name: str = Form(None)):
-    """
-    上传文件并进行向量化存储
-    使用动态连接架构
-    """
-    if not _app_initialized:
-        raise HTTPException(
-            status_code=503, 
-            detail="服务未初始化，请等待初始化完成"
-        )
-    
+async def upload_file(file: UploadFile = File(...), folder_name: str = Form(None)):
+    """文件上传和处理"""
     try:
-        logger.info(f"收到文件上传请求，文件数量: {len(files)}, 目标文件夹: {folder_name}")
-        
-        # 1. 保存上传的文件
         if folder_name and folder_name.strip():
             upload_dir = f"./data/upload/{folder_name.strip()}"
             logger.info(f"使用指定文件夹: {upload_dir}")
@@ -173,68 +801,126 @@ async def upload_files(files: List[UploadFile] = File(...), folder_name: str = F
         uploaded_files = []
         file_types = {}
         
-        for file in files:
-            if file.filename:
-                file_path = os.path.join(upload_dir, file.filename)
-                
-                with open(file_path, "wb") as buffer:
-                    shutil.copyfileobj(file.file, buffer)
-                
-                uploaded_files.append(file.filename)
-                file_extension = os.path.splitext(file.filename)[1].lower()
-                file_types[file_extension] = file_types.get(file_extension, 0) + 1
-                
-                logger.info(f"文件已保存: {file.filename}")
+        if file.filename:
+            file_path = os.path.join(upload_dir, file.filename)
+            
+            content = await file.read()
+            with open(file_path, "wb") as buffer:
+                buffer.write(content)
+            
+            uploaded_files.append(file.filename)
+            file_extension = os.path.splitext(file.filename)[1].lower()
+            file_types[file_extension] = file_types.get(file_extension, 0) + 1
+            
+            logger.info(f"文件已保存: {file.filename}")
         
         logger.info(f"文件上传完成: {len(uploaded_files)} 个文件")
         
-        # 2. 使用新架构进行向量化存储
         try:
             logger.info("开始向量化存储...")
             
-            # 加载配置
             with open("config.yaml", "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
             
-            # 更新配置中的数据路径为当前上传的文件夹
+            insert_mode = config.get("system", {}).get("insert_mode", "overwrite")
+            collection_name = config.get("milvus", {}).get("collection_name", "Test_one")
+            
+            if insert_mode == "append":
+                logger.info(f"使用append模式，检查集合 {collection_name} 状态")
+                
+                if _collection_manager:
+                    collection_ready = _collection_manager.ensure_collection_loaded(collection_name)
+                    if not collection_ready:
+                        logger.error(f"集合 {collection_name} 加载失败")
+                        return {
+                            "message": f"成功上传 {len(uploaded_files)} 个文件，但集合加载失败",
+                            "files": uploaded_files,
+                            "upload_dir": upload_dir,
+                            "file_types": file_types,
+                            "vectorized": False,
+                            "error": f"集合 {collection_name} 加载失败",
+                            "status": "partial_success"
+                        }
+                    else:
+                        logger.info(f"集合 {collection_name} 已准备就绪")
+                else:
+                    logger.warning("集合状态管理器未初始化")
+            else:
+                logger.info(f"使用overwrite模式，将重新创建集合 {collection_name}")
+            
             if folder_name:
                 if "data" not in config:
                     config["data"] = {}
                 config["data"]["data_location"] = upload_dir
                 logger.info(f"更新数据路径为: {upload_dir}")
                 
-                # 保存更新后的配置
                 with open("config.yaml", "w", encoding="utf-8") as f:
                     yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
             
-            # 使用新的快速构建功能
+            tracking_id = None
+            if _progress_tracker:
+                tracking_id = _progress_tracker.start_tracking(len(uploaded_files))
+                logger.info(f"开始跟踪向量化进度: {tracking_id}")
+            
             from System.new_start import fast_vector_database_build_from_config
             
             start_time = time.time()
-            result = fast_vector_database_build_from_config(config)
-            end_time = time.time()
             
-            logger.info(f"向量化存储完成，耗时: {end_time - start_time:.2f}秒")
+            if tracking_id:
+                _progress_tracker.update_progress(tracking_id, 0, 0, "开始向量化存储")
+            
+            try:
+                result = fast_vector_database_build_from_config(config)
+                end_time = time.time()
+                
+                logger.info(f"向量化存储完成，耗时: {end_time - start_time:.2f}秒")
+                
+                if tracking_id:
+                    success = result.get("status") == "success"
+                    final_message = f"向量化存储{'成功' if success else '失败'}，耗时: {end_time - start_time:.2f}秒"
+                    _progress_tracker.finish_tracking(tracking_id, success, final_message)
+                    
+            except Exception as build_error:
+                end_time = time.time()
+                logger.error(f"向量化构建过程失败: {build_error}")
+                
+                if tracking_id:
+                    _progress_tracker.add_error(tracking_id, str(build_error))
+                    _progress_tracker.finish_tracking(tracking_id, False, f"向量化构建失败: {str(build_error)}")
+                
+                raise build_error
             
             if result.get("status") == "success":
                 return {
+                    "success": True,
                     "message": f"成功上传 {len(uploaded_files)} 个文件并完成向量化存储",
+                    "filename": file.filename,
+                    "size": len(content),
+                    "path": file_path,
+                    "folder_name": folder_name,
                     "files": uploaded_files,
                     "upload_dir": upload_dir,
                     "file_types": file_types,
                     "vectorized": True,
                     "vectorization_result": result,
                     "processing_time": end_time - start_time,
+                    "tracking_id": tracking_id,
                     "status": "success"
                 }
             else:
                 return {
+                    "success": True,
                     "message": f"成功上传 {len(uploaded_files)} 个文件，但向量化存储失败",
+                    "filename": file.filename,
+                    "size": len(content),
+                    "path": file_path,
+                    "folder_name": folder_name,
                     "files": uploaded_files,
                     "upload_dir": upload_dir,
                     "file_types": file_types,
                     "vectorized": False,
                     "error": result.get("msg", "未知错误"),
+                    "tracking_id": tracking_id,
                     "status": "partial_success"
                 }
                 
@@ -244,12 +930,18 @@ async def upload_files(files: List[UploadFile] = File(...), folder_name: str = F
             logger.error(f"详细错误: {traceback.format_exc()}")
             
             return {
+                "success": True,
                 "message": f"成功上传 {len(uploaded_files)} 个文件，但向量化存储失败",
+                "filename": file.filename,
+                "size": len(content) if 'content' in locals() else 0,
+                "path": file_path if 'file_path' in locals() else "",
+                "folder_name": folder_name,
                 "files": uploaded_files,
                 "upload_dir": upload_dir,
                 "file_types": file_types,
                 "vectorized": False,
                 "error": str(vector_error),
+                "tracking_id": tracking_id if 'tracking_id' in locals() else None,
                 "status": "partial_success"
             }
         
@@ -266,7 +958,7 @@ async def upload_files(files: List[UploadFile] = File(...), folder_name: str = F
 @app.post("/search")
 async def search_documents(request: Request):
     """
-    搜索文档
+    搜索文档（增强版，包含聚类可视化数据）
     """
     if not _app_initialized:
         raise HTTPException(
@@ -277,11 +969,14 @@ async def search_documents(request: Request):
     try:
         data = await request.json()
         question = data.get("question", "")
+        col_choice = data.get("col_choice", "hdbscan")
+        collection_name = data.get("collection_name", "Test_one")
+        enable_visualization = data.get("enable_visualization", True)
         
         if not question:
             raise HTTPException(status_code=400, detail="问题不能为空")
         
-        logger.info(f"收到搜索请求: {question}")
+        logger.info(f"收到搜索请求: {question}, 聚类方法: {col_choice}")
         
         # 加载配置
         with open("config.yaml", "r", encoding="utf-8") as f:
@@ -292,11 +987,85 @@ async def search_documents(request: Request):
         
         start_time = time.time()
         result = Cre_Search(config, question)
-        end_time = time.time()
+        search_time = time.time() - start_time
         
-        logger.info(f"搜索完成，耗时: {end_time - start_time:.2f}秒")
+        logger.info(f"基础搜索完成，耗时: {search_time:.2f}秒")
         
-        # 直接返回搜索结果，保持与前端的兼容性
+        # 如果启用可视化且有聚类结果，添加可视化数据
+        if enable_visualization and "clusters" in result and result["clusters"]:
+            try:
+                from Search.clustering import create_clustering_service
+                clustering_service = create_clustering_service()
+                
+                # 转换聚类数据格式
+                clusters = []
+                for cluster_data in result["clusters"]:
+                    from Search.clustering import Cluster, SearchResult
+                    
+                    # 转换文档数据
+                    documents = []
+                    for doc in cluster_data.get("documents", []):
+                        search_result = SearchResult(
+                            id=str(doc.get("id", "")),
+                            content=doc.get("content", ""),
+                            url=doc.get("url"),
+                            distance=float(doc.get("distance", 0.0)),
+                            embedding=doc.get("embedding", []),
+                            metadata=doc.get("metadata", {})
+                        )
+                        documents.append(search_result)
+                    
+                    # 创建聚类对象
+                    cluster = Cluster(
+                        cluster_id=cluster_data.get("cluster_id", 0),
+                        documents=documents,
+                        centroid=cluster_data.get("centroid"),
+                        size=len(documents),
+                        avg_distance=cluster_data.get("avg_distance", 0.0),
+                        keywords=cluster_data.get("keywords", [])
+                    )
+                    clusters.append(cluster)
+                
+                # 生成可视化数据
+                viz_start_time = time.time()
+                
+                scatter_plot_data = clustering_service.create_cluster_scatter_plot(clusters)
+                size_chart_data = clustering_service.create_cluster_size_chart(clusters)
+                heatmap_data = clustering_service.create_cluster_heatmap(clusters)
+                cluster_summary = clustering_service.generate_cluster_summary(clusters)
+                cluster_metrics = clustering_service.calculate_cluster_metrics(clusters)
+                
+                viz_time = time.time() - viz_start_time
+                logger.info(f"可视化数据生成完成，耗时: {viz_time:.2f}秒")
+                
+                # 添加可视化数据到结果中
+                result["visualization_data"] = {
+                    "scatter_plot": scatter_plot_data,
+                    "size_chart": size_chart_data,
+                    "heatmap": heatmap_data,
+                    "cluster_summary": cluster_summary,
+                    "cluster_metrics": cluster_metrics
+                }
+                
+                # 更新执行时间
+                result["execution_time"] = search_time + viz_time
+                result["search_time"] = search_time
+                result["visualization_time"] = viz_time
+                
+                logger.info(f"增强搜索完成，总耗时: {result['execution_time']:.2f}秒")
+                
+            except Exception as viz_error:
+                logger.error(f"生成可视化数据失败: {viz_error}")
+                # 可视化失败不影响基础搜索结果
+                result["visualization_error"] = str(viz_error)
+        
+        # 添加质量指标（如果不存在）
+        if "quality_metrics" not in result and "clusters" in result:
+            try:
+                result["quality_metrics"] = _calculate_search_quality_metrics(result)
+            except Exception as e:
+                logger.warning(f"计算质量指标失败: {e}")
+        
         return result
         
     except Exception as e:
@@ -308,6 +1077,56 @@ async def search_documents(request: Request):
             status_code=500,
             detail=f"搜索失败: {str(e)}"
         )
+
+
+def _calculate_search_quality_metrics(search_result: Dict[str, Any]) -> Dict[str, float]:
+    """计算搜索质量指标"""
+    try:
+        clusters = search_result.get("clusters", [])
+        if not clusters:
+            return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
+        
+        total_docs = sum(len(cluster.get("documents", [])) for cluster in clusters)
+        if total_docs == 0:
+            return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
+        
+        # 相关性分数：基于平均距离（距离越小，相关性越高）
+        total_distance = 0
+        for cluster in clusters:
+            for doc in cluster.get("documents", []):
+                total_distance += doc.get("distance", 1.0)
+        
+        avg_distance = total_distance / total_docs
+        relevance_score = max(0, 1 - avg_distance)  # 距离转换为相关性
+        
+        # 多样性分数：基于聚类数量和分布
+        num_clusters = len(clusters)
+        if num_clusters <= 1:
+            diversity_score = 0.0
+        else:
+            # 计算聚类大小的标准差，标准差越小，分布越均匀，多样性越好
+            cluster_sizes = [len(cluster.get("documents", [])) for cluster in clusters]
+            mean_size = sum(cluster_sizes) / len(cluster_sizes)
+            variance = sum((size - mean_size) ** 2 for size in cluster_sizes) / len(cluster_sizes)
+            std_dev = variance ** 0.5
+            
+            # 归一化多样性分数
+            max_possible_std = mean_size * 0.5  # 假设最大标准差为平均值的一半
+            diversity_score = max(0, 1 - (std_dev / max_possible_std)) if max_possible_std > 0 else 0
+        
+        # 覆盖率分数：基于聚类数量相对于文档数量的比例
+        coverage_ratio = num_clusters / total_docs if total_docs > 0 else 0
+        coverage_score = min(1.0, coverage_ratio * 5)  # 假设理想比例是1:5
+        
+        return {
+            "relevance_score": round(relevance_score, 3),
+            "diversity_score": round(diversity_score, 3),
+            "coverage_score": round(coverage_score, 3)
+        }
+        
+    except Exception as e:
+        logger.error(f"计算质量指标失败: {e}")
+        return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
 
 @app.get("/collections")
 async def list_collections():
@@ -757,6 +1576,8 @@ async def get_llm_configs():
             detail=f"获取LLM配置失败: {str(e)}"
         )
 
+
+
 @app.post("/llm/configs")
 async def save_llm_config(request: Request):
     """保存LLM配置"""
@@ -811,6 +1632,8 @@ async def save_llm_config(request: Request):
             status_code=500,
             detail=f"保存LLM配置失败: {str(e)}"
         )
+
+
 
 @app.get("/chunking/strategies")
 async def get_chunking_strategies():
@@ -1092,6 +1915,380 @@ async def reinitialize_connections():
             status_code=500,
             detail=f"重新初始化失败: {str(e)}"
         )
+
+
+# GLM配置管理端点
+@app.post("/glm/config")
+async def save_glm_config(request: Request):
+    """保存GLM配置"""
+    try:
+        data = await request.json()
+        model_name = data.get("model_name", "glm-4.5-flash")
+        api_key = data.get("api_key", "")
+        
+        if not api_key:
+            raise HTTPException(status_code=400, detail="API密钥不能为空")
+        
+        logger.info(f"收到GLM配置保存请求: model={model_name}")
+        
+        from dataBuilder.chunking.glm_config import get_glm_config_service
+        service = get_glm_config_service()
+        
+        success = service.save_config(model_name, api_key)
+        
+        if success:
+            # 获取配置摘要
+            summary = service.get_config_summary()
+            
+            # 同时更新到系统配置中，集成到现有的LLM配置系统
+            try:
+                with open("config.yaml", "r", encoding="utf-8") as f:
+                    config = yaml.safe_load(f) or {}
+                
+                # 更新LLM配置
+                if "llm_configs" not in config:
+                    config["llm_configs"] = {}
+                
+                config["llm_configs"]["glm_default"] = {
+                    "provider": "zhipu",
+                    "model_name": model_name,
+                    "api_key": api_key,
+                    "api_endpoint": "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+                }
+                
+                # 设置为激活配置
+                config["active_llm_config"] = "glm_default"
+                
+                # 保存配置
+                with open("config.yaml", "w", encoding="utf-8") as f:
+                    yaml.dump(config, f, default_flow_style=False, allow_unicode=True)
+                
+                logger.info("GLM配置已集成到系统配置")
+                
+            except Exception as e:
+                logger.warning(f"集成GLM配置到系统配置失败: {e}")
+            
+            return {
+                "status": "success",
+                "message": "GLM配置保存成功",
+                "config": summary
+            }
+        else:
+            raise HTTPException(status_code=400, detail="GLM配置保存失败，请检查API密钥是否有效")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"保存GLM配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"保存GLM配置失败: {str(e)}")
+
+
+@app.get("/glm/config")
+async def get_glm_config():
+    """获取GLM配置"""
+    try:
+        from dataBuilder.chunking.glm_config import get_glm_config_service
+        service = get_glm_config_service()
+        
+        return {
+            "status": "success",
+            "config": service.get_config_summary()
+        }
+        
+    except Exception as e:
+        logger.error(f"获取GLM配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取GLM配置失败: {str(e)}")
+
+
+@app.post("/glm/test-connection")
+async def test_glm_connection():
+    """测试GLM连接"""
+    try:
+        from dataBuilder.chunking.glm_config import get_glm_config_service
+        service = get_glm_config_service()
+        
+        is_valid, message = service.test_connection()
+        
+        if is_valid:
+            # 更新验证时间
+            service.update_validation_time()
+            
+        return {
+            "status": "success" if is_valid else "error",
+            "connected": is_valid,
+            "valid": is_valid,
+            "message": message,
+            "config": service.get_config_summary()
+        }
+        
+    except Exception as e:
+        logger.error(f"测试GLM连接失败: {e}")
+        return {
+            "status": "error",
+            "connected": False,
+            "valid": False,
+            "message": f"连接测试失败: {str(e)}"
+        }
+
+
+@app.post("/glm/validate-key")
+async def validate_glm_api_key(request: Request):
+    """验证GLM API密钥"""
+    try:
+        data = await request.json()
+        api_key = data.get("api_key", "")
+        
+        if not api_key:
+            raise HTTPException(status_code=400, detail="API密钥不能为空")
+        
+        from dataBuilder.chunking.glm_config import get_glm_config_service
+        service = get_glm_config_service()
+        
+        is_valid, message = service.validate_api_key(api_key)
+        
+        return {
+            "status": "success",
+            "valid": is_valid,
+            "message": message
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"验证GLM API密钥失败: {e}")
+        raise HTTPException(status_code=500, detail=f"验证GLM API密钥失败: {str(e)}")
+
+
+@app.delete("/glm/config")
+async def clear_glm_config():
+    """清除GLM配置"""
+    try:
+        from dataBuilder.chunking.glm_config import get_glm_config_service
+        service = get_glm_config_service()
+        
+        success = service.clear_config()
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "GLM配置已清除"
+            }
+        else:
+            raise HTTPException(status_code=500, detail="清除GLM配置失败")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"清除GLM配置失败: {e}")
+        raise HTTPException(status_code=500, detail=f"清除GLM配置失败: {str(e)}")
+
+
+# 压测管理端点
+@app.post("/load-test/start")
+async def start_load_test(request: Request):
+    """启动压力测试"""
+    try:
+        data = await request.json()
+        
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        # 创建测试配置
+        config = manager.create_test_config(data)
+        
+        # 启动测试
+        test_id = manager.start_load_test(config)
+        
+        # 获取Web界面URL
+        web_url = manager.get_locust_web_url(test_id)
+        
+        return {
+            "status": "success",
+            "test_id": test_id,
+            "web_url": web_url,
+            "message": "压力测试已启动"
+        }
+        
+    except Exception as e:
+        logger.error(f"启动压力测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"启动压力测试失败: {str(e)}")
+
+
+@app.get("/load-test/status/{test_id}")
+async def get_load_test_status(test_id: str):
+    """获取压力测试状态"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        status = manager.get_test_status(test_id)
+        
+        if status:
+            return {
+                "status": "success",
+                "test_status": status
+            }
+        else:
+            raise HTTPException(status_code=404, detail="测试不存在")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取测试状态失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取测试状态失败: {str(e)}")
+
+
+@app.post("/load-test/stop/{test_id}")
+async def stop_load_test(test_id: str):
+    """停止压力测试"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        success = manager.stop_test(test_id)
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "压力测试已停止"
+            }
+        else:
+            raise HTTPException(status_code=404, detail="测试不存在或已停止")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"停止测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"停止测试失败: {str(e)}")
+
+
+@app.get("/load-test/web-url/{test_id}")
+async def get_load_test_web_url(test_id: str):
+    """获取Locust Web界面URL"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        web_url = manager.get_locust_web_url(test_id)
+        
+        if web_url:
+            return {
+                "status": "success",
+                "web_url": web_url
+            }
+        else:
+            raise HTTPException(status_code=404, detail="测试不存在或Web界面不可用")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取Web界面URL失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取Web界面URL失败: {str(e)}")
+
+
+@app.get("/load-test/list")
+async def list_load_tests():
+    """列出所有压力测试"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        tests = manager.list_active_tests()
+        
+        return {
+            "status": "success",
+            "tests": tests,
+            "count": len(tests)
+        }
+        
+    except Exception as e:
+        logger.error(f"列出测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"列出测试失败: {str(e)}")
+
+@app.get("/progress/{tracking_id}")
+async def get_insert_progress(tracking_id: str):
+    """获取插入进度状态"""
+    if not _app_initialized or not _progress_tracker:
+        raise HTTPException(
+            status_code=503, 
+            detail="服务未初始化"
+        )
+    
+    try:
+        progress_status = _progress_tracker.get_progress_status(tracking_id)
+        return progress_status
+        
+    except Exception as e:
+        logger.error(f"获取插入进度失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取插入进度失败: {str(e)}"
+        )
+
+@app.post("/progress/cleanup")
+async def cleanup_old_progress():
+    """清理旧的进度跟踪数据"""
+    if not _app_initialized or not _progress_tracker:
+        raise HTTPException(
+            status_code=503, 
+            detail="服务未初始化"
+        )
+    
+    try:
+        _progress_tracker.cleanup_old_tracking()
+        return {"message": "旧的进度跟踪数据已清理", "status": "success"}
+        
+    except Exception as e:
+        logger.error(f"清理进度跟踪数据失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"清理进度跟踪数据失败: {str(e)}"
+        )
+
+@app.get("/errors/history")
+async def get_error_history(limit: int = 50):
+    """获取错误历史"""
+    if not _app_initialized or not _error_manager:
+        raise HTTPException(
+            status_code=503, 
+            detail="服务未初始化"
+        )
+    
+    try:
+        error_history = _error_manager.get_error_history(limit)
+        return {
+            "error_history": error_history,
+            "count": len(error_history),
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"获取错误历史失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取错误历史失败: {str(e)}"
+        )
+
+@app.post("/errors/clear")
+async def clear_error_history():
+    """清除错误历史"""
+    if not _app_initialized or not _error_manager:
+        raise HTTPException(
+            status_code=503, 
+            detail="服务未初始化"
+        )
+    
+    try:
+        _error_manager.clear_error_history()
+        return {"message": "错误历史已清除", "status": "success"}
+        
+    except Exception as e:
+        logger.error(f"清除错误历史失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"清除错误历史失败: {str(e)}"
+        )
+
 
 if __name__ == "__main__":
     import uvicorn

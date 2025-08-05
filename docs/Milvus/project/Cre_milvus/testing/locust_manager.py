@@ -330,18 +330,23 @@ def on_test_stop(environment, **kwargs):
         return temp_file
     
     def _start_locust_process(self, config: LoadTestConfig, locust_file: str) -> Optional[subprocess.Popen]:
-        """启动Locust进程"""
+        """启动Locust进程（支持Web界面）"""
         try:
-            # 构建Locust命令
+            # 动态分配端口
+            web_port = self._find_available_port(8089)
+            
+            # 构建Locust命令（启用Web界面）
             cmd = [
                 "locust",
                 "-f", locust_file,
-                "--headless",
+                "--web-host", "0.0.0.0",
+                "--web-port", str(web_port),
                 "--users", str(config.users),
                 "--spawn-rate", str(config.spawn_rate),
                 "--run-time", config.run_time,
                 "--csv", os.path.join(self.results_dir, f"test_{config.test_id}"),
-                "--html", os.path.join(self.results_dir, f"test_{config.test_id}.html")
+                "--html", os.path.join(self.results_dir, f"test_{config.test_id}.html"),
+                "--autostart"  # 自动开始测试
             ]
             
             # 启动进程
@@ -354,12 +359,40 @@ def on_test_stop(environment, **kwargs):
                 universal_newlines=True
             )
             
-            logger.info(f"Locust进程启动: PID {process.pid}")
+            # 更新测试结果中的Web信息
+            if config.test_id in self.active_tests:
+                self.active_tests[config.test_id].config.web_port = web_port
+                self.active_tests[config.test_id].web_url = f"http://localhost:{web_port}"
+                self.active_tests[config.test_id].process_id = process.pid
+            
+            logger.info(f"Locust进程启动: PID {process.pid}, Web端口: {web_port}")
             return process
             
         except Exception as e:
             logger.error(f"启动Locust进程失败: {e}")
             return None
+    
+    def _find_available_port(self, start_port: int = 8089) -> int:
+        """查找可用端口"""
+        import socket
+        
+        for port in range(start_port, start_port + 100):
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('localhost', port))
+                    return port
+            except OSError:
+                continue
+        
+        # 如果找不到可用端口，返回默认端口
+        return start_port
+    
+    def get_locust_web_url(self, test_id: str) -> Optional[str]:
+        """获取Locust Web界面URL"""
+        test_result = self.active_tests.get(test_id)
+        if test_result and hasattr(test_result, 'web_url'):
+            return test_result.web_url
+        return None
     
     def _monitor_test(self, test_id: str):
         """监控测试进程"""

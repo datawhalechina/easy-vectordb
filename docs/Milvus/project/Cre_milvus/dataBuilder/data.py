@@ -1,12 +1,15 @@
 # 添加全局开关以禁用图像处理功能
 DISABLE_IMAGE_PROCESSING = True
 
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from .tools.csvmake import process_csv
 from .tools.mdmake import process_md
 from .tools.pdfmake import process_pdf
 from .tools.txtmake import process_txt
+
+logger = logging.getLogger(__name__)
 
 # 只有在不禁用图像处理时才导入图像相关模块
 if not DISABLE_IMAGE_PROCESSING:
@@ -17,18 +20,8 @@ from .chunking.meta_chunking import MetaChunking
 from System.monitor import log_event
 import traceback
 
-# 尝试导入新的分块策略管理器
-try:
-    from .chunking.chunk_strategies import ChunkingManager, ChunkingStrategy, get_available_strategies
-    ADVANCED_CHUNKING_AVAILABLE = True
-except ImportError:
-    try:
-        # 尝试从上级目录导入
-        from chunking.chunk_strategies import ChunkingManager, ChunkingStrategy, get_available_strategies
-        ADVANCED_CHUNKING_AVAILABLE = True
-    except ImportError:
-        ADVANCED_CHUNKING_AVAILABLE = False
-        print("Warning: 高级分块策略不可用，将使用传统分块方法")
+# MetaChunking总是可用的
+ADVANCED_CHUNKING_AVAILABLE = True
 
 def data_process(data_location, url_split, chunking_strategy="traditional", chunking_params=None, enable_multimodal=True):
     """
@@ -47,12 +40,14 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
     
     # 初始化分块管理器
     chunking_manager = None
-    if ADVANCED_CHUNKING_AVAILABLE and chunking_strategy != "traditional":
+    if chunking_strategy != "traditional":
         try:
-            chunking_manager = ChunkingManager()
+            # 使用MetaChunking进行智能分块
+            chunking_manager = MetaChunking()
             print(f"使用高级分块策略: {chunking_strategy}")
         except Exception as e:
             print(f"高级分块策略初始化失败，使用传统方法: {e}")
+            chunking_manager = None
     
     # 设置默认分块参数
     if chunking_params is None:
@@ -129,6 +124,21 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
     return dataList
 
 
+def get_chunking_config():
+    """获取分块配置"""
+    try:
+        from .chunking.glm_config import get_glm_config_service
+        service = get_glm_config_service()
+        glm_config = service.get_active_config()
+        return {
+            "glm_configured": glm_config is not None,
+            "glm_config": glm_config
+        }
+    except Exception as e:
+        logger.warning(f"获取GLM配置失败: {e}")
+        return {"glm_configured": False}
+
+
 def process_txt_with_strategy(txt_path, url_split, chunking_strategy, chunking_params, chunking_manager):
     """
     使用指定分块策略处理TXT文件
@@ -161,7 +171,8 @@ def process_txt_with_strategy(txt_path, url_split, chunking_strategy, chunking_p
         cleaned_content = clean_content(content)
         
         # 使用新的分块策略
-        split_docs = chunking_manager.chunk_text(cleaned_content, chunking_strategy, **chunking_params)
+        config = get_chunking_config()  # 从实际配置中获取
+        split_docs = chunking_manager.smart_chunking(cleaned_content, chunking_strategy, config, **chunking_params)
         log_event(f"使用 {chunking_strategy} 策略分割TXT文件: {txt_path}, 得到 {len(split_docs)} 个文本块")
         
         # 提取URL的函数
@@ -255,7 +266,8 @@ def process_pdf_with_strategy(pdf_path, url_split, chunking_strategy, chunking_p
             full_content += clean_content(page.page_content) + "\n"
         
         # 使用新的分块策略
-        split_docs = chunking_manager.chunk_text(full_content, chunking_strategy, **chunking_params)
+        config = get_chunking_config()  # 从实际配置中获取
+        split_docs = chunking_manager.smart_chunking(full_content, chunking_strategy, config, **chunking_params)
         log_event(f"使用 {chunking_strategy} 策略分割PDF文件: {pdf_path}, 得到 {len(split_docs)} 个文本块")
         
         # 提取URL的函数
@@ -351,7 +363,8 @@ def process_md_with_strategy(md_path, url_split, chunking_strategy, chunking_par
         cleaned_content = clean_content(content)
         
         # 使用新的分块策略
-        split_docs = chunking_manager.chunk_text(cleaned_content, chunking_strategy, **chunking_params)
+        config = get_chunking_config()  # 从实际配置中获取
+        split_docs = chunking_manager.smart_chunking(cleaned_content, chunking_strategy, config, **chunking_params)
         log_event(f"使用 {chunking_strategy} 策略分割Markdown文件: {md_path}, 得到 {len(split_docs)} 个文本块")
         
         # 提取URL的函数
