@@ -2290,7 +2290,319 @@ async def clear_error_history():
         )
 
 
+# ==================== 文本分块相关接口 ====================
+
+# 导入分块相关模块
+try:
+    from dataBuilder.chunking import (
+        ChunkingProcessRequest, ChunkingProcessResponse, ChunkingErrorResponse,
+        ChunkingManager, create_success_response, create_error_response,
+        calculate_chunking_metrics, validate_text_input, ProcessingTimer,
+        format_error_message, get_strategy_display_name, get_available_strategies,
+        ChunkingErrorHandler, ResponseFormatter, ErrorType, global_error_handler
+    )
+    from dataBuilder.chunking.chunk_strategies import ChunkingStrategyResolver
+    from dataBuilder.chunking.meta_chunking import DependencyChecker
+    CHUNKING_AVAILABLE = True
+except ImportError as e:
+    logger.warning(f"分块模块导入失败: {e}")
+    CHUNKING_AVAILABLE = False
+
+# 全局分块服务变量
+chunking_manager = None
+dependency_checker = None
+
+def initialize_chunking_services():
+    """初始化分块服务"""
+    global chunking_manager, dependency_checker
+    
+    if not CHUNKING_AVAILABLE:
+        logger.warning("分块模块不可用，跳过初始化")
+        return False
+    
+    try:
+        # 初始化依赖检查器
+        dependency_checker = DependencyChecker()
+        
+        # 初始化分块管理器
+        chunking_manager = ChunkingManager()
+        
+        logger.info("分块服务初始化成功")
+        return True
+        
+    except Exception as e:
+        logger.error(f"分块服务初始化失败: {e}")
+        return False
+
+@app.on_event("startup")
+async def startup_chunking_services():
+    """启动时初始化分块服务"""
+    if CHUNKING_AVAILABLE:
+        initialize_chunking_services()
+
+@app.get("/chunking/strategies")
+async def get_chunking_strategies():
+    """获取可用的分块策略"""
+    if not CHUNKING_AVAILABLE:
+        raise HTTPException(status_code=503, detail="分块服务不可用")
+    
+    try:
+        strategies = get_available_strategies()
+        
+        # 添加策略可用性检查
+        if dependency_checker:
+            for strategy in strategies:
+                strategy["available"] = True  # 简化处理
+        
+        return {
+            "success": True,
+            "strategies": strategies,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"获取策略列表失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取策略列表失败: {str(e)}")
+
+@app.post("/chunking/process")
+async def process_text_chunking(request: ChunkingProcessRequest):
+    """
+    处理文本分块请求
+    
+    支持所有五种分块策略：traditional, meta_ppl, margin_sampling, msp, semantic
+    """
+    if not CHUNKING_AVAILABLE or not chunking_manager:
+        error_response = global_error_handler.handle_strategy_unavailable_error(
+            strategy="service",
+            reason="分块服务未初始化或不可用"
+        )
+        raise HTTPException(
+            status_code=503, 
+            detail=ResponseFormatter.format_error_response(error_response)
+        )
+    
+    # 验证输入文本
+    is_valid, error_msg = validate_text_input(request.text)
+    if not is_valid:
+        error_response = global_error_handler.handle_text_validation_error(
+            text=request.text,
+            validation_error=error_msg
+        )
+        raise HTTPException(
+            status_code=400, 
+            detail=ResponseFormatter.format_error_response(error_response)
+        )
+    
+    # 开始处理
+    with ProcessingTimer() as timer:
+        try:
+            logger.info(f"开始处理分块请求: 策略={request.strategy.value}, 文本长度={len(request.text)}")
+            
+            # 检查策略可用性
+            if dependency_checker:
+                resolver = ChunkingStrategyResolver(dependency_checker)
+                actual_strategy = resolver.resolve_strategy(
+                    request.strategy.value, 
+                    {"glm_configured": True}  # 简化配置检查
+                )
+                
+                if actual_strategy != request.strategy.value:
+                    logger.warning(f"策略降级: {request.strategy.value} -> {actual_strategy}")
+            else:
+                actual_strategy = request.strategy.value
+            
+            # 执行分块
+            chunks = chunking_manager.chunk_text(
+                text=request.text,
+                strategy=actual_strategy,
+                **request.params
+            )
+            
+            # 计算性能指标
+            processing_time = timer.get_elapsed_time()
+            metrics = None
+            warnings = []
+            
+            # 添加策略降级警告
+            if actual_strategy != request.strategy.value:
+                warnings.append(f"策略已从 {request.strategy.value} 降级到 {actual_strategy}")
+            
+            if request.enable_metrics:
+                metrics = calculate_chunking_metrics(
+                    chunks=chunks,
+                    processing_time=processing_time,
+                    strategy_used=actual_strategy,
+                    fallback_occurred=(actual_strategy != request.strategy.value)
+                )
+            
+            # 创建成功响应
+            response = create_success_response(
+                request=request,
+                chunks=chunks,
+                actual_strategy=actual_strategy,
+                processing_time=processing_time,
+                warnings=warnings if warnings else None,
+                metrics=metrics
+            )
+            
+            logger.info(f"分块处理完成: {len(chunks)} 个分块, 耗时 {processing_time:.3f}s")
+            
+            # 格式化响应
+            formatted_response = ResponseFormatter.format_success_response(response.dict())
+            return formatted_response
+            
+        except TimeoutError as e:
+            processing_time = timer.get_elapsed_time()
+            error_response = global_error_handler.handle_timeout_error(
+                strategy=request.strategy.value,
+                timeout=request.timeout,
+                actual_time=processing_time
+            )
+            raise HTTPException(
+                status_code=408, 
+                detail=ResponseFormatter.format_error_response(error_response)
+            )
+            
+        except ValueError as e:
+            # 参数错误
+            error_response = global_error_handler.handle_parameter_error(
+                strategy=request.strategy.value,
+                invalid_params=request.params,
+                validation_errors=[str(e)]
+            )
+            raise HTTPException(
+                status_code=400, 
+                detail=ResponseFormatter.format_error_response(error_response)
+            )
+            
+        except Exception as e:
+            # 内部错误
+            processing_time = timer.get_elapsed_time()
+            error_response = global_error_handler.handle_internal_error(
+                error=e,
+                context="分块处理",
+                strategy=request.strategy.value
+            )
+            raise HTTPException(
+                status_code=500, 
+                detail=ResponseFormatter.format_error_response(error_response)
+            )
+
+@app.get("/chunking/status")
+async def get_chunking_service_status():
+    """获取分块服务状态"""
+    if not CHUNKING_AVAILABLE:
+        return {
+            "service_available": False,
+            "error": "分块模块不可用",
+            "timestamp": datetime.now().isoformat()
+        }
+    
+    status = {
+        "service_available": True,
+        "chunking_manager_available": chunking_manager is not None,
+        "dependency_checker_available": dependency_checker is not None,
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # 获取依赖状态
+    if dependency_checker:
+        try:
+            status["dependencies"] = dependency_checker.check_ppl_dependencies()
+            status["ppl_chunking_available"] = dependency_checker.is_ppl_chunking_available()
+            status["dependency_status_message"] = dependency_checker.get_dependency_status_message()
+        except Exception as e:
+            status["dependency_error"] = str(e)
+    
+    # 获取LLM状态
+    if chunking_manager:
+        try:
+            status["llm_status"] = chunking_manager.get_llm_status()
+        except Exception as e:
+            status["llm_status_error"] = str(e)
+    
+    return status
+
+@app.get("/chunking/config/{strategy}")
+async def get_chunking_strategy_config(strategy: str):
+    """获取特定策略的配置参数"""
+    if not CHUNKING_AVAILABLE or not chunking_manager:
+        raise HTTPException(status_code=503, detail="分块服务不可用")
+    
+    try:
+        config = chunking_manager.get_strategy_config(strategy)
+        
+        response_data = {
+            "strategy": strategy,
+            "display_name": get_strategy_display_name(strategy),
+            "config": config
+        }
+        
+        return ResponseFormatter.format_success_response(response_data)
+        
+    except Exception as e:
+        logger.error(f"获取策略配置失败: {e}")
+        error_response = global_error_handler.handle_parameter_error(
+            strategy=strategy,
+            invalid_params={"strategy": strategy},
+            validation_errors=[f"获取策略配置失败: {str(e)}"]
+        )
+        raise HTTPException(
+            status_code=400, 
+            detail=ResponseFormatter.format_error_response(error_response)
+        )
+
+@app.get("/chunking/errors/statistics")
+async def get_error_statistics():
+    """获取错误统计信息"""
+    if not CHUNKING_AVAILABLE:
+        raise HTTPException(status_code=503, detail="分块服务不可用")
+    
+    try:
+        stats = global_error_handler.get_error_statistics()
+        return ResponseFormatter.format_success_response({"statistics": stats})
+        
+    except Exception as e:
+        logger.error(f"获取错误统计失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取错误统计失败: {str(e)}")
+
+@app.post("/chunking/validate")
+async def validate_chunking_request(request: ChunkingProcessRequest):
+    """验证分块请求参数"""
+    if not CHUNKING_AVAILABLE:
+        raise HTTPException(status_code=503, detail="分块服务不可用")
+    
+    validation_errors = []
+    
+    # 验证文本
+    is_valid, error_msg = validate_text_input(request.text)
+    if not is_valid:
+        validation_errors.append(f"文本验证失败: {error_msg}")
+    
+    # 验证策略参数
+    try:
+        if chunking_manager:
+            config = chunking_manager.get_strategy_config(request.strategy.value)
+            # 这里可以添加更详细的参数验证逻辑
+    except Exception as e:
+        validation_errors.append(f"策略参数验证失败: {str(e)}")
+    
+    # 检查依赖
+    if dependency_checker and request.strategy.value in ["meta_ppl", "msp", "margin_sampling"]:
+        if not dependency_checker.is_ppl_chunking_available():
+            missing_deps = dependency_checker.get_missing_dependencies()
+            validation_errors.append(f"策略依赖缺失: {', '.join(missing_deps)}")
+    
+    validation_response = ResponseFormatter.format_validation_response(
+        is_valid=len(validation_errors) == 0,
+        errors=validation_errors
+    )
+    
+    return validation_response
+
+# ==================== 文本分块接口结束 ====================
+
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动新架构API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8509)  # 使用原来的端口
+    uvicorn.run(app, host="0.0.0.0", port=8505)  # 使用原来的端口

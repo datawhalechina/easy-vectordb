@@ -20,21 +20,16 @@ plotly>=5.17.0
 zhipuai>=1.0.0
 modelscope>=1.9.0
 python-multipart>=0.0.6
-
-# 新增依赖 - 文本切分相关
 torch>=2.0.0
 transformers>=4.21.0
 nltk>=3.8
 jieba>=0.42.1
 
-# 新增依赖 - 多模态处理相关
-# CLIP需要从GitHub安装: pip install git+https://github.com/openai/CLIP.git
 pillow>=9.0.0
 opencv-python>=4.8.0
 ftfy>=6.1.1
 regex>=2022.7.9
 
-# 新增依赖 - 性能测试相关
 locust>=2.14.0
 psutil>=5.9.0
 

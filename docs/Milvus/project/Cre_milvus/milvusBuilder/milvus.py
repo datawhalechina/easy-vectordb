@@ -20,7 +20,6 @@ def test_milvus_connection(host, port, timeout=5):
         logging.error(f"连接测试失败: {e}")
         return False
 
-# 全局连接锁，防止并发连接冲突
 _connection_lock = threading.Lock()
 
 def cleanup_all_connections():
@@ -48,10 +47,8 @@ def milvus_connect_with_retry(alias, host, port, max_retries=3, timeout=10):
                 if not test_milvus_connection(host, port, timeout=5):
                     raise ConnectionError(f"无法连接到 {host}:{port}")
                 
-                # 彻底清理现有连接
                 cleanup_all_connections()
                 
-                # 建立新连接
                 logging.info("尝试建立新连接")
                 connections.connect(
                     alias=alias,
@@ -60,16 +57,13 @@ def milvus_connect_with_retry(alias, host, port, max_retries=3, timeout=10):
                     timeout=timeout
                 )
                 
-                # 验证连接 - 使用更严格的验证
                 try:
                     collections = utility.list_collections()
-                    # 额外验证：尝试获取服务器版本信息
                     server_version = utility.get_server_version()
                     logging.info(f"连接成功，服务器版本: {server_version}, 现有集合: {collections}")
                     return True
                 except Exception as verify_error:
                     logging.error(f"连接验证失败: {verify_error}")
-                    # 验证失败时断开连接
                     try:
                         connections.disconnect(alias)
                     except:

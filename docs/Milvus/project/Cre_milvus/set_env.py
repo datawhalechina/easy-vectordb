@@ -7,18 +7,15 @@
 import os
 import warnings
 
-# 设置环境变量
 os.environ['PYTHONWARNINGS'] = 'ignore::FutureWarning'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-# 过滤特定警告
 warnings.filterwarnings('ignore', category=FutureWarning, module='torch.distributed')
 warnings.filterwarnings('ignore', category=UserWarning, module='gevent')
 
-# 在导入其他模块前进行monkey patching
 try:
     from gevent import monkey
-    monkey.patch_all(ssl=False)  # 不patch SSL以避免警告
+    monkey.patch_all(ssl=False)  
 except ImportError:
     pass
 

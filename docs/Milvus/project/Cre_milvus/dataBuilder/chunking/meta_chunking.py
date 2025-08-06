@@ -8,7 +8,7 @@ import logging
 from typing import List, Dict, Optional, Any
 import re
 import math
-
+import time
 logger = logging.getLogger(__name__)
 
 class DependencyChecker:
@@ -20,61 +20,73 @@ class DependencyChecker:
         self._cache_duration = 60  # 缓存60秒
     
     def check_ppl_dependencies(self) -> Dict[str, bool]:
-        """检查PPL分块所需依赖"""
-        import time
+        """检查PPL分块依赖"""
         current_time = time.time()
         
-        # 检查缓存
+        # 使用缓存避免频繁检查
         if (current_time - self._last_check_time) < self._cache_duration and self._dependency_cache:
             return self._dependency_cache
         
-        dependencies = {
+        deps = {
             "torch": False,
-            "torch_functional": False,
             "chunking_class": False,
             "nltk": False,
             "jieba": False,
-            "perplexity_chunking": False
+            "modelscope": False,
+            "transformers": False
         }
         
-        # 检查PyTorch
+        # 检查torch
         try:
             import torch
-            import torch.nn.functional as F
-            dependencies["torch"] = True
-            dependencies["torch_functional"] = True
+            deps["torch"] = True
         except ImportError:
             pass
         
         # 检查Chunking类
         try:
             from .perplexity_chunking import Chunking
-            dependencies["chunking_class"] = True
-            dependencies["perplexity_chunking"] = True
+            deps["chunking_class"] = True
         except ImportError:
             try:
                 from perplexity_chunking import Chunking
-                dependencies["chunking_class"] = True
-                dependencies["perplexity_chunking"] = True
+                deps["chunking_class"] = True
             except ImportError:
                 pass
         
-        # 检查NLP库
+        # 检查nltk
         try:
-            from nltk.tokenize import sent_tokenize
-            dependencies["nltk"] = True
+            import nltk
+            deps["nltk"] = True
         except ImportError:
             pass
         
+        # 检查jieba
         try:
             import jieba
-            dependencies["jieba"] = True
+            deps["jieba"] = True
         except ImportError:
             pass
         
-        self._dependency_cache = dependencies
+        # 检查modelscope
+        try:
+            from modelscope import AutoTokenizer, AutoModelForCausalLM
+            deps["modelscope"] = True
+        except ImportError:
+            pass
+        
+        # 检查transformers
+        try:
+            from transformers import AutoTokenizer, AutoModelForCausalLM
+            deps["transformers"] = True
+        except ImportError:
+            pass
+        
+        self._dependency_cache = deps
         self._last_check_time = current_time
-        return dependencies
+        
+        return deps
+
     
     def get_missing_dependencies(self) -> List[str]:
         """获取缺失的依赖"""
@@ -120,8 +132,13 @@ class DependencyChecker:
     def is_ppl_chunking_available(self) -> bool:
         """检查PPL分块是否可用"""
         deps = self.check_ppl_dependencies()
+        # 添加调试信息
+        logger.debug(f"PPL依赖检查结果: {deps}")
+        logger.debug(f"torch可用: {deps['torch']}, chunking_class可用: {deps['chunking_class']}")
         # PPL分块需要torch和chunking_class
-        return deps["torch"] and deps["chunking_class"]
+        result = deps["torch"] and deps["chunking_class"]
+        logger.debug(f"PPL分块最终可用性: {result}")
+        return result
     
     def get_dependency_status_message(self) -> str:
         """获取依赖状态消息"""
@@ -244,6 +261,7 @@ class ChunkingStrategyResolver:
             "description": "未知策略"
         })
 
+# 导入依赖
 try:
     from .perplexity_chunking import Chunking
 except ImportError:
@@ -402,27 +420,23 @@ def find_minima_dynamic(values, threshold, threshold_zlist):
     
     return minima_indices, threshold, threshold_zlist
 
+from transformers import AutoModelForCausalLM, AutoTokenizer
+import torch
 
 class MetaChunking:
-    """
-    Meta-chunking主类，提供多种文本分块策略
-    """
     
     def __init__(self, model=None, tokenizer=None, api_client=None):
-        """
-        初始化Meta-chunking
-        
-        参数:
-            model: 语言模型（用于PPL分块）
-            tokenizer: 分词器
-            api_client: API客户端（用于API调用方式）
-        """
         self.model = model
         self.tokenizer = tokenizer
         self.api_client = api_client
         self.dependency_checker = DependencyChecker()
         
-        # 如果没有提供API客户端，尝试从GLM配置创建
+        if not self.model or not self.tokenizer:
+            self.model_path = "Qwen/Qwen2.5-1.5B-Instruct"  
+            success = self.initialize_model()
+            if not success:
+                logger.warning("模型初始化失败，某些功能可能不可用")
+        
         if not self.api_client:
             try:
                 from .glm_config import create_glm_api_client
@@ -430,10 +444,74 @@ class MetaChunking:
                 if self.api_client:
                     logger.info("成功创建GLM API客户端")
             except Exception as e:
-                logger.warning(f"创建GLM API客户端失败: {e}")
+                logger.debug(f"创建GLM API客户端失败: {e}")
+    
+    def initialize_model(self):
+        import os
+        import torch
         
-        if model and tokenizer:
-            self.chunking = Chunking(model, tokenizer)
+        # 检查模型目录是否存在
+        if os.path.exists(self.model_path):
+            logger.info(f"检测到本地模型文件: {self.model_path}")
+            model_source = "本地缓存"
+        else:
+            logger.info(f"未找到本地模型，将从远程加载: {self.model_path}")
+            model_source = "ModelScope"
+        
+        try:
+            try:
+                # 优先尝试使用ModelScope加载
+                from modelscope import AutoTokenizer, AutoModelForCausalLM
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_path, 
+                    trust_remote_code=True
+                )
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    self.model_path,
+                    device_map="auto",
+                    trust_remote_code=True,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                )
+                self.model.eval()
+                logger.info(f"成功从{model_source}加载模型: {self.model_path}")
+                return True
+                
+            except ImportError:
+                # 如果ModelScope不可用，回退到HuggingFace
+                logger.warning("ModelScope不可用，回退到HuggingFace")
+                from transformers import AutoTokenizer, AutoModelForCausalLM
+                
+                # 再次检查本地是否存在（回退时可能不同路径）
+                if os.path.exists(self.model_path):
+                    load_path = self.model_path
+                    model_source = "本地缓存"
+                else:
+                    # 使用HuggingFace的默认模型路径
+                    load_path = "Qwen/Qwen2-1.5B-Instruct"
+                    model_source = "HuggingFace"
+                    logger.info(f"未找到本地模型，将从HuggingFace加载: {load_path}")
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    load_path, 
+                    trust_remote_code=True
+                )
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    load_path,
+                    device_map="auto",
+                    trust_remote_code=True,
+                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
+                )
+                self.model.eval()
+                logger.info(f"成功从{model_source}加载模型: {load_path}")
+                return True
+                
+        except Exception as e:
+            logger.error(f"模型加载失败: {e}")
+            self.model = None
+            self.tokenizer = None
+            return False
+
     
     def smart_chunking(self, text: str, strategy: str, config: Dict, **kwargs) -> List[str]:
         """
@@ -481,49 +559,75 @@ class MetaChunking:
             traditional_kwargs = {k: v for k, v in kwargs.items() if k in ['chunk_size', 'overlap']}
             return self.traditional_chunking(text, **traditional_kwargs)
     
+    # def ppl_chunking(self, text: str, threshold: float = 0.3, language: str = 'zh') -> List[str]:
+    #     """
+    #     PPL困惑度分块
+        
+    #     参数:
+    #         text: 输入文本
+    #         threshold: 困惑度阈值
+    #         language: 语言类型
+        
+    #     返回:
+    #         分块后的文本列表
+    #     """
+    #     try:
+    #         # 优先级1: 使用本地模型（如果依赖完整且可用）
+    #         if (self.dependency_checker.is_ppl_chunking_available() and 
+    #             self.model and self.tokenizer and TORCH_AVAILABLE and Chunking):
+    #             logger.info("使用本地模型进行PPL分块")
+    #             return self._extract_by_ppl(text, threshold, language)
+            
+    #         # 优先级2: 使用API方式（如果本地依赖不可用但有API客户端）
+    #         # elif self.api_client:
+    #         #     if not self.dependency_checker.is_ppl_chunking_available():
+    #         #         missing_deps = self.dependency_checker.get_missing_dependencies()
+    #         #         install_commands = self.dependency_checker.suggest_installation_commands()
+    #         #         logger.warning(f"PPL分块本地依赖缺失: {', '.join(missing_deps)}")
+    #         #         logger.info(f"建议安装命令: {'; '.join(install_commands)}")
+                
+    #         #     logger.info("使用API方式进行PPL分块")
+    #         #     return self._extract_by_ppl_api(text, threshold, language)
+            
+    #         # 优先级3: 降级到语义分块
+    #         else:
+    #             if not self.dependency_checker.is_ppl_chunking_available():
+    #                 missing_deps = self.dependency_checker.get_missing_dependencies()
+    #                 logger.warning(f"PPL分块依赖缺失: {', '.join(missing_deps)}")
+    #                 logger.warning("且无可用的API客户端，降级到语义分块")
+    #             else:
+    #                 logger.warning("PPL分块模型未正确初始化，降级到语义分块")
+                
+    #             return self.semantic_chunking(text, similarity_threshold=0.7)
+                
+    #     except Exception as e:
+    #         logger.error(f"PPL分块失败: {e}")
+    #         logger.info("降级到传统分块")
+    #         # 降级到传统分块
+    #         return self.traditional_chunking(text, chunk_size=512, overlap=50)
+    
     def ppl_chunking(self, text: str, threshold: float = 0.3, language: str = 'zh') -> List[str]:
         """
         PPL困惑度分块
-        
         参数:
             text: 输入文本
             threshold: 困惑度阈值
             language: 语言类型
-        
         返回:
             分块后的文本列表
         """
         try:
-            # 检查依赖
-            if not self.dependency_checker.is_ppl_chunking_available():
-                missing_deps = self.dependency_checker.get_missing_dependencies()
-                install_commands = self.dependency_checker.suggest_installation_commands()
-                
-                logger.warning(f"PPL分块依赖缺失: {', '.join(missing_deps)}")
-                logger.info(f"建议安装命令: {'; '.join(install_commands)}")
-                
-                # 如果有API客户端，优先使用API方式
-                if self.api_client:
-                    logger.info("使用API方式进行PPL分块")
-                    return self._extract_by_ppl_api(text, threshold, language)
-                else:
-                    logger.warning("降级到语义分块")
-                    return self.semantic_chunking(text, similarity_threshold=0.7)
-            
-            if self.api_client:
-                # 使用API方式进行分块
-                return self._extract_by_ppl_api(text, threshold, language)
-            elif self.model and self.tokenizer and TORCH_AVAILABLE and Chunking:
-                # 使用本地模型方式
+            # 优先使用本地模型实现
+            if (self.dependency_checker.is_ppl_chunking_available() and
+                self.model and self.tokenizer and TORCH_AVAILABLE):
+                logger.info("使用本地模型进行PPL分块")
                 return self._extract_by_ppl(text, threshold, language)
             else:
-                logger.warning("PPL分块所需依赖不可用，降级到语义分块")
-                return self.semantic_chunking(text, similarity_threshold=0.7)
+                logger.warning("PPL分块依赖不可用,降级到传统分块")
+                return self.traditional_chunking(text)
         except Exception as e:
             logger.error(f"PPL分块失败: {e}")
-            # 降级到传统分块
-            return self.traditional_chunking(text, chunk_size=512, overlap=50)
-    
+            return self.traditional_chunking(text)
     def margin_sampling_chunking(self, text: str, language: str = 'zh', chunk_length: int = 512) -> List[str]:
         """
         边际采样分块
@@ -618,102 +722,166 @@ class MetaChunking:
         """
         return self._extract_by_semantic(text, similarity_threshold, min_chunk_size, max_chunk_size)
     
-    def _extract_by_ppl(self, sub_text: str, threshold: float, language: str) -> List[str]:
-        """
-        PPL分块的内部实现
-        """
+    # def _extract_by_ppl(self, sub_text: str, threshold: float, language: str) -> List[str]:
+
+    #     try:
+    #         if not TORCH_AVAILABLE or not self.model or not self.tokenizer or not Chunking:
+    #             raise ValueError("PPL分块所需依赖不可用")
+            
+    #         if not hasattr(self, 'chunking') or not self.chunking:
+    #             self.chunking = Chunking(self.model, self.tokenizer)
+            
+    #         segments = split_text_by_punctuation(sub_text, language)
+    #         segments = [item for item in segments if item.strip()]
+            
+    #         if len(segments) <= 1:
+    #             return [sub_text]
+            
+    #         len_sentences = []
+    #         input_ids = torch.tensor([[]], device=self.model.device, dtype=torch.long)  
+    #         attention_mask = torch.tensor([[]], device=self.model.device, dtype=torch.long)  
+            
+    #         for context in segments:
+    #             try:
+    #                 tokenized_text = self.tokenizer(context, return_tensors="pt", add_special_tokens=False)
+    #                 input_id = tokenized_text["input_ids"].to(self.model.device)
+    #                 input_ids = torch.cat([input_ids, input_id], dim=-1)
+    #                 len_sentences.append(input_id.shape[1])
+    #                 attention_mask_tmp = tokenized_text["attention_mask"].to(self.model.device)
+    #                 attention_mask = torch.cat([attention_mask, attention_mask_tmp], dim=-1)
+    #             except Exception as e:
+    #                 logger.error(f"句子编码失败: {e}")
+    #                 # 跳过有问题的句子
+    #                 continue
+
+    #         if len(len_sentences) == 0:
+    #             return [sub_text]
+
+    #         loss, past_key_values = self.chunking.get_ppl_batch( 
+    #             input_ids,
+    #             attention_mask,
+    #             past_key_values=None,
+    #             return_kv=True
+    #         )
+            
+    #         first_cluster_ppl = []
+    #         index = 0
+    #         for i in range(len(len_sentences)):
+    #             try:
+    #                 if i == 0:
+    #                     if len_sentences[i] > 1:
+    #                         first_cluster_ppl.append(loss[0:len_sentences[i]-1].mean().item())
+    #                         index += len_sentences[i] - 1
+    #                     else:
+    #                         first_cluster_ppl.append(0.0)
+    #                 else:
+    #                     if len_sentences[i] > 0:
+    #                         first_cluster_ppl.append(loss[index:index+len_sentences[i]].mean().item())
+    #                         index += len_sentences[i]
+    #                     else:
+    #                         first_cluster_ppl.append(0.0)
+    #             except Exception as e:
+    #                 logger.warning(f"困惑度计算失败，使用默认值: {e}")
+    #                 first_cluster_ppl.append(0.5)
+            
+    #         minima_indices = find_minima(first_cluster_ppl, threshold)
+            
+    #         split_points = [0] + minima_indices + [len(segments)-1]    
+    #         final_chunks = []
+            
+    #         for i in range(len(split_points)-1):
+    #             chunk_sentences = []
+    #             start_idx = split_points[i]
+    #             end_idx = split_points[i+1]
+                
+    #             for sp_index in range(start_idx, end_idx+1):
+    #                 if sp_index < len(segments):
+    #                     chunk_sentences.append(segments[sp_index])
+                
+    #             if chunk_sentences:
+    #                 final_chunks.append(''.join(chunk_sentences))
+            
+    #         return final_chunks if final_chunks else [sub_text]
+            
+    #     except Exception as e:
+    #         logger.error(f"PPL分块内部实现失败: {e}")
+    #         return self.semantic_chunking(sub_text, similarity_threshold=0.7)
+    def _extract_by_ppl(self, text: str, threshold: float, language: str) -> List[str]:
         try:
-            # 检查必要的依赖
-            if not TORCH_AVAILABLE or not self.model or not self.tokenizer or not Chunking:
+            if not TORCH_AVAILABLE or not self.model or not self.tokenizer:
                 raise ValueError("PPL分块所需依赖不可用")
             
-            # 初始化chunking对象
-            if not hasattr(self, 'chunking') or not self.chunking:
-                self.chunking = Chunking(self.model, self.tokenizer)
+            try:
+                from .perplexity_chunking import Chunking
+            except ImportError:
+                from perplexity_chunking import Chunking
             
-            # 句子分割
-            segments = split_text_by_punctuation(sub_text, language)
-            segments = [item for item in segments if item.strip()]
+            chunking = Chunking(self.model, self.tokenizer)
+            
+            segments = split_text_by_punctuation(text, language) 
+            segments = [s for s in segments if s.strip()]
             
             if len(segments) <= 1:
-                return [sub_text]
+                return [text]
             
-            # 编码所有句子
             len_sentences = []
-            input_ids = torch.tensor([[]], device=self.model.device, dtype=torch.long)  
-            attention_mask = torch.tensor([[]], device=self.model.device, dtype=torch.long)  
+            input_ids = torch.tensor([[]], device=self.model.device, dtype=torch.long)
+            attention_mask = torch.tensor([[]], device=self.model.device, dtype=torch.long)
             
             for context in segments:
-                try:
-                    tokenized_text = self.tokenizer(context, return_tensors="pt", add_special_tokens=False)
-                    input_id = tokenized_text["input_ids"].to(self.model.device)
-                    input_ids = torch.cat([input_ids, input_id], dim=-1)
-                    len_sentences.append(input_id.shape[1])
-                    attention_mask_tmp = tokenized_text["attention_mask"].to(self.model.device)
-                    attention_mask = torch.cat([attention_mask, attention_mask_tmp], dim=-1)
-                except Exception as e:
-                    logger.error(f"句子编码失败: {e}")
-                    # 跳过有问题的句子
-                    continue
-
-            if len(len_sentences) == 0:
-                return [sub_text]
-
-            # 计算困惑度
-            loss, past_key_values = self.chunking.get_ppl_batch( 
+                tokenized_text = self.tokenizer(context, return_tensors="pt", add_special_tokens=False)
+                input_id = tokenized_text["input_ids"].to(self.model.device)
+                input_ids = torch.cat([input_ids, input_id], dim=-1)
+                len_sentences.append(input_id.shape[1])
+                attention_mask_tmp = tokenized_text["attention_mask"].to(self.model.device)
+                attention_mask = torch.cat([attention_mask, attention_mask_tmp], dim=-1)
+                
+            loss, past_key_values = chunking.get_ppl_batch(
                 input_ids,
                 attention_mask,
                 past_key_values=None,
                 return_kv=True
             )
             
-            # 计算句子级平均困惑度
             first_cluster_ppl = []
             index = 0
             for i in range(len(len_sentences)):
-                try:
-                    if i == 0:
-                        if len_sentences[i] > 1:
-                            first_cluster_ppl.append(loss[0:len_sentences[i]-1].mean().item())
-                            index += len_sentences[i] - 1
-                        else:
-                            first_cluster_ppl.append(0.0)
-                    else:
-                        if len_sentences[i] > 0:
-                            first_cluster_ppl.append(loss[index:index+len_sentences[i]].mean().item())
-                            index += len_sentences[i]
-                        else:
-                            first_cluster_ppl.append(0.0)
-                except Exception as e:
-                    logger.warning(f"困惑度计算失败，使用默认值: {e}")
-                    first_cluster_ppl.append(0.5)
-            
-            # 寻找分割点
+                if i == 0:
+                    first_cluster_ppl.append(loss[0:len_sentences[i]-1].mean().item())
+                    index += len_sentences[i] - 1
+                else:
+                    first_cluster_ppl.append(loss[index:index+len_sentences[i]].mean().item())
+                    index += len_sentences[i]
+
             minima_indices = find_minima(first_cluster_ppl, threshold)
             
-            # 生成文本块
-            split_points = [0] + minima_indices + [len(segments)-1]    
-            final_chunks = []
+            first_chunk_indices = []
+            first_chunk_sentences = []
+            split_points = [0] + minima_indices + [len(first_cluster_ppl)-1]    
             
             for i in range(len(split_points)-1):
-                chunk_sentences = []
-                start_idx = split_points[i]
-                end_idx = split_points[i+1]
-                
-                for sp_index in range(start_idx, end_idx+1):
-                    if sp_index < len(segments):
-                        chunk_sentences.append(segments[sp_index])
-                
-                if chunk_sentences:
-                    final_chunks.append(''.join(chunk_sentences))
+                tmp_index = []
+                tmp_sentence = []
+                if i == 0:
+                    tmp_index.append(0)
+                    tmp_sentence.append(segments[0])
+                for sp_index in range(split_points[i]+1, split_points[i+1]+1):
+                    tmp_index.append(sp_index)
+                    tmp_sentence.append(segments[sp_index])
+                first_chunk_indices.append(tmp_index)
+                first_chunk_sentences.append(tmp_sentence)
             
-            return final_chunks if final_chunks else [sub_text]
+            final_chunks = []
+            for sent_list in first_chunk_sentences:
+                final_chunks.append(''.join(sent_list))
+            
+            return final_chunks if final_chunks else [text]
             
         except Exception as e:
-            logger.error(f"PPL分块内部实现失败: {e}")
-            # 降级到语义分块
-            return self.semantic_chunking(sub_text, similarity_threshold=0.7)
-    
+            logger.error(f"PPL分块实现失败: {e}")
+            # 降级到传统分块
+            return self.traditional_chunking(text, chunk_size=512, overlap=50)
+
     def _extract_by_margin_sampling(self, text: str, language: str, chunk_length: int) -> List[str]:
         """
         边际采样分块的内部实现
@@ -825,18 +993,18 @@ class MetaChunking:
             if language == 'zh':
                 prompt = f'''这是一个文本分块任务。你是一位文本分析专家，请根据提供的句子的逻辑结构和语义内容，从下面两种方案中选择一种分块方式：
 
-1. 将"{sentence1+sentence2}"分割成"{sentence1}"与"{sentence2}"两部分；
-2. 将"{sentence1+sentence2}"不进行分割，保持原形式；
+                        1. 将"{sentence1+sentence2}"分割成"{sentence1}"与"{sentence2}"两部分；
+                        2. 将"{sentence1+sentence2}"不进行分割，保持原形式；
 
-请只回答数字1或2：'''
+                        请只回答数字1或2：'''
             else:
                 prompt = f'''This is a text chunking task. You are a text analysis expert. Please choose one of the following two options based on the logical structure and semantic content of the provided sentence:
 
-1. Split "{sentence1+' '+sentence2}" into "{sentence1}" and "{sentence2}" two parts;
-2. Keep "{sentence1+' '+sentence2}" unsplit in its original form;
+                    1. Split "{sentence1+' '+sentence2}" into "{sentence1}" and "{sentence2}" two parts;
+                    2. Keep "{sentence1+' '+sentence2}" unsplit in its original form;
 
-Please answer only 1 or 2:'''
-            
+                    Please answer only 1 or 2:'''
+                                
             # 使用二元选择方法
             prob_split = self.api_client.binary_choice(prompt, "1", "2")
             
@@ -1016,32 +1184,27 @@ Please answer only 1 or 2:'''
         return len(intersection) / len(union) if union else 0.0
     
     def _merge_chunks_by_length(self, chunks: List[str], max_length: int, language: str) -> List[str]:
-        """
-        根据长度限制合并文本块
-        """
-        merged_chunks = []
-        current_chunk = ""
-        
-        for chunk in chunks:
-            if language == 'zh':
-                chunk_len = len(chunk)
-                current_len = len(current_chunk)
-            else:
-                chunk_len = len(chunk.split())
-                current_len = len(current_chunk.split())
+        if not chunks:
+            return []
             
-            if current_len == 0:
-                current_chunk = chunk
-            elif current_len + chunk_len <= max_length:
+        merged_chunks = []
+        current_chunk = chunks[0]
+        current_length = len(current_chunk) if language == 'zh' else len(current_chunk.split())
+        
+        for chunk in chunks[1:]:
+            chunk_len = len(chunk) if language == 'zh' else len(chunk.split())
+            if current_length + chunk_len <= max_length:
                 separator = ' ' if language == 'en' else ''
                 current_chunk += separator + chunk
+                current_length += chunk_len
             else:
                 merged_chunks.append(current_chunk)
                 current_chunk = chunk
-        
+                current_length = chunk_len
+                
         if current_chunk:
             merged_chunks.append(current_chunk)
-        
+            
         return merged_chunks
     
     def _extract_by_ppl_api(self, text: str, threshold: float, language: str) -> List[str]:
@@ -1069,23 +1232,23 @@ Please answer only 1 or 2:'''
             if language == 'zh':
                 prompt = f"""请判断以下文本是否应该在指定位置分割：
 
-前文：{context}
-当前句子：{current_sentence}
+                前文：{context}
+                当前句子：{current_sentence}
 
-如果在前文和当前句子之间分割能够保持语义完整性，请回答"1"；
-如果不应该分割，请回答"2"。
+                如果在前文和当前句子之间分割能够保持语义完整性，请回答"1"；
+                如果不应该分割，请回答"2"。
 
-请只回答数字1或2："""
+                请只回答数字1或2："""
             else:
                 prompt = f"""Please determine if the following text should be split at the specified position:
 
-Context: {context}
-Current sentence: {current_sentence}
+                Context: {context}
+                Current sentence: {current_sentence}
 
-If splitting between the context and current sentence maintains semantic integrity, answer "1";
-If it should not be split, answer "2".
+                If splitting between the context and current sentence maintains semantic integrity, answer "1";
+                If it should not be split, answer "2".
 
-Please answer only 1 or 2:"""
+                Please answer only 1 or 2:"""
             
             try:
                 messages = [{"role": "user", "content": prompt}]
@@ -1128,7 +1291,7 @@ Please answer only 1 or 2:"""
             if tmp == '':
                 tmp += sentence
             else:
-                # 使用API获取分割概率
+                # 分割概率
                 prob_split = self._get_split_probability_api(tmp, sentence, language)
                 threshold_history.append(prob_split)
                 
@@ -1159,31 +1322,64 @@ Please answer only 1 or 2:"""
         try:
             if language == 'zh':
                 prompt = f"""请判断以下两个文本片段是否应该分开处理：
+                文本1：{text1}
+                文本2：{text2}
 
-文本1：{text1}
-文本2：{text2}
+                如果这两个文本片段在语义上应该分开处理，请回答"分开"；
+                如果应该合并在一起，请回答"合并"。
 
-如果这两个文本片段在语义上应该分开处理，请回答"分开"；
-如果应该合并在一起，请回答"合并"。
-
-请只回答"分开"或"合并"："""
-                
+                请只回答"分开"或"合并"："""
+                                
                 prob = self.api_client.binary_choice(prompt, "分开", "合并")
             else:
                 prompt = f"""Please determine if the following two text segments should be processed separately:
 
-Text 1: {text1}
-Text 2: {text2}
+                Text 1: {text1}
+                Text 2: {text2}
 
-If these two text segments should be processed separately semantically, answer "separate";
-If they should be merged together, answer "merge".
+                If these two text segments should be processed separately semantically, answer "separate";
+                If they should be merged together, answer "merge".
 
-Please answer only "separate" or "merge":"""
+                Please answer only "separate" or "merge":"""
                 
                 prob = self.api_client.binary_choice(prompt, "separate", "merge")
             
-            return prob
-            
+            return prob     
         except Exception as e:
             logger.warning(f"API概率获取失败: {e}")
-            return 0.5  # 默认概率
+            return 0.5  # 默认概率 
+        #     # 第一个块
+        #     current_chunk = chunk
+        #     current_length = chunk_len
+        # elif current_length + chunk_len <= max_length:
+        #     # 可以合并
+        #     separator = ' ' if language == 'en' else ''
+        #     current_chunk += separator + chunk
+        #     current_length += chunk_len
+        # else:
+        #     # 需要开始新块
+        #     if current_chunk.strip():
+        #         merged_chunks.append(current_chunk)
+        #     current_chunk = chunk
+        #     current_length = chunk_len
+        
+        # # 添加最后一个块
+        # if current_chunk.strip():
+        #     merged_chunks.append(current_chunk)
+        
+        # return merged_chunks if merged_chunks else [chunks[0] if chunks else ""]
+
+
+def create_meta_chunking(model=None, tokenizer=None, api_client=None):
+    """
+    创建MetaChunking实例的工厂函数
+    
+    参数:
+        model: 语言模型
+        tokenizer: 分词器  
+        api_client: API客户端
+    
+    返回:
+        MetaChunking实例
+    """
+    return MetaChunking(model, tokenizer, api_client)

@@ -12,12 +12,11 @@ from typing import Dict, Any, Optional, List
 
 # python -m streamlit run frontend.py
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Constants
-BACKEND_URL = "http://localhost:8509"
+
+BACKEND_URL = "http://localhost:8505"
 DEFAULT_TIMEOUT = 10
 
 st.set_page_config(
@@ -27,7 +26,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 添加自定义CSS样式
+
 st.markdown("""
 <style>
     .main-header {
@@ -146,7 +145,6 @@ st.markdown("""
         border: 1px solid #ffcdd2;
     }
     
-    /* 响应式设计 */
     @media (max-width: 768px) {
         .cluster-viz-container {
             padding: 1rem;
@@ -162,7 +160,6 @@ st.markdown("""
         }
     }
     
-    /* 加载状态样式 */
     .loading-container {
         display: flex;
         justify-content: center;
@@ -187,7 +184,6 @@ st.markdown("""
         100% { transform: rotate(360deg); }
     }
     
-    /* 可视化图表容器 */
     .viz-chart-container {
         background: #ffffff;
         border-radius: 8px;
@@ -196,7 +192,6 @@ st.markdown("""
         margin: 0.5rem 0;
     }
     
-    /* 标签页样式优化 */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
     }
@@ -217,7 +212,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 主标题
 st.markdown("""
 <div class="main-header">
     <h1>🔍 DataWhale-easyVectorDB Enhanced</h1>
@@ -227,7 +221,6 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Helper functions
 def safe_request(method: str, url: str, timeout: int = DEFAULT_TIMEOUT, **kwargs) -> Optional[requests.Response]:
     """Safe HTTP request with error handling"""
     try:
@@ -237,114 +230,174 @@ def safe_request(method: str, url: str, timeout: int = DEFAULT_TIMEOUT, **kwargs
         logger.error(f"Request failed: {e}")
         return None
 
-class GLMConfigManager:
-    """GLM配置状态管理器"""
+# class GLMConfigManager:
+#     """GLM配置状态管理器 - 通过后端API管理"""
     
-    def __init__(self):
-        self._config_cache = {}
-        self._cache_timestamp = 0
-        self._cache_duration = 30  # 缓存30秒
+#     def __init__(self):
+#         self._config_cache = {}
+#         self._cache_timestamp = 0
+#         self._cache_duration = 30  # 缓存30秒
     
-    def get_config_status(self) -> Dict[str, Any]:
-        """获取GLM配置状态"""
-        # 从session_state获取GLM配置
-        if "glm_config" not in st.session_state:
-            st.session_state.glm_config = {}
+#     def get_config_status(self) -> Dict[str, Any]:
+#         """获取GLM配置状态"""
+#         try:
+#             # 检查缓存
+#             current_time = time.time()
+#             if (self._config_cache and 
+#                 current_time - self._cache_timestamp < self._cache_duration):
+#                 return self._config_cache
+            
+#             # 从后端API获取配置状态
+#             response = safe_request("GET", f"{BACKEND_URL}/glm/config", timeout=5)
+#             if response and response.status_code == 200:
+#                 config_data = response.json()
+                
+#                 # 更新缓存
+#                 self._config_cache = config_data
+#                 self._cache_timestamp = current_time
+                
+#                 return config_data
+#             else:
+#                 logger.error(f"获取GLM配置状态失败: {response.status_code if response else 'No response'}")
+#                 return {"configured": False, "error": "无法连接后端服务"}
+                
+#         except Exception as e:
+#             logger.error(f"获取GLM配置状态失败: {e}")
+#             return {"configured": False, "error": str(e)}
+    
+#     def validate_config(self, config: Dict) -> bool:
+#         """验证配置的有效性"""
+#         return config.get("configured", False) and config.get("api_key_configured", False)
+    
+#     def get_config_ui_state(self) -> Dict[str, Any]:
+#         """获取配置UI状态"""
+#         config = self.get_config_status()
+#         is_configured = config.get("configured", False)
         
-        return st.session_state.glm_config
+#         return {
+#             "is_configured": is_configured,
+#             "should_expand": not is_configured,  # 未配置时展开
+#             "status_message": self._get_status_message(config),
+#             "status_type": self._get_status_type(config),
+#             "config_preview": self._get_config_preview(config)
+#         }
     
-    def validate_config(self, config: Dict) -> bool:
-        """验证配置的有效性"""
-        required_fields = ["model_name", "api_key"]
-        return all(field in config and config[field] for field in required_fields)
+#     def _get_status_message(self, config: Dict) -> str:
+#         """获取状态消息"""
+#         if config.get("error"):
+#             return f"⚠️ 获取配置状态失败: {config['error']}"
+#         elif not config.get("configured", False):
+#             return "⚠️ **重要提示**: GLM未配置，高级分块功能（PPL、MSP、边际采样）将不可用！"
+#         else:
+#             return "✅ GLM已配置，所有高级功能已启用"
     
-    def get_config_ui_state(self) -> Dict[str, Any]:
-        """获取配置UI状态"""
-        config = self.get_config_status()
-        is_configured = config.get("configured", False)
+#     def _get_status_type(self, config: Dict) -> str:
+#         """获取状态类型"""
+#         if config.get("error"):
+#             return "error"
+#         elif not config.get("configured", False):
+#             return "warning"
+#         else:
+#             return "success"
+    
+#     def _get_config_preview(self, config: Dict) -> Dict[str, str]:
+#         """获取配置预览信息"""
+#         if not config.get("configured", False):
+#             return {}
         
-        return {
-            "is_configured": is_configured,
-            "should_expand": not is_configured,  # 未配置时展开
-            "status_message": self._get_status_message(config),
-            "status_type": self._get_status_type(config),
-            "config_preview": self._get_config_preview(config)
-        }
+#         return {
+#             "model": config.get("model_name", "N/A"),
+#             "api_key_preview": config.get("api_key_preview", "N/A"),
+#             "last_validated": config.get("last_validated", "N/A")[:19] if config.get("last_validated") else "N/A"
+#         }
     
-    def _get_status_message(self, config: Dict) -> str:
-        """获取状态消息"""
-        if not config.get("configured", False):
-            return "⚠️ **重要提示**: GLM未配置，高级分块功能（PPL、MSP、边际采样）将不可用！"
-        else:
-            return "✅ GLM已配置，所有高级功能已启用"
+#     def save_config(self, model_name: str, api_key: str) -> bool:
+#         """保存GLM配置"""
+#         try:
+#             # 调用后端API保存配置
+#             response = safe_request(
+#                 "POST", 
+#                 f"{BACKEND_URL}/glm/config",
+#                 json={
+#                     "model_name": model_name,
+#                     "api_key": api_key
+#                 },
+#                 timeout=10
+#             )
+            
+#             if response and response.status_code == 200:
+#                 result = response.json()
+#                 if result.get("success"):
+#                     logger.info("GLM配置保存成功")
+#                     # 清除缓存，强制重新加载
+#                     self.clear_cache()
+#                     return True
+#                 else:
+#                     logger.error(f"GLM配置保存失败: {result.get('message', '未知错误')}")
+#                     return False
+#             else:
+#                 logger.error(f"GLM配置保存请求失败: {response.status_code if response else 'No response'}")
+#                 return False
+                
+#         except Exception as e:
+#             logger.error(f"保存GLM配置失败: {e}")
+#             return False
     
-    def _get_status_type(self, config: Dict) -> str:
-        """获取状态类型"""
-        if not config.get("configured", False):
-            return "warning"
-        else:
-            return "success"
+#     def clear_config(self) -> bool:
+#         """清除GLM配置"""
+#         try:
+#             # 调用后端API清除配置
+#             response = safe_request("DELETE", f"{BACKEND_URL}/glm/config", timeout=10)
+            
+#             if response and response.status_code == 200:
+#                 result = response.json()
+#                 if result.get("success"):
+#                     logger.info("GLM配置清除成功")
+#                     # 清除缓存
+#                     self.clear_cache()
+#                     return True
+#                 else:
+#                     logger.error(f"GLM配置清除失败: {result.get('message', '未知错误')}")
+#                     return False
+#             else:
+#                 logger.error(f"GLM配置清除请求失败: {response.status_code if response else 'No response'}")
+#                 return False
+                
+#         except Exception as e:
+#             logger.error(f"清除GLM配置失败: {e}")
+#             return False
     
-    def _get_config_preview(self, config: Dict) -> Dict[str, str]:
-        """获取配置预览信息"""
-        if not config.get("configured", False):
-            return {}
-        
-        return {
-            "model": config.get("model_name", "N/A"),
-            "api_key_preview": config.get("api_key_preview", "N/A"),
-            "last_validated": config.get("last_validated", "N/A")[:19] if config.get("last_validated") else "N/A"
-        }
+#     def test_connection(self) -> Dict[str, Any]:
+#         """测试GLM连接"""
+#         try:
+#             # 调用后端API测试连接
+#             response = safe_request("POST", f"{BACKEND_URL}/glm/test-connection", timeout=15)
+            
+#             if response and response.status_code == 200:
+#                 result = response.json()
+#                 return {
+#                     "valid": result.get("success", False),
+#                     "message": result.get("message", "连接测试完成")
+#                 }
+#             else:
+#                 return {
+#                     "valid": False,
+#                     "message": f"连接测试请求失败: {response.status_code if response else 'No response'}"
+#                 }
+                
+#         except Exception as e:
+#             return {"valid": False, "message": f"连接测试失败: {str(e)}"}
     
-    def save_config(self, model_name: str, api_key: str) -> bool:
-        """保存GLM配置"""
-        try:
-            config = {
-                "configured": True,
-                "model_name": model_name,
-                "api_key": api_key,
-                "api_key_preview": f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "***",
-                "last_validated": datetime.now().isoformat(),
-                "saved_at": datetime.now().isoformat()
-            }
-            st.session_state.glm_config = config
-            return True
-        except Exception as e:
-            logger.error(f"保存GLM配置失败: {e}")
-            return False
-    
-    def clear_config(self) -> bool:
-        """清除GLM配置"""
-        try:
-            st.session_state.glm_config = {}
-            return True
-        except Exception as e:
-            logger.error(f"清除GLM配置失败: {e}")
-            return False
-    
-    def test_connection(self) -> Dict[str, Any]:
-        """测试GLM连接"""
-        config = self.get_config_status()
-        if not config.get("configured", False):
-            return {"valid": False, "message": "GLM未配置"}
-        
-        # 模拟连接测试（实际项目中应该调用真实的GLM API）
-        try:
-            # 这里可以添加真实的GLM API测试逻辑
-            return {"valid": True, "message": "连接测试成功"}
-        except Exception as e:
-            return {"valid": False, "message": f"连接测试失败: {str(e)}"}
-    
-    def clear_cache(self):
-        """清除缓存"""
-        self._config_cache = {}
-        self._cache_timestamp = 0
+#     def clear_cache(self):
+#         """清除缓存"""
+#         self._config_cache = {}
+#         self._cache_timestamp = 0
 
-def get_glm_config_status():
-    """获取GLM配置状态（向后兼容）"""
-    if not hasattr(st.session_state, 'glm_config_manager'):
-        st.session_state.glm_config_manager = GLMConfigManager()
-    return st.session_state.glm_config_manager.get_config_status()
+# def get_glm_config_status():
+#     """获取GLM配置状态（向后兼容）"""
+#     if not hasattr(st.session_state, 'glm_config_manager'):
+#         st.session_state.glm_config_manager = GLMConfigManager()
+#     return st.session_state.glm_config_manager.get_config_status()
 
 def handle_api_error(response, operation_name: str = "操作") -> bool:
     
@@ -357,8 +410,10 @@ def handle_api_error(response, operation_name: str = "操作") -> bool:
         
         # 根据错误内容判断错误类型
         error_type = "general"
-        if "glm" in error_message.lower() or "api" in error_message.lower():
-            error_type = "glm_config"
+        # if "glm" in error_message.lower() or "api" in error_message.lower():
+        #     error_type = "glm_config"
+        if "api" in error_message.lower():
+            error_type = "api_error"
         elif "upload" in error_message.lower() or "file" in error_message.lower():
             error_type = "upload"
         elif "chunk" in error_message.lower() or "分块" in error_message.lower():
@@ -398,7 +453,6 @@ def build_chunking_config(strategy: str, chunk_length: int, ppl_threshold: float
     
     return config
 
-# 自定义指标卡片样式
 def style_metric_cards(background_color="#FFFFFF", border_left_color="#0078ff"):
     st.markdown(
         f"""
@@ -459,7 +513,6 @@ def create_quality_badge(score, thresholds=(0.7, 0.5)):
         return f'<span class="quality-indicator quality-fair">一般 {score:.2f}</span>'
 
 def optimize_plotly_chart(fig, height=400):
-    """优化Plotly图表性能和样式"""
     fig.update_layout(
         height=height,
         margin=dict(l=20, r=20, t=40, b=20),
@@ -477,7 +530,6 @@ def optimize_plotly_chart(fig, height=400):
     )
     return fig
 
-# 初始化会话状态
 if "config" not in st.session_state:
     st.session_state.config = {
         "milvus": {
@@ -500,12 +552,12 @@ if "config" not in st.session_state:
         "data": {
             "data_location": ""
         },
-        "chunking": {  # 添加默认分块配置
+        "chunking": {  
             "strategy": "traditional",
             "chunk_length": 512,
             "overlap": 50
         },
-        "multimodal": {  # 添加多模态配置
+        "multimodal": {  
             "enable_image": False,
             "clip_model": "ViT-B/32",
             "image_formats": ["jpg", "jpeg", "png", "bmp"]
@@ -515,112 +567,108 @@ if "config" not in st.session_state:
 if "last_search" not in st.session_state:
     st.session_state.last_search = None
 
-# GLM配置管理（前置到页面顶部）
-if not hasattr(st.session_state, 'glm_config_manager'):
-    st.session_state.glm_config_manager = GLMConfigManager()
+# if not hasattr(st.session_state, 'glm_config_manager'):
+#     st.session_state.glm_config_manager = GLMConfigManager()
 
-glm_manager = st.session_state.glm_config_manager
-ui_state = glm_manager.get_config_ui_state()
+# glm_manager = st.session_state.glm_config_manager
+# ui_state = glm_manager.get_config_ui_state()
 
-# 根据配置状态决定是否展开
-with st.expander("🤖 GLM-4.5-flash 配置 - 高级分块功能必需", expanded=ui_state["should_expand"]):
-    # 显示状态消息
-    if ui_state["status_type"] == "warning":
-        st.warning(ui_state["status_message"])
-        st.info("💡 请先配置GLM-4.5-flash模型以启用完整功能")
-    else:
-        st.success(ui_state["status_message"])
+# with st.expander("🤖 GLM-4.5-flash 配置 - 高级分块功能必需", expanded=ui_state["should_expand"]):
+#     # 显示状态消息
+#     if ui_state["status_type"] == "warning":
+#         st.warning(ui_state["status_message"])
+#         st.info("💡 请先配置GLM-4.5-flash模型以启用完整功能")
+#     else:
+#         st.success(ui_state["status_message"])
     
-    col_glm1, col_glm2 = st.columns(2)
+#     col_glm1, col_glm2 = st.columns(2)
     
-    with col_glm1:
-        st.markdown("**当前GLM配置状态**")
-        if ui_state["is_configured"]:
-            st.success("✅ GLM已配置")
-            config_preview = ui_state["config_preview"]
-            st.write(f"- 模型: {config_preview.get('model', 'N/A')}")
-            st.write(f"- API密钥: {config_preview.get('api_key_preview', 'N/A')}")
-            if config_preview.get("last_validated") != "N/A":
-                st.write(f"- 最后验证：{config_preview.get('last_validated', 'N/A')}")
+#     with col_glm1:
+#         st.markdown("**当前GLM配置状态**")
+#         if ui_state["is_configured"]:
+#             st.success("✅ GLM已配置")
+#             config_preview = ui_state["config_preview"]
+#             st.write(f"- 模型: {config_preview.get('model', 'N/A')}")
+#             st.write(f"- API密钥: {config_preview.get('api_key_preview', 'N/A')}")
+#             if config_preview.get("last_validated") != "N/A":
+#                 st.write(f"- 最后验证：{config_preview.get('last_validated', 'N/A')}")
             
-            # 连接测试按钮
-            if st.button("🔍 测试连接", key="test_glm_connection_top"):
-                with st.spinner("测试GLM连接..."):
-                    test_result = glm_manager.test_connection()
-                    if test_result.get("valid", False):
-                        st.success(f"✅ {test_result.get('message', '连接成功')}")
-                    else:
-                        st.error(f"❌ {test_result.get('message', '连接失败')}")
+#             # 连接测试按钮
+#             if st.button("🔍 测试连接", key="test_glm_connection_top"):
+#                 with st.spinner("测试GLM连接..."):
+#                     test_result = glm_manager.test_connection()
+#                     if test_result.get("valid", False):
+#                         st.success(f"✅ {test_result.get('message', '连接成功')}")
+#                     else:
+#                         st.error(f"❌ {test_result.get('message', '连接失败')}")
             
-            # 清除配置按钮
-            if st.button("🗑️ 清除配置", key="clear_glm_config_top"):
-                with st.spinner("清除GLM配置..."):
-                    if glm_manager.clear_config():
-                        st.success("✅ GLM配置已清除")
-                        st.rerun()
-                    else:
-                        st.error("❌ 清除配置失败")
-        else:
-            st.error("❌ GLM未配置")
+#             # 清除配置按钮
+#             if st.button("🗑️ 清除配置", key="clear_glm_config_top"):
+#                 with st.spinner("清除GLM配置..."):
+#                     if glm_manager.clear_config():
+#                         st.success("✅ GLM配置已清除")
+#                         st.rerun()
+#                     else:
+#                         st.error("❌ 清除配置失败")
+#         else:
+#             st.error("❌ GLM未配置")
     
-    with col_glm2:
-        st.markdown("**GLM-4.5-flash 配置**")
+#     with col_glm2:
+#         st.markdown("**GLM-4.5-flash 配置**")
         
-        # GLM配置表单（简化版）
-        with st.form("glm_config_form_top"):
-            model_name = st.text_input(
-                "模型名称",
-                value="glm-4.5-flash",
-                help="GLM模型名称，默认为glm-4.5-flash"
-            )
+#         # GLM配置表单（简化版）
+#         with st.form("glm_config_form_top"):
+#             model_name = st.text_input(
+#                 "模型名称",
+#                 value="glm-4.5-flash",
+#                 help="GLM模型名称，默认为glm-4.5-flash"
+#             )
             
-            api_key = st.text_input(
-                "智谱AI API密钥",
-                type="password",
-                help="请输入您的智谱AI API密钥",
-                placeholder="请输入API密钥..."
-            )
+#             api_key = st.text_input(
+#                 "智谱AI API密钥",
+#                 type="password",
+#                 help="请输入您的智谱AI API密钥",
+#                 placeholder="请输入API密钥..."
+#             )
             
-            # API密钥验证按钮
-            col_validate, col_save = st.columns(2)
+#             # API密钥验证按钮
+#             col_validate, col_save = st.columns(2)
             
-            with col_validate:
-                validate_clicked = st.form_submit_button("🔍 验证密钥")
+#             with col_validate:
+#                 validate_clicked = st.form_submit_button("🔍 验证密钥")
             
-            with col_save:
-                save_clicked = st.form_submit_button("💾 保存配置", type="primary")
+#             with col_save:
+#                 save_clicked = st.form_submit_button("💾 保存配置", type="primary")
             
-            if validate_clicked:
-                if not api_key:
-                    st.error("请输入API密钥")
-                else:
-                    with st.spinner("验证API密钥..."):
-                        # 简单的API密钥格式验证
-                        if len(api_key) < 10:
-                            st.error("❌ API密钥格式不正确，长度过短")
-                        elif not api_key.strip():
-                            st.error("❌ API密钥不能为空")
-                        else:
-                            st.success("✅ API密钥格式验证通过")
+#             if validate_clicked:
+#                 if not api_key:
+#                     st.error("请输入API密钥")
+#                 else:
+#                     with st.spinner("验证API密钥..."):
+#                         # 简单的API密钥格式验证
+#                         if len(api_key) < 10:
+#                             st.error("❌ API密钥格式不正确，长度过短")
+#                         elif not api_key.strip():
+#                             st.error("❌ API密钥不能为空")
+#                         else:
+#                             st.success("✅ API密钥格式验证通过")
             
-            if save_clicked:
-                if not model_name or not api_key:
-                    st.error("请填写模型名称和API密钥")
-                else:
-                    with st.spinner("保存GLM配置..."):
-                        if glm_manager.save_config(model_name, api_key):
-                            st.success("✅ GLM配置保存成功")
-                            st.info("🔄 GLM配置已激活，高级分块功能现在可用")
-                            time.sleep(0.5)
-                            st.rerun()
-                        else:
-                            st.error("❌ GLM配置保存失败")
+#             if save_clicked:
+#                 if not model_name or not api_key:
+#                     st.error("请填写模型名称和API密钥")
+#                 else:
+#                     with st.spinner("保存GLM配置..."):
+#                         if glm_manager.save_config(model_name, api_key):
+#                             st.success("✅ GLM配置保存成功")
+#                             st.info("🔄 GLM配置已激活，高级分块功能现在可用")
+#                             time.sleep(0.5)
+#                             st.rerun()
+#                         else:
+#                             st.error("❌ GLM配置保存失败")
 
-# 侧边栏快速状态
 with st.sidebar:
     st.header("🚀 系统快速状态")
     
-    # 快速状态检查
     status_response = safe_request("GET", f"{BACKEND_URL}/system/status", timeout=3)
     if status_response and status_response.status_code == 200:
         try:
@@ -652,19 +700,19 @@ with st.sidebar:
             st.write(f"📊 聚类服务: {'✅' if clustering_ok else '❌'}")
             
             # GLM状态显示
-            if hasattr(st.session_state, 'glm_config_manager'):
-                sidebar_glm_manager = st.session_state.glm_config_manager
-            else:
-                sidebar_glm_manager = GLMConfigManager()
-                st.session_state.glm_config_manager = sidebar_glm_manager
+            # if hasattr(st.session_state, 'glm_config_manager'):
+            #     sidebar_glm_manager = st.session_state.glm_config_manager
+            # else:
+            #     sidebar_glm_manager = GLMConfigManager()
+            #     st.session_state.glm_config_manager = sidebar_glm_manager
             
-            sidebar_glm_status = sidebar_glm_manager.get_config_status()
-            if sidebar_glm_status.get("configured", False):
-                st.markdown("**GLM配置:**")
-                st.write(f"🤖 {sidebar_glm_status.get('model_name', 'N/A')}")
-                st.write(f"🔑 已配置API密钥")
-            else:
-                st.info("🤖 GLM未配置")
+            # sidebar_glm_status = sidebar_glm_manager.get_config_status()
+            # if sidebar_glm_status.get("configured", False):
+            #     st.markdown("**GLM配置:**")
+            #     st.write(f"🤖 {sidebar_glm_status.get('model_name', 'N/A')}")
+            #     st.write(f"🔑 已配置API密钥")
+            # else:
+            #     st.info("🤖 GLM未配置")
         except json.JSONDecodeError:
             st.error("❌ 响应格式错误")
     else:
@@ -674,7 +722,7 @@ with st.sidebar:
     
     st.markdown("---")
     
-    # 快速操作
+    
     st.markdown("**快速操作**")
     if st.button("🔄 刷新状态", key="sidebar_refresh"):
         st.rerun()
@@ -770,9 +818,9 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
         st.subheader("文本切分配置")
         
         # 添加GLM依赖提示
-        glm_status = glm_manager.get_config_status()
-        if not glm_status.get("configured", False):
-            st.warning("⚠️ 注意：meta_ppl、msp、margin_sampling策略需要GLM配置才能正常工作")
+        # glm_status = glm_manager.get_config_status()
+        # if not glm_status.get("configured", False):
+        #     st.warning("⚠️ 注意：meta_ppl、msp、margin_sampling策略需要GLM配置才能正常工作")
         
         col6, col7, col8 = st.columns(3)
 
@@ -798,7 +846,6 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
                 help="选择文本切分策略...",
                 key="strategy_selector"
             )
-            # 在表单内直接更新配置
             st.session_state.chunking_config["strategy"] = chunking_strategy
 
         with col7:
@@ -810,11 +857,9 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
                 help="文本块的最大长度",
                 key="chunk_length_input"
             )
-            # 更新配置
             st.session_state.chunking_config["chunk_length"] = chunk_length
 
         with col8:
-            # 根据当前策略动态显示参数
             current_strategy = st.session_state.chunking_config["strategy"]
             
             if current_strategy == "meta_ppl":
@@ -874,40 +919,39 @@ with st.expander("⚙️ 配置参数设置", expanded=True):
                 )
                 st.session_state.chunking_config["overlap"] = overlap
         
-        # 为所有变量提供默认值，确保在build_chunking_config中使用时都有定义
         ppl_threshold = st.session_state.chunking_config.get("ppl_threshold", 0.3)
         confidence_threshold = st.session_state.chunking_config.get("confidence_threshold", 0.7)
         similarity_threshold = st.session_state.chunking_config.get("similarity_threshold", 0.8)
         overlap = st.session_state.chunking_config.get("overlap", 50)
         
-        st.subheader("GLM配置状态（用于高级分块策略）")
+        # st.subheader("GLM配置状态（用于高级分块策略）")
         
-        # 获取当前GLM配置状态
-        if hasattr(st.session_state, 'glm_config_manager'):
-            form_glm_manager = st.session_state.glm_config_manager
-        else:
-            form_glm_manager = GLMConfigManager()
-            st.session_state.glm_config_manager = form_glm_manager
+        # # 获取当前GLM配置状态
+        # if hasattr(st.session_state, 'glm_config_manager'):
+        #     form_glm_manager = st.session_state.glm_config_manager
+        # else:
+        #     form_glm_manager = GLMConfigManager()
+        #     st.session_state.glm_config_manager = form_glm_manager
         
-        form_ui_state = form_glm_manager.get_config_ui_state()
+        # form_ui_state = form_glm_manager.get_config_ui_state()
         
         col_glm_status1, col_glm_status2 = st.columns(2)
         
-        with col_glm_status1:
-            st.markdown("**当前GLM配置状态**")
-            if form_ui_state["is_configured"]:
-                st.success("✅ GLM已配置")
-                config_preview = form_ui_state["config_preview"]
-                st.write(f"- 模型: {config_preview.get('model', 'N/A')}")
-                st.write(f"- API密钥: {config_preview.get('api_key_preview', 'N/A')}")
-            else:
-                st.error("❌ GLM未配置")
+        # with col_glm_status1:
+        #     st.markdown("**当前GLM配置状态**")
+        #     if form_ui_state["is_configured"]:
+        #         st.success("✅ GLM已配置")
+        #         config_preview = form_ui_state["config_preview"]
+        #         st.write(f"- 模型: {config_preview.get('model', 'N/A')}")
+        #         st.write(f"- API密钥: {config_preview.get('api_key_preview', 'N/A')}")
+        #     else:
+        #         st.error("❌ GLM未配置")
         
-        with col_glm_status2:
-            if form_ui_state["is_configured"]:
-                st.success("🎉 高级分块功能已可用")
-            else:
-                st.warning("⚠️ 高级分块功能不可用，请先配置GLM")
+        # with col_glm_status2:
+        #     if form_ui_state["is_configured"]:
+        #         st.success("🎉 高级分块功能已可用")
+        #     else:
+        #         st.warning("⚠️ 高级分块功能不可用，请先配置GLM")
 
         st.subheader("多模态配置")
         col9, col10 = st.columns(2)
@@ -1023,8 +1067,7 @@ with st.expander("📁 上传数据文件区", expanded=True):
                     response = requests.post(
                         f"{BACKEND_URL}/upload",
                         files=files,  
-                        data=data,    
-                        timeout=60
+                        data=data
                     )
                     
                     if response.status_code == 200:
@@ -1119,8 +1162,8 @@ with st.expander("📁 上传数据文件区", expanded=True):
                         st.balloons()
                         
                         # 2. 更新配置文件中的 data_location 字段
-                        if 'folder_name' in locals() and folder_name:
-                            config_update = {"data": {"data_location": f"./data/upload/{folder_name}"}}
+                        if 'folder_name' in locals() and folder_names:
+                            config_update = {"data": {"data_location": f"./data/upload/{folder_names}"}}
                             st.session_state.config["data"] = config_update["data"]
                             
                             # 发送更新请求
@@ -1146,9 +1189,8 @@ with st.expander("📁 上传数据文件区", expanded=True):
 
 st.markdown("---")
 
-# 检索与可视
-with st.expander("🔎 检索与可视", expanded=True):
-    question = st.text_input("请输入检索问", key="search_question")
+with st.expander("🔎 检索与可视化", expanded=True):
+    question = st.text_input("请输入检索问题", key="search_question")
     col_choice = st.selectbox(
         "聚类算法", 
         ["hdbscan", "kmeans"],
@@ -1171,7 +1213,7 @@ with st.expander("🔎 检索与可视", expanded=True):
                 try:
                     # 1. 执行搜索
                     search_response = requests.post(
-                        "http://localhost:8509/search",
+                        "http://localhost:8505/search",
                         json={
                             "question": question, 
                             "col_choice": col_choice,
@@ -1665,7 +1707,7 @@ with st.expander("🔎 检索与可视", expanded=True):
                         # 2. 执行可视化（仅限HDBSCAN
                         if col_choice.lower() == "hdbscan" and "clusters" in search_result and search_result["clusters"]:
                             vis_response = requests.post(
-                                "http://localhost:8509/visualization",
+                                f"{BACKEND_URL}/visualization",
                                 json={"collection_name": st.session_state.config["milvus"]["collection_name"]}
                             )
                             
@@ -1714,7 +1756,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
     
     # 获取可用策略和状态
     try:
-        strategies_response = requests.get("http://localhost:8509/chunking/strategies")
+        strategies_response = requests.get(f"{BACKEND_URL}/chunking/strategies")
         if strategies_response.status_code == 200:
             strategies_data = strategies_response.json().get("strategies", [])
             
@@ -1773,7 +1815,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
             llm_required_strategies = ["msp", "meta_ppl"]
             if test_strategy in llm_required_strategies:
                 try:
-                    configs_response = requests.get("http://localhost:8509/llm/configs")
+                    configs_response = requests.get("http://localhost:8505/llm/configs")
                     if configs_response.status_code == 200:
                         summary = configs_response.json().get("summary", {})
                         if not summary.get("active_config"):
@@ -1799,7 +1841,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
                         test_params.update({"similarity_threshold": similarity_threshold})
                     
                     response = requests.post(
-                        "http://localhost:8509/chunking/process",
+                        "http://localhost:8505/chunking/process",
                         json={
                             "text": test_text,
                             "strategy": test_strategy,
@@ -1831,12 +1873,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
                         st.markdown("**切分结果:**")
                         for i, chunk in enumerate(chunks):
                             st.markdown(f"**文本块 #{i+1} (长度: {len(chunk)}):**")
-                            if i == 0:  # 默认显示第一个块
-                                st.text_area("", value=chunk, height=100, key=f"chunk_{i}", label_visibility="collapsed")
-                            else:
-                                # 使用checkbox控制显示
-                                if st.checkbox(f"显示文本块 #{i+1}", key=f"show_chunk_{i}"):
-                                    st.text_area("", value=chunk, height=100, key=f"chunk_display_{i}", label_visibility="collapsed")
+                            st.text_area("", value=chunk, height=100, key=f"chunk_{i}", label_visibility="collapsed")
                     else:
                         error_data = response.json() if response.headers.get('content-type') == 'application/json' else {}
                         error_msg = error_data.get("message", response.text)
@@ -1859,7 +1896,7 @@ with st.expander("🖼️ 以文搜图功能", expanded=False):
                 with st.spinner("正在搜索图像..."):
                     try:
                         response = requests.post(
-                            "http://localhost:8509/multimodal/text_to_image_search",
+                            "http://localhost:8505/multimodal/text_to_image_search",
                             json={
                                 "query_text": search_text,
                                 "top_k": search_top_k,
@@ -1902,7 +1939,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         with col_monitor1:
             if st.button("🔄 刷新性能数据", key="refresh_perf_btn"):
                 try:
-                    response = requests.get("http://localhost:8509/performance/current")
+                    response = requests.get("http://localhost:8505/performance/current")
                     if response.status_code == 200:
                         metrics = response.json().get("metrics", {})
                         
@@ -1962,7 +1999,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                 @st.cache_data(ttl=refresh_seconds)
                 def get_performance_data():
                     try:
-                        return requests.get("http://localhost:8509/performance/current").json()
+                        return requests.get("http://localhost:8505/performance/current").json()
                     except:
                         return {}
                 
@@ -1978,7 +2015,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
             # 导出监控报告
             if st.button("📊 导出性能报告", key="export_performance_report"):
                 try:
-                    response = requests.get("http://localhost:8509/performance/export_report")
+                    response = requests.get("http://localhost:8505/performance/export_report")
                     if response.status_code == 200:
                         report_data = response.json()
                         st.download_button(
@@ -2085,7 +2122,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                     with st.spinner("正在启动压力测试..."):
                         try:
                             response = requests.post(
-                                "http://localhost:8509/load-test/start",
+                                "http://localhost:8505/load-test/start",
                                 json=test_params,
                                 timeout=30  # 添加超时设置
                             )
@@ -2149,7 +2186,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         
         # 获取测试列表
         try:
-            response = requests.get("http://localhost:8509/load-test/list")
+            response = requests.get("http://localhost:8505/load-test/list")
             if response.status_code == 200:
                 tests_data = response.json()
                 tests = tests_data.get("tests", [])
@@ -2188,7 +2225,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                             with col_info2:
                                 # 获取Web界面URL
                                 try:
-                                    url_response = requests.get(f"http://localhost:8509/load-test/web-url/{test_id}")
+                                    url_response = requests.get(f"http://localhost:8505/load-test/web-url/{test_id}")
                                     if url_response.status_code == 200:
                                         web_url = url_response.json().get("web_url")
                                         if web_url:
@@ -2200,7 +2237,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                                 if status == "running":
                                     if st.button(f"⏹️ 停止测试", key=f"stop_{test_id}"):
                                         try:
-                                            stop_response = requests.post(f"http://localhost:8509/load-test/stop/{test_id}")
+                                            stop_response = requests.post(f"http://localhost:8505/load-test/stop/{test_id}")
                                             if stop_response.status_code == 200:
                                                 st.success("测试已停止")
                                                 st.rerun()
@@ -2221,7 +2258,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         
         if st.button("🔄 刷新测试历史", key="refresh_test_history"):
             try:
-                response = requests.get("http://localhost:8509/testing/list_tests")
+                response = requests.get("http://localhost:8505/testing/list_tests")
                 if response.status_code == 200:
                     tests = response.json().get("tests", [])
                     
@@ -2280,7 +2317,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
         if st.button("📋 获取系统状", key="system_status_btn"):
             try:
                 with st.spinner("正在检查系统状态.."):
-                    response = requests.get("http://localhost:8509/system/status")
+                    response = requests.get(f"{BACKEND_URL}/system/status")
                     if response.status_code == 200:
                         status_data = response.json()
                         health = status_data.get("health", {})
@@ -2340,18 +2377,18 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         col_ext1, col_ext2 = st.columns(2)
                         
                         with col_ext1:
-                            # LLM配置状
-                            llm_config = status.get("llm_config", {})
-                            llm_config_status = "✅ 可用" if llm_config.get("available") else "❌ 不可用"
-                            st.write(f"🤖 LLM配置: {llm_config_status}")
-                            if llm_config.get("available"):
-                                active_config = llm_config.get("active_config")
-                                if active_config:
-                                    st.write(f"  - 激活配置: {active_config.get('id', 'N/A')}")
-                                    st.write(f"  - 提供商: {active_config.get('provider', 'N/A')}")
-                                else:
-                                    st.write("  - 激活配置: 无")
-                                st.write(f"  - 总配置数: {llm_config.get('total_configs', 0)}")
+                            # # LLM配置状
+                            # llm_config = status.get("llm_config", {})
+                            # llm_config_status = "✅ 可用" if llm_config.get("available") else "❌ 不可用"
+                            # st.write(f"🤖 LLM配置: {llm_config_status}")
+                            # if llm_config.get("available"):
+                            #     active_config = llm_config.get("active_config")
+                            #     if active_config:
+                            #         st.write(f"  - 激活配置: {active_config.get('id', 'N/A')}")
+                            #         st.write(f"  - 提供商: {active_config.get('provider', 'N/A')}")
+                            #     else:
+                            #         st.write("  - 激活配置: 无")
+                            #     st.write(f"  - 总配置数: {llm_config.get('total_configs', 0)}")
                             
                             # 搜索优化状
                             search_opt = status.get("search_optimization", {})
@@ -2393,7 +2430,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
         if st.button("🧪 运行集成测试", key="integration_test_btn"):
             try:
                 with st.spinner("正在运行系统集成测试..."):
-                    response = requests.post("http://localhost:8509/system/integration_test")
+                    response = requests.post("http://localhost:8505/system/integration_test")
                     if response.status_code == 200:
                         test_data = response.json()
                         test_results = test_data.get("test_results", {})
@@ -2456,7 +2493,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
         if st.button("🔄 重新加载配置", key="reload_config_btn"):
             try:
                 with st.spinner("正在重新加载系统配置..."):
-                    response = requests.post("http://localhost:8509/system/reload_config")
+                    response = requests.post("http://localhost:8505/system/reload_config")
                     if response.status_code == 200:
                         st.success("系统配置已重新加")
                         st.info("所有模块已重新初始化，新配置已生效")
@@ -2469,7 +2506,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
         if st.button("📊 导出系统报告", key="export_report_btn"):
             try:
                 # 获取系统状
-                status_response = requests.get("http://localhost:8509/system/status")
+                status_response = requests.get(f"{BACKEND_URL}/system/status")
                 if status_response.status_code == 200:
                     status_data = status_response.json()
                     

@@ -4,7 +4,7 @@
 移除所有不必要的管理器和复杂架构
 """
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import shutil
@@ -15,7 +15,14 @@ from typing import List, Dict, Any, Optional
 import time
 from datetime import datetime
 from pydantic import BaseModel
+# 在文件开头添加
+from dataBuilder.chunking.meta_chunking import DependencyChecker
+from dataBuilder.chunking.chunk_strategies import ChunkingManager
 
+# 全局变量
+CHUNKING_AVAILABLE = True
+chunking_manager = None
+dependency_checker = None
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -62,7 +69,32 @@ def save_config():
     except Exception as e:
         logger.error(f"配置文件保存失败: {e}")
         return False
-
+class CollectionStateManager:
+    """集合状态管理器"""
+    
+    def __init__(self):
+        self._collection_states = {}
+        self._state_lock = {}
+    
+    def ensure_collection_loaded(self, collection_name: str) -> bool:
+        """确保集合已加载"""
+        try:
+            # 检查集合是否存在
+            if not self._collection_exists(collection_name):
+                logger.info(f"集合 {collection_name} 不存在，尝试创建")
+                return self._create_collection_if_needed(collection_name)
+            
+            # 检查集合是否已加载
+            if not self._is_collection_loaded(collection_name):
+                logger.info(f"集合 {collection_name} 未加载，开始加载")
+                return self.load_collection_with_retry(collection_name)
+            
+            logger.info(f"集合 {collection_name} 已加载")
+            return True
+            
+        except Exception as e:
+            logger.error(f"确保集合加载失败: {e}")
+            return False
 # 请求模型
 class MilvusConfig(BaseModel):
     host: str
@@ -228,12 +260,42 @@ class InsertProgressTracker:
             logger.info(f"清理旧的跟踪数据: {tracking_id}")
 #全局状态
 _progress_tracker = None
+_collection_manager = None
+def initialize_chunking_services():
+    """初始化分块服务"""
+    global chunking_manager, dependency_checker
+    
+    if not CHUNKING_AVAILABLE:
+        logger.warning("分块模块不可用，跳过初始化")
+        return False
+    
+    try:
+        # 初始化依赖检查器
+        from dataBuilder.chunking.meta_chunking import DependencyChecker
+        dependency_checker = DependencyChecker()
+        
+        # 初始化分块管理器，传入配置
+        from dataBuilder.chunking.chunk_strategies import ChunkingManager
+        chunking_manager = ChunkingManager(config=config)
+        
+        logger.info("分块服务初始化成功")
+        logger.info(f"PPL分块可用性: {dependency_checker.is_ppl_chunking_available()}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"分块服务初始化失败: {e}")
+        return False
 
 @app.on_event("startup")
 async def startup_event():
     """应用启动时的初始化"""
+    global _collection_manager
     logger.info("启动简化版Milvus API服务")
     _progress_tracker = InsertProgressTracker()
+    _collection_manager = CollectionStateManager()
+    if CHUNKING_AVAILABLE:
+            initialize_chunking_services()
 
     load_config()
 
@@ -428,15 +490,16 @@ async def upload_file(file: UploadFile = File(...), folder_name: str = Form(None
                 tracking_id = _progress_tracker.start_tracking(len(uploaded_files))
                 logger.info(f"开始跟踪向量化进度: {tracking_id}")
             
-            from System.new_start import fast_vector_database_build_from_config
-            
+            # from System.new_start import fast_vector_database_build_from_config
+            from System.start import Cre_VectorDataBaseStart_from_config
             start_time = time.time()
             
             if tracking_id:
                 _progress_tracker.update_progress(tracking_id, 0, 0, "开始向量化存储")
             
             try:
-                result = fast_vector_database_build_from_config(config)
+                # result = fast_vector_database_build_from_config(config)
+                result = Cre_VectorDataBaseStart_from_config(config)
                 end_time = time.time()
                 
                 logger.info(f"向量化存储完成，耗时: {end_time - start_time:.2f}秒")
@@ -554,18 +617,387 @@ async def search(request: SearchRequest):
 @app.get("/chunking/strategies")
 async def get_chunking_strategies():
     """获取分块策略"""
-    strategies = [
-        {"name": "fixed", "description": "固定长度分块", "default_size": 500},
-        {"name": "sentence", "description": "句子分块", "default_size": 0},
-        {"name": "paragraph", "description": "段落分块", "default_size": 0}
-    ]
-    return {"strategies": strategies}
+    try:
+        # 尝试从分块模块获取策略列表
+        try:
+            from dataBuilder.chunking.chunk_strategies import get_available_strategies
+            strategies = get_available_strategies()
 
+            # 检查GLM配置状态，影响高级策略的可用性
+            # glm_configured = False
+            # try:
+            #     active_llm = config.get('active_llm_config', 'glm_default')
+            #     llm_configs = config.get('llm_configs', {})
+            #     if active_llm in llm_configs:
+            #         api_key = llm_configs[active_llm].get('api_key', '')
+            #         glm_configured = bool(api_key)
+            # except Exception:
+            #     pass
+            
+            # 为每个策略添加可用性信息
+            # for strategy in strategies:
+            #     strategy_name = strategy.get("name", "")
+            #     if strategy_name in ["meta_ppl", "margin_sampling", "msp"]:
+            #         strategy["requires_glm"] = True
+            #         strategy["available"] = glm_configured
+            #         if not glm_configured:
+            #             strategy["unavailable_reason"] = "需要配置GLM-4.5-flash模型"
+            #     else:
+            #         strategy["requires_glm"] = False
+            #         strategy["available"] = True
+            # 所有策略都可用，不再依赖GLM
+            for strategy in strategies:
+                strategy["requires_glm"] = False
+                strategy["available"] = True
+            return {
+                "strategies": strategies,
+                # "glm_configured": glm_configured,
+                "total_strategies": len(strategies),
+                "available_strategies": len([s for s in strategies if s.get("available", True)])
+            }
+            
+        except ImportError:
+            # 如果分块模块不可用，返回基础策略
+            logger.warning("分块策略模块不可用，返回基础策略列表")
+            strategies = [
+                {
+                    "name": "traditional",
+                    "display_name": "传统固定切分",
+                    "description": "基于固定长度和重叠的传统切分方法",
+                    "requires_glm": False,
+                    "available": True,
+                    "default_params": {
+                        "chunk_size": 512,
+                        "overlap": 50
+                    }
+                }
+            ]
+            
+            return {
+                "strategies": strategies,
+                # "glm_configured": False,
+                "total_strategies": len(strategies),
+                "available_strategies": len(strategies),
+                "warning": "高级分块策略模块不可用"
+            }
+            
+    except Exception as e:
+        logger.error(f"获取分块策略失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取分块策略失败: {str(e)}"
+        )
+import re
+
+def normalize_params(strategy: str, params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    标准化参数名称，确保前端参数与后端期望的参数名称一致
+    
+    参数:
+        strategy: 分块策略名称
+        params: 原始参数字典
+    
+    返回:
+        标准化后的参数字典
+    """
+    normalized = params.copy()
+    normalized.pop('strategy', None)  # 确保不会包含 strategy
+    
+    # 统一 chunk_size 和 chunk_length 参数
+    if 'chunk_size' in normalized and 'chunk_length' not in normalized:
+        normalized['chunk_length'] = normalized['chunk_size']
+    
+    # PPL 策略参数映射: threshold -> ppl_threshold
+    if strategy == "meta_ppl":
+        if 'threshold' in normalized and 'ppl_threshold' not in normalized:
+            normalized['ppl_threshold'] = normalized['threshold']
+    
+    # 为高级策略添加默认的 chunk_length 参数
+    if strategy in ["margin_sampling", "msp"] and 'chunk_length' not in normalized:
+        normalized['chunk_length'] = normalized.get('chunk_size', 512)
+    
+    # 确保语言参数存在
+    if 'language' not in normalized:
+        normalized['language'] = 'zh'
+    
+    logger.debug(f"参数标准化: {strategy} - 原始: {params} -> 标准化: {normalized}")
+    return normalized
+
+# @app.post("/chunking/process")
+# async def process_chunking(request: Request):
+#     """
+#     文本切分处理
+#     """
+#     try:
+#         data = await request.json()
+#         text = data.get("text", "")
+#         strategy = data.get("strategy", "traditional")
+#         params = data.get("params", {})
+        
+#         if not text:
+#             raise HTTPException(status_code=400, detail="文本不能为空")
+        
+#         logger.info(f"收到文本切分请求: 策略={strategy}, 文本长度={len(text)}, 原始参数={params}")
+        
+#         # 标准化参数名称
+#         normalized_params = normalize_params(strategy, params)
+        
+#         # 导入文本切分模块
+#         try:
+#             from dataBuilder.chunking.chunk_strategies import ChunkingManager
+            
+#             # 传递全局配置信息给ChunkingManager
+#             chunking_manager = ChunkingManager(config=config)
+#             chunks = chunking_manager.chunk_text(text, strategy, **normalized_params)
+            
+#             logger.info(f"分块处理成功: 策略={strategy}, 生成块数={len(chunks)}")
+            
+#             return {
+#                 "chunks": chunks,
+#                 "chunk_count": len(chunks),
+#                 "strategy": strategy,
+#                 "params_used": normalized_params,
+#                 "status": "success"
+#             }
+            
+#         except ImportError as import_error:
+#             logger.warning(f"高级分块模块不可用: {import_error}, 使用简单分块")
+#             # 如果切分模块不可用，使用简单切分
+#             chunk_length = normalized_params.get("chunk_length", 512)
+#             overlap = normalized_params.get("overlap", 50)
+            
+#             chunks = []
+#             start = 0
+#             while start < len(text):
+#                 end = min(start + chunk_length, len(text))
+#                 chunk = text[start:end]
+#                 chunks.append(chunk)
+#                 start = end - overlap if end < len(text) else end
+            
+#             logger.info(f"简单分块完成: 生成块数={len(chunks)}")
+            
+#             return {
+#                 "chunks": chunks,
+#                 "chunk_count": len(chunks),
+#                 "strategy": "simple_fallback",
+#                 "params_used": normalized_params,
+#                 "status": "success",
+#                 "warning": "高级分块模块不可用，已降级到简单分块"
+#             }
+            
+#         except Exception as processing_error:
+#             logger.error(f"分块处理失败: {processing_error}")
+            
+#             # 尝试降级到简单分块
+#             try:
+#                 logger.info(f"尝试降级到简单分块: 策略={strategy}")
+#                 chunk_length = normalized_params.get("chunk_length", 512)
+#                 overlap = normalized_params.get("overlap", 50)
+                
+#                 chunks = []
+#                 start = 0
+#                 while start < len(text):
+#                     end = min(start + chunk_length, len(text))
+#                     chunk = text[start:end]
+#                     chunks.append(chunk)
+#                     start = end - overlap if end < len(text) else end
+                
+#                 logger.info(f"降级分块完成: 生成块数={len(chunks)}")
+                
+#                 return {
+#                     "chunks": chunks,
+#                     "chunk_count": len(chunks),
+#                     "strategy": f"{strategy}_fallback",
+#                     "params_used": normalized_params,
+#                     "status": "success",
+#                     "warning": f"策略 {strategy} 处理失败，已降级到简单分块",
+#                     "error_details": str(processing_error)
+#                 }
+                
+#             except Exception as fallback_error:
+#                 logger.error(f"降级分块也失败: {fallback_error}")
+#                 raise HTTPException(
+#                     status_code=500,
+#                     detail=f"分块处理失败，降级也失败: 原始错误={str(processing_error)}, 降级错误={str(fallback_error)}"
+#                 )
+        
+#     except HTTPException:
+#         # 重新抛出HTTP异常
+#         raise
+#     except Exception as e:
+#         logger.error(f"文本切分请求处理失败: {e}")
+#         import traceback
+#         logger.error(f"详细错误堆栈: {traceback.format_exc()}")
+#         raise HTTPException(
+#             status_code=500,
+#             detail=f"文本切分失败: {str(e)}"
+#         )
+
+@app.post("/chunking/process")
+async def process_chunking(request: Request):
+    """文本切分处理"""
+    try:
+        # 初始化依赖
+        if not CHUNKING_AVAILABLE:
+            raise HTTPException(status_code=503, detail="分块服务不可用")
+            
+        data = await request.json()
+        text = data.get("text", "")
+        strategy = data.get("strategy", "traditional")
+        params = data.get("params", {})
+        
+        # 参数标准化
+        normalized_params = normalize_params(strategy, params)
+        
+        # 记录开始时间
+        start_time = time.time()
+        
+        try:
+            # 使用ChunkingManager进行切分
+            if chunking_manager:
+                chunks = chunking_manager.chunk_text(text=text,strategy=strategy, **normalized_params)
+                processing_time = time.time() - start_time
+                
+                return {
+                    "success": True,
+                    "chunks": chunks,
+                    "chunk_count": len(chunks),
+                    "strategy": strategy,
+                    "actual_strategy": strategy,
+                    "params": normalized_params,
+                    "processing_time": processing_time,
+                    "status": "success",
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                # 降级处理
+                return handle_fallback_chunking(text, normalized_params)
+                
+        except Exception as processing_error:
+            logger.error(f"分块处理失败: {processing_error}")
+            # 尝试降级策略
+            if strategy == "meta_ppl":
+                logger.warning("PPL分块失败，降级到语义分块")
+                fallback_chunks = chunking_manager.chunk_text(text=text, strategy="semantic", **normalized_params) if chunking_manager else None
+                if fallback_chunks:
+                    processing_time = time.time() - start_time
+                    return {
+                        "success": True,
+                        "chunks": fallback_chunks,
+                        "chunk_count": len(fallback_chunks),
+                        "strategy": strategy,
+                        "actual_strategy": "semantic",
+                        "params": normalized_params,
+                        "processing_time": processing_time,
+                        "status": "success",
+                        "warning": "PPL分块失败，已降级到语义分块",
+                        "error_details": str(processing_error),
+                        "timestamp": datetime.now().isoformat()
+                    }
+            
+            return handle_fallback_chunking(text, normalized_params, str(processing_error))
+            
+    except Exception as e:
+        logger.error(f"分块处理失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+def handle_fallback_chunking(text: str, params: dict, error_msg: str = None):
+    """降级处理函数"""
+    chunk_length = params.get("chunk_length", 512)
+    overlap = params.get("overlap", 50)
+    
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = min(start + chunk_length, len(text))
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start = end - overlap if end < len(text) else end
+        
+    return {
+        "chunks": chunks,
+        "chunk_count": len(chunks),
+        "strategy": "traditional_fallback",
+        "params": params,
+        "status": "success",
+        "warning": "已降级到传统分块方法",
+        "error_details": error_msg
+    }
 @app.get("/system/status")
 async def system_status():
     """系统状态检查"""
     # 检查Milvus配置是否存在
     milvus_configured = bool(config.get("milvus", {}).get("host"))
+    
+    # 检查GLM配置状态
+    # glm_configured = False
+    # glm_model_name = None
+    # try:
+    #     active_llm = config.get('active_llm_config', 'glm_default')
+    #     llm_configs = config.get('llm_configs', {})
+    #     if active_llm in llm_configs:
+    #         api_key = llm_configs[active_llm].get('api_key', '')
+    #         glm_configured = bool(api_key)
+    #         glm_model_name = llm_configs[active_llm].get('model_name', 'glm-4.5-flash')
+    # except Exception:
+    #     pass
+    
+    # 检查分块系统状态
+    chunking_system_status = {
+        "available": True,
+        "basic_chunking": True,
+        "advanced_chunking": False,
+        "strategies_available": []
+    }
+    
+    try:
+        from dataBuilder.chunking.chunk_strategies import get_available_strategies
+        strategies = get_available_strategies()
+        chunking_system_status["advanced_chunking"] = True
+        chunking_system_status["strategies_available"] = [s.get("name", "") for s in strategies]
+    except ImportError:
+        chunking_system_status["strategies_available"] = ["traditional"]
+    except Exception as e:
+        logger.warning(f"检查分块系统状态失败: {e}")
+    
+    # 计算整体健康状态
+    health_score = 0
+    health_issues = []
+    
+    if config:
+        health_score += 25
+    else:
+        health_issues.append("配置文件未加载")
+    
+    if milvus_configured:
+        health_score += 25
+    else:
+        health_issues.append("Milvus未配置")
+    
+    if chunking_system_status["available"]:
+        health_score += 25
+    else:
+        health_issues.append("分块系统不可用")
+    
+    if chunking_system_status["advanced_chunking"]:
+        health_score += 15
+    else:
+        health_issues.append("高级分块功能不可用")
+    
+    # if glm_configured:
+    #     health_score += 10
+    # else:
+    #     health_issues.append("GLM未配置")
+    
+    # 确定整体状态
+    if health_score >= 80:
+        overall_status = "healthy"
+    elif health_score >= 60:
+        overall_status = "degraded"
+    else:
+        overall_status = "unhealthy"
     
     return {
         "system_status": "running",
@@ -574,18 +1006,25 @@ async def system_status():
         "upload_dir_exists": os.path.exists("data/upload"),
         "config_keys": list(config.keys()) if config else [],
         "health": {
-            "overall_status": "healthy" if config else "degraded"
+            "overall_status": overall_status,
+            "health_score": health_score,
+            "issues": health_issues
         },
         "status": {
             "milvus": {
-                "connected": milvus_configured
+                "connected": milvus_configured,
+                "host": config.get("milvus", {}).get("host", "未配置"),
+                "collection": config.get("milvus", {}).get("collection_name", "未配置")
             },
             "embedding_model": {
                 "available": milvus_configured
             },
-            "chunking_system": {
-                "available": True
-            }
+            "chunking_system": chunking_system_status
+            # "glm": {
+            #     "configured": glm_configured,
+            #     "model_name": glm_model_name,
+            #     "advanced_strategies_enabled": glm_configured
+            # }
         }
     }
 
@@ -614,66 +1053,254 @@ async def list_files():
         logger.error(f"列出文件失败: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/glm/config")
-async def get_glm_config():
-    """获取GLM配置"""
-    glm_config = config.get("glm", {})
-    return {"config": glm_config}
-
-@app.post("/glm/config")
-async def save_glm_config(request: dict):
-    """保存GLM配置"""
-    try:
-        if 'glm' not in config:
-            config['glm'] = {}
+# @app.get("/glm/config")
+# async def get_glm_config():
+#     """获取GLM配置状态"""
+#     try:
+#         # 获取当前活跃配置
+#         active_llm = config.get('active_llm_config', 'glm_default')
+#         llm_configs = config.get('llm_configs', {})
         
-        config['glm'].update(request)
+#         if active_llm in llm_configs:
+#             llm_config = llm_configs[active_llm]
+#             api_key = llm_config.get('api_key', '')
+            
+#             return {
+#                 "configured": bool(api_key),
+#                 "model_name": llm_config.get('model_name', 'glm-4.5-flash'),
+#                 "api_key_configured": bool(api_key),
+#                 "api_key_preview": f"***{api_key[-4:]}" if api_key and len(api_key) > 4 else None,
+#                 "last_validated": llm_config.get('last_validated'),
+#                 "is_active": True,
+#                 "config_id": active_llm
+#             }
+#         else:
+#             return {
+#                 "configured": False,
+#                 "model_name": None,
+#                 "api_key_configured": False,
+#                 "api_key_preview": None,
+#                 "last_validated": None,
+#                 "is_active": False,
+#                 "config_id": active_llm
+#             }
+            
+#     except Exception as e:
+#         logger.error(f"获取GLM配置失败: {e}")
+#         return {
+#             "configured": False,
+#             "error": str(e)
+#         }
+
+# @app.post("/glm/config")
+# async def save_glm_config(request: dict):
+#     """保存GLM配置到YAML文件"""
+#     try:
+#         model_name = request.get("model_name", "glm-4.5-flash")
+#         api_key = request.get("api_key", "")
         
-        if save_config():
-            logger.info("GLM配置保存成功")
-            return {"success": True, "message": "GLM配置保存成功"}
-        else:
-            raise HTTPException(status_code=500, detail="配置保存失败")
+#         if not api_key:
+#             raise HTTPException(status_code=400, detail="API密钥不能为空")
+        
+#         # 确保llm_configs结构存在
+#         if 'llm_configs' not in config:
+#             config['llm_configs'] = {}
+        
+#         # 获取当前活跃配置名
+#         active_llm = config.get('active_llm_config', 'glm_default')
+        
+#         # 更新配置
+#         from datetime import datetime
+#         current_time = datetime.now().isoformat()
+        
+#         config['llm_configs'][active_llm] = {
+#             'model_name': model_name,
+#             'api_key': api_key,
+#             'api_endpoint': 'https://open.bigmodel.cn/api/paas/v4/chat/completions',
+#             'provider': 'zhipu',
+#             'created_at': current_time,
+#             'last_validated': current_time
+#         }
+        
+#         # 设置活跃配置
+#         config['active_llm_config'] = active_llm
+        
+#         if save_config():
+#             logger.info(f"GLM配置保存成功: {active_llm}")
+#             return {
+#                 "success": True, 
+#                 "message": "GLM配置保存成功",
+#                 "config_id": active_llm,
+#                 "model_name": model_name
+#             }
+#         else:
+#             raise HTTPException(status_code=500, detail="配置保存失败")
             
-    except Exception as e:
-        logger.error(f"保存GLM配置失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+#     except Exception as e:
+#         logger.error(f"保存GLM配置失败: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/glm/config")
-async def clear_glm_config():
-    """清除GLM配置"""
+# @app.delete("/glm/config")
+# async def clear_glm_config():
+#     """清除GLM配置"""
+#     try:
+#         # 获取当前活跃配置
+#         active_llm = config.get('active_llm_config', 'glm_default')
+        
+#         if 'llm_configs' in config and active_llm in config['llm_configs']:
+#             # 清除API密钥和验证时间
+#             config['llm_configs'][active_llm]['api_key'] = None
+#             config['llm_configs'][active_llm]['last_validated'] = None
+            
+#             if save_config():
+#                 logger.info(f"GLM配置已清除: {active_llm}")
+#                 return {"success": True, "message": "GLM配置已清除"}
+#             else:
+#                 raise HTTPException(status_code=500, detail="配置保存失败")
+#         else:
+#             return {"success": True, "message": "GLM配置已经为空"}
+            
+#     except Exception as e:
+#         logger.error(f"清除GLM配置失败: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
+
+# @app.post("/glm/test-connection")
+# async def test_glm_connection():
+#     """测试GLM连接"""
+#     try:
+#         # 获取当前活跃配置
+#         active_llm = config.get('active_llm_config', 'glm_default')
+#         llm_configs = config.get('llm_configs', {})
+        
+#         if active_llm not in llm_configs:
+#             return {"success": False, "message": "GLM配置不存在"}
+        
+#         llm_config = llm_configs[active_llm]
+#         api_key = llm_config.get('api_key')
+        
+#         if not api_key:
+#             return {"success": False, "message": "GLM API密钥未配置"}
+        
+#         # 尝试导入并测试GLM配置服务
+#         try:
+#             import sys
+#             import os
+#             sys.path.append(os.path.join(os.path.dirname(__file__), 'dataBuilder', 'chunking'))
+#             from dataBuilder.chunking.glm_config import get_glm_config_service
+            
+#             service = get_glm_config_service()
+#             if service:
+#                 is_valid, message = service.validate_api_key(api_key)
+#                 return {"success": is_valid, "message": message}
+#             else:
+#                 return {"success": False, "message": "GLM配置服务不可用"}
+                
+#         except Exception as e:
+#             logger.error(f"GLM连接测试失败: {e}")
+#             # 简化的格式验证
+#             if len(api_key.strip()) < 20:
+#                 return {"success": False, "message": "API密钥格式不正确，长度过短"}
+#             else:
+#                 return {"success": True, "message": "API密钥格式验证通过（无法进行实际连接测试）"}
+                
+#     except Exception as e:
+#         logger.error(f"测试GLM连接失败: {e}")
+#         return {"success": False, "message": f"连接测试失败: {str(e)}"}
+
+# @app.post("/glm/validate-key")
+# async def validate_glm_key(request: dict):
+#     """验证GLM API密钥"""
+#     api_key = request.get("api_key")
+#     if not api_key:
+#         return {"valid": False, "message": "API密钥不能为空"}
+    
+#     return {"valid": True, "message": "API密钥格式有效"}
+
+@app.get("/chunking/config")
+async def get_chunking_config():
+    """获取分块配置信息"""
     try:
-        if 'glm' in config:
-            del config['glm']
-            
-        if save_config():
-            logger.info("GLM配置已清除")
-            return {"success": True, "message": "GLM配置已清除"}
-        else:
-            raise HTTPException(status_code=500, detail="配置保存失败")
-            
+        chunking_config = config.get("chunking", {})
+        
+        # 获取GLM配置状态
+        glm_configured = False
+        try:
+            active_llm = config.get('active_llm_config', 'glm_default')
+            llm_configs = config.get('llm_configs', {})
+            if active_llm in llm_configs:
+                api_key = llm_configs[active_llm].get('api_key', '')
+                glm_configured = bool(api_key)
+        except Exception:
+            pass
+        
+        # 检查高级分块模块可用性
+        advanced_chunking_available = False
+        try:
+            from dataBuilder.chunking.chunk_strategies import ChunkingManager
+            advanced_chunking_available = True
+        except ImportError:
+            pass
+        
+        return {
+            "current_config": chunking_config,
+            "glm_configured": glm_configured,
+            "advanced_chunking_available": advanced_chunking_available,
+            "supported_strategies": {
+                "traditional": {
+                    "available": True,
+                    "requires_glm": False,
+                    "default_params": {
+                        "chunk_size": 512,
+                        "overlap": 50
+                    }
+                },
+                "meta_ppl": {
+                    "available": glm_configured and advanced_chunking_available,
+                    "requires_glm": True,
+                    "default_params": {
+                        "threshold": 0.3,
+                        "language": "zh"
+                    }
+                },
+                "margin_sampling": {
+                    "available": glm_configured and advanced_chunking_available,
+                    "requires_glm": True,
+                    "default_params": {
+                        "chunk_length": 512,
+                        "language": "zh"
+                    }
+                },
+                "msp": {
+                    "available": glm_configured and advanced_chunking_available,
+                    "requires_glm": True,
+                    "default_params": {
+                        "chunk_length": 512,
+                        "confidence_threshold": 0.7,
+                        "language": "zh"
+                    }
+                },
+                "semantic": {
+                    "available": advanced_chunking_available,
+                    "requires_glm": False,
+                    "default_params": {
+                        "similarity_threshold": 0.8,
+                        "min_chunk_size": 100,
+                        "max_chunk_size": 1000
+                    }
+                }
+            },
+            "parameter_mapping": {
+                "chunk_size": "chunk_length",
+                "threshold": "ppl_threshold"
+            }
+        }
+        
     except Exception as e:
-        logger.error(f"清除GLM配置失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/glm/test-connection")
-async def test_glm_connection():
-    """测试GLM连接"""
-    glm_config = config.get("glm", {})
-    if not glm_config.get("api_key"):
-        return {"success": False, "message": "GLM API密钥未配置"}
-    
-    # 简化的连接测试
-    return {"success": True, "message": "GLM连接测试成功"}
-
-@app.post("/glm/validate-key")
-async def validate_glm_key(request: dict):
-    """验证GLM API密钥"""
-    api_key = request.get("api_key")
-    if not api_key:
-        return {"valid": False, "message": "API密钥不能为空"}
-    
-    return {"valid": True, "message": "API密钥格式有效"}
+        logger.error(f"获取分块配置失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取分块配置失败: {str(e)}"
+        )
 
 @app.post("/update_config")
 async def update_config_legacy(request: dict):
@@ -717,4 +1344,4 @@ async def integration_test():
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动简化版API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8509)
+    uvicorn.run(app, host="0.0.0.0", port=8505)
