@@ -1,9 +1,3 @@
-"""
-文本切分策略管理模块
-
-提供统一的切分策略接口和管理功能
-"""
-
 from enum import Enum
 from typing import List, Dict, Any
 import logging
@@ -17,7 +11,6 @@ except ImportError:
 
 
 class ChunkingStrategy(Enum):
-    """切分策略枚举"""
     TRADITIONAL = "traditional"
     META_PPL = "meta_ppl"
     MARGIN_SAMPLING = "margin_sampling"
@@ -127,9 +120,9 @@ class ChunkingManager:
             if not model_name:
                 return None, None
             
-            # 尝试加载模型
+            # 尝试加载模型 - ModelScope
             try:
-                from transformers import AutoTokenizer, AutoModelForCausalLM
+                import torch
                 import torch
                 
                 tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
@@ -332,23 +325,13 @@ class ChunkingManager:
         return configs.get(strategy, {})
     
     def update_api_client(self, api_client):
-        """
-        更新API客户端
-        
-        参数:
-            api_client: 新的API客户端实例
-        """
+       
         if self.meta_chunking:
             self.meta_chunking.api_client = api_client
             logger.info("ChunkingManager API客户端已更新")
     
     def get_llm_status(self) -> Dict[str, Any]:
-        """
-        获取LLM状态信息
         
-        返回:
-            LLM状态字典
-        """
         status = {
             "api_client_available": self.meta_chunking.api_client is not None if self.meta_chunking else False,
             "local_model_available": (self.meta_chunking.model is not None and 
@@ -356,7 +339,7 @@ class ChunkingManager:
         }
         
         if self.meta_chunking and self.meta_chunking.api_client:
-            # 尝试获取API客户端类型
+            
             try:
                 client_type = type(self.meta_chunking.api_client).__name__
                 status["api_client_type"] = client_type

@@ -11,7 +11,6 @@ from .tools.txtmake import process_txt
 
 logger = logging.getLogger(__name__)
 
-# 只有在不禁用图像处理时才导入图像相关模块
 if not DISABLE_IMAGE_PROCESSING:
     from .tools.imgmake import process_img, process_image_directory, get_image_statistics
     from multimodal.clip_encoder import CLIPEncoder
@@ -20,7 +19,7 @@ from .chunking.meta_chunking import MetaChunking
 from System.monitor import log_event
 import traceback
 
-# MetaChunking总是可用的
+
 ADVANCED_CHUNKING_AVAILABLE = True
 
 def data_process(data_location, url_split, chunking_strategy="traditional", chunking_params=None, enable_multimodal=True):
@@ -38,22 +37,18 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
     files = [f for f in folder.rglob("*") if f.is_file()]
     print(f"找到 {len(files)} 个文件")
     
-    # 初始化分块管理器
     chunking_manager = None
     if chunking_strategy != "traditional":
         try:
-            # 使用MetaChunking进行智能分块
             chunking_manager = MetaChunking()
             print(f"使用高级分块策略: {chunking_strategy}")
         except Exception as e:
             print(f"高级分块策略初始化失败，使用传统方法: {e}")
             chunking_manager = None
     
-    # 设置默认分块参数
     if chunking_params is None:
         chunking_params = {}
 
-    # 只有在不禁用图像处理时才包含图像文件类型
     valid_extensions = {".csv", ".md", ".pdf", ".txt"}
     if not DISABLE_IMAGE_PROCESSING:
         valid_extensions.update({".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff"})
@@ -64,7 +59,6 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
     for file in files:
         ext = file.suffix.lower()
         if ext in valid_extensions:
-            # 只有在不禁用图像处理时才处理图像文件
             if not DISABLE_IMAGE_PROCESSING and ext in {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".tiff"}:
                 image_files.append(str(file))
                 tasks.append(("img", str(file)))
@@ -73,7 +67,6 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
     
     print(f"准备处理 {len(tasks)} 个有效文件，其中图像文件 {len(image_files)} 个")
     
-    # 只有在不禁用图像处理时才获取图像统计信息
     if not DISABLE_IMAGE_PROCESSING and image_files:
         try:
             img_stats = get_image_statistics(data_location)
@@ -108,15 +101,13 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
                 return process_img(img_path=file_path, use_clip=enable_multimodal)
         except Exception as e:
             print(f"处理文件出错: {file_path}\n错误详情: {traceback.format_exc()}")
-            return []  # 返回空列表而不是None
+            return []  
     
     with ThreadPoolExecutor(max_workers=4) as executor:
         for result in executor.map(process_one, tasks):
-            # 确保所有处理函数都返回列表
             if isinstance(result, list):
                 dataList.extend(result)
             elif result is not None:
-                # 如果返回单个对象，包装成列表
                 dataList.append(result)
     
     print(f"处理完成，共处理了 {len(dataList)} 条数据。")
