@@ -1,9 +1,3 @@
-#!/usr/bin/env python3
-"""
-简化的Milvus后端API
-移除所有不必要的管理器和复杂架构
-"""
-
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,26 +9,24 @@ from typing import List, Dict, Any, Optional
 import time
 from datetime import datetime
 from pydantic import BaseModel
-# 在文件开头添加
+
 from dataBuilder.chunking.meta_chunking import DependencyChecker
 from dataBuilder.chunking.chunk_strategies import ChunkingManager
 
-# 全局变量
+
 CHUNKING_AVAILABLE = True
 chunking_manager = None
 dependency_checker = None
-# 配置日志
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# 创建FastAPI应用
 app = FastAPI(
     title="Cre_milvus API",
     description="简化的向量数据库管理API",
     version="1.0.0"
 )
 
-# 添加CORS中间件
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -43,7 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 全局配置
 config = {}
 
 def load_config():
@@ -360,7 +351,6 @@ async def update_system_config(system_config: SystemConfig):
 async def get_progress(tracking_id: str):
     """获取处理进度（简化版本）"""
     try:
-        # 简化的进度返回，实际项目中应该有真实的进度跟踪
         return {
             "tracking_id": tracking_id,
             "status": "completed",
@@ -382,7 +372,6 @@ async def get_progress(tracking_id: str):
 async def update_config(config_update: dict):
     """更新配置"""
     try:
-        # 更新全局配置
         config.update(config_update)
         
         if save_config():
@@ -587,32 +576,214 @@ async def upload_file(file: UploadFile = File(...), folder_name: str = Form(None
 @app.post("/search")
 async def search(request: SearchRequest):
     """搜索功能"""
+    # try:
+    #     logger.info(f"搜索请求: {request.query}")
+
+    if not _app_initialized:
+        raise HTTPException(
+            status_code=503, 
+            detail="服务未初始化，请等待初始化完成"
+        )
+    
     try:
-        logger.info(f"搜索请求: {request.query}")
+        data = await request.json()
+        question = data.get("question", "")
+        col_choice = data.get("col_choice", "hdbscan")
+        collection_name = data.get("collection_name", "Test_one")
+        enable_visualization = data.get("enable_visualization", True)
         
-        # 简化的搜索逻辑
-        # 实际项目中可以根据需要添加Milvus搜索
-        results = [
-            {
-                "id": i,
-                "text": f"搜索结果 {i}: 与'{request.query}'相关的内容",
-                "score": 0.9 - i * 0.1,
-                "metadata": {"source": f"document_{i}"}
-            }
-            for i in range(min(request.top_k, 5))
-        ]
+        if not question:
+            raise HTTPException(status_code=400, detail="问题不能为空")
         
-        return {
-            "success": True,
-            "query": request.query,
-            "results": results,
-            "total": len(results),
-            "timestamp": datetime.now().isoformat()
-        }
+        logger.info(f"收到搜索请求: {question}, 聚类方法: {col_choice}")
+        
+        # 加载配置
+        with open("config.yaml", "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+        
+        # 使用原有的搜索功能
+        from System.start import Cre_Search
+        
+        start_time = time.time()
+        result = Cre_Search(config, question)
+        search_time = time.time() - start_time
+        
+        logger.info(f"基础搜索完成，耗时: {search_time:.2f}秒")
+        
+        # 如果启用可视化且有聚类结果，添加可视化数据
+        if enable_visualization and "clusters" in result and result["clusters"]:
+            try:
+                from Search.clustering import create_clustering_service
+                clustering_service = create_clustering_service()
+                
+                # 转换聚类数据格式
+                clusters = []
+                for cluster_data in result["clusters"]:
+                    from Search.clustering import Cluster, SearchResult
+                    
+                    # 转换文档数据
+                    documents = []
+                    for doc in cluster_data.get("documents", []):
+                        search_result = SearchResult(
+                            id=str(doc.get("id", "")),
+                            content=doc.get("content", ""),
+                            url=doc.get("url"),
+                            distance=float(doc.get("distance", 0.0)),
+                            embedding=doc.get("embedding", []),
+                            metadata=doc.get("metadata", {})
+                        )
+                        documents.append(search_result)
+                    
+                    # 创建聚类对象
+                    cluster = Cluster(
+                        cluster_id=cluster_data.get("cluster_id", 0),
+                        documents=documents,
+                        centroid=cluster_data.get("centroid"),
+                        size=len(documents),
+                        avg_distance=cluster_data.get("avg_distance", 0.0),
+                        keywords=cluster_data.get("keywords", [])
+                    )
+                    clusters.append(cluster)
+                
+                # 生成可视化数据
+                viz_start_time = time.time()
+                
+                scatter_plot_data = clustering_service.create_cluster_scatter_plot(clusters)
+                size_chart_data = clustering_service.create_cluster_size_chart(clusters)
+                heatmap_data = clustering_service.create_cluster_heatmap(clusters)
+                cluster_summary = clustering_service.generate_cluster_summary(clusters)
+                cluster_metrics = clustering_service.calculate_cluster_metrics(clusters)
+                
+                viz_time = time.time() - viz_start_time
+                logger.info(f"可视化数据生成完成，耗时: {viz_time:.2f}秒")
+                
+                # 添加可视化数据到结果中
+                result["visualization_data"] = {
+                    "scatter_plot": scatter_plot_data,
+                    "size_chart": size_chart_data,
+                    "heatmap": heatmap_data,
+                    "cluster_summary": cluster_summary,
+                    "cluster_metrics": cluster_metrics
+                }
+                
+                # 更新执行时间
+                result["execution_time"] = search_time + viz_time
+                result["search_time"] = search_time
+                result["visualization_time"] = viz_time
+                
+                logger.info(f"增强搜索完成，总耗时: {result['execution_time']:.2f}秒")
+                
+            except Exception as viz_error:
+                logger.error(f"生成可视化数据失败: {viz_error}")
+                # 可视化失败不影响基础搜索结果
+                result["visualization_error"] = str(viz_error)
+        
+        # 添加质量指标（如果不存在）
+        if "quality_metrics" not in result and "clusters" in result:
+            try:
+                result["quality_metrics"] = _calculate_search_quality_metrics(result)
+            except Exception as e:
+                logger.warning(f"计算质量指标失败: {e}")
+        
+        return result
         
     except Exception as e:
         logger.error(f"搜索失败: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        logger.error(f"详细错误: {traceback.format_exc()}")
+        
+        raise HTTPException(
+            status_code=500,
+            detail=f"搜索失败: {str(e)}"
+        )
+        # 简化的搜索逻辑
+        # 实际项目中可以根据需要添加Milvus搜索
+    #     results = [
+    #         {
+    #             "id": i,
+    #             "text": f"搜索结果 {i}: 与'{request.query}'相关的内容",
+    #             "score": 0.9 - i * 0.1,
+    #             "metadata": {"source": f"document_{i}"}
+    #         }
+    #         for i in range(min(request.top_k, 5))
+    #     ]
+        
+    #     return {
+    #         "success": True,
+    #         "query": request.query,
+    #         "results": results,
+    #         "total": len(results),
+    #         "timestamp": datetime.now().isoformat()
+    #     }
+        
+    # except Exception as e:
+    #     logger.error(f"搜索失败: {e}")
+    #     raise HTTPException(status_code=500, detail=str(e))
+@app.get("/load-test/list")
+async def list_load_tests():
+    """列出所有压力测试"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        tests = manager.list_active_tests()
+        
+        return {
+            "status": "success",
+            "tests": tests,
+            "count": len(tests)
+        }
+        
+    except Exception as e:
+        logger.error(f"列出测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"列出测试失败: {str(e)}")
+        
+@app.get("/llm/configs")
+async def get_llm_configs():
+    """获取LLM配置列表"""
+    try:
+        # 这里应该从配置文件或数据库中读取LLM配置
+        # 目前返回模拟数据
+        configs = {}
+        active_config = None
+        
+        # 尝试从配置文件读取
+        try:
+            with open("config.yaml", "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+                llm_configs = config.get("llm_configs", {})
+                active_config_id = config.get("active_llm_config")
+                
+                for config_id, config_data in llm_configs.items():
+                    configs[config_id] = {
+                        "provider": config_data.get("provider"),
+                        "model_name": config_data.get("model_name"),
+                        "api_endpoint": config_data.get("api_endpoint")
+                    }
+                
+                if active_config_id and active_config_id in configs:
+                    active_config = {
+                        "id": active_config_id,
+                        **configs[active_config_id]
+                    }
+        except:
+            pass
+        
+        return {
+            "configs": configs,
+            "summary": {
+                "total_configs": len(configs),
+                "active_config": active_config
+            },
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"获取LLM配置失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取LLM配置失败: {str(e)}"
+        )
 
 @app.get("/chunking/strategies")
 async def get_chunking_strategies():
@@ -1344,4 +1515,4 @@ async def integration_test():
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动简化版API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8505)
+    uvicorn.run(app, host="0.0.0.0", port=8506)
