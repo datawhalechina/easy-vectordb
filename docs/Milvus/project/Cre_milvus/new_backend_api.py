@@ -2605,4 +2605,4 @@ async def validate_chunking_request(request: ChunkingProcessRequest):
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动新架构API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8505)  # 使用原来的端口
+    uvicorn.run(app, host="0.0.0.0", port=8506)  # 使用原来的端口

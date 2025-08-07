@@ -719,6 +719,71 @@ async def search(request: SearchRequest):
     # except Exception as e:
     #     logger.error(f"搜索失败: {e}")
     #     raise HTTPException(status_code=500, detail=str(e))
+@app.get("/load-test/list")
+async def list_load_tests():
+    """列出所有压力测试"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        tests = manager.list_active_tests()
+        
+        return {
+            "status": "success",
+            "tests": tests,
+            "count": len(tests)
+        }
+        
+    except Exception as e:
+        logger.error(f"列出测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"列出测试失败: {str(e)}")
+        
+@app.get("/llm/configs")
+async def get_llm_configs():
+    """获取LLM配置列表"""
+    try:
+        # 这里应该从配置文件或数据库中读取LLM配置
+        # 目前返回模拟数据
+        configs = {}
+        active_config = None
+        
+        # 尝试从配置文件读取
+        try:
+            with open("config.yaml", "r", encoding="utf-8") as f:
+                config = yaml.safe_load(f)
+                llm_configs = config.get("llm_configs", {})
+                active_config_id = config.get("active_llm_config")
+                
+                for config_id, config_data in llm_configs.items():
+                    configs[config_id] = {
+                        "provider": config_data.get("provider"),
+                        "model_name": config_data.get("model_name"),
+                        "api_endpoint": config_data.get("api_endpoint")
+                    }
+                
+                if active_config_id and active_config_id in configs:
+                    active_config = {
+                        "id": active_config_id,
+                        **configs[active_config_id]
+                    }
+        except:
+            pass
+        
+        return {
+            "configs": configs,
+            "summary": {
+                "total_configs": len(configs),
+                "active_config": active_config
+            },
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"获取LLM配置失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"获取LLM配置失败: {str(e)}"
+        )
 
 @app.get("/chunking/strategies")
 async def get_chunking_strategies():
@@ -1450,4 +1515,4 @@ async def integration_test():
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动简化版API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8505)
+    uvicorn.run(app, host="0.0.0.0", port=8506)
