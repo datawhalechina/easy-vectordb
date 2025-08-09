@@ -59,40 +59,83 @@ class ChunkingManager:
     切分管理器，提供统一的切分接口
     """
     
-    def __init__(self, model=None, tokenizer=None, config=None, api_client=None):
+    def __init__(self, model=None, tokenizer=None, config=None):
         """
         初始化切分管理器
         
         参数:
             model: 语言模型（用于智能切分策略）
             tokenizer: 分词器
-            config: 配置字典，用于自动加载模型或API客户端
-            api_client: 预创建的API客户端
+            config: 配置字典，用于自动加载模型或GLM配置
         """
-        # 优先使用传入的api_client
-        if api_client is None and config:
-            api_client = self._create_api_client(config)
-            if not api_client and model is None and tokenizer is None:
-                model, tokenizer = self._load_model_from_config(config)
-        
-        self.meta_chunking = MetaChunking(model, tokenizer, api_client)
+        # 延迟加载模型和分词器
+        self._model = model
+        self._tokenizer = tokenizer
+        self._model_loaded = False
         self.config = config or {}
+        
+        # 获取LLM配置管理器
+        self.llm_config_manager = self._get_llm_config_manager()
+        
+        # 延迟初始化MetaChunking
+        self._meta_chunking = None
     
-    def _create_api_client(self, config):
-        """
-        从配置创建API客户端
-        
-        参数:
-            config: 配置字典
-        
-        返回:
-            API客户端实例或None
-        """
+    def _get_llm_config_manager(self):
+        """获取LLM配置管理器"""
         try:
-            from .api_client import create_api_client
-            return create_api_client(config.get("chunking", {}))
+            from .llm_config import create_llm_config_manager
+            return create_llm_config_manager()
         except Exception as e:
-            print(f"Warning: Failed to create API client: {e}")
+            logger.warning(f"获取LLM配置管理器失败: {e}")
+            return None
+    
+    def _ensure_model_loaded(self):
+        """确保模型已加载（延迟加载）"""
+        if self._model_loaded:
+            return
+        
+        try:
+            # 如果没有提供模型，尝试从配置加载
+            if self._model is None and self._tokenizer is None:
+                logger.info("🔄 开始加载模型...")
+                self._model, self._tokenizer = self._load_model_from_config(self.config)
+                logger.info("✅ 模型加载完成")
+            
+            # 初始化MetaChunking
+            if self._meta_chunking is None:
+                self._meta_chunking = MetaChunking(self._model, self._tokenizer, None)
+                logger.info("✅ MetaChunking初始化完成")
+            
+            self._model_loaded = True
+            
+        except Exception as e:
+            logger.error(f"❌ 模型加载失败: {e}")
+            # 即使加载失败，也标记为已尝试，避免重复尝试
+            self._model_loaded = True
+    
+    @property
+    def meta_chunking(self):
+        """获取MetaChunking实例（延迟加载）"""
+        self._ensure_model_loaded()
+        return self._meta_chunking
+    
+    def _create_llm_client(self):
+        """通过LLM配置管理器创建LLM客户端"""
+        if not self.llm_config_manager:
+            logger.warning("LLM配置管理器不可用，无法创建LLM客户端")
+            return None
+            
+        try:
+            # 使用配置管理器创建API客户端
+            client = self.llm_config_manager.create_api_client()
+            if client:
+                logger.info("成功创建LLM API客户端")
+                return client
+            else:
+                logger.debug("未找到有效的LLM配置或创建客户端失败")
+                return None
+        except Exception as e:
+            logger.error(f"创建LLM客户端失败: {e}")
             return None
     
     def _load_model_from_config(self, config):
@@ -187,6 +230,10 @@ class ChunkingManager:
         language = kwargs.get('language', 'zh')
         
         try:
+            # 确保MetaChunking有可用的API客户端
+            if not self.meta_chunking.api_client:
+                self.meta_chunking.api_client = self._create_llm_client()
+            
             return self.meta_chunking.ppl_chunking(text, threshold, language)
         except Exception as e:
             logger.error(f"PPL分块失败: {e}")
@@ -199,14 +246,38 @@ class ChunkingManager:
         """边际采样切分"""
         language = kwargs.get('language', 'zh')
         chunk_length = kwargs.get('chunk_length', 512)
-        return self.meta_chunking.margin_sampling_chunking(text, language, chunk_length)
+        
+        try:
+            # 确保MetaChunking有可用的API客户端
+            if not self.meta_chunking.api_client:
+                self.meta_chunking.api_client = self._create_llm_client()
+            
+            return self.meta_chunking.margin_sampling_chunking(text, language, chunk_length)
+        except Exception as e:
+            logger.error(f"边际采样分块失败: {e}")
+            # 降级到传统分块
+            chunk_size = kwargs.get('chunk_size', 512)
+            overlap = kwargs.get('overlap', 50)
+            return self.meta_chunking.traditional_chunking(text, chunk_size, overlap)
     
     def _msp_chunking(self, text: str, **kwargs) -> List[str]:
         """MSP切分策略"""
         language = kwargs.get('language', 'zh')
         chunk_length = kwargs.get('chunk_length', 512)
         confidence_threshold = kwargs.get('confidence_threshold', 0.7)
-        return self.meta_chunking.msp_chunking(text, language, chunk_length, confidence_threshold)
+        
+        try:
+            # 确保MetaChunking有可用的API客户端
+            if not self.meta_chunking.api_client:
+                self.meta_chunking.api_client = self._create_llm_client()
+            
+            return self.meta_chunking.msp_chunking(text, language, chunk_length, confidence_threshold)
+        except Exception as e:
+            logger.error(f"MSP分块失败: {e}")
+            # 降级到传统分块
+            chunk_size = kwargs.get('chunk_size', 512)
+            overlap = kwargs.get('overlap', 50)
+            return self.meta_chunking.traditional_chunking(text, chunk_size, overlap)
     
     def _semantic_chunking(self, text: str, **kwargs) -> List[str]:
         """语义切分"""
@@ -324,24 +395,52 @@ class ChunkingManager:
         
         return configs.get(strategy, {})
     
-    def update_api_client(self, api_client):
-       
-        if self.meta_chunking:
-            self.meta_chunking.api_client = api_client
-            logger.info("ChunkingManager API客户端已更新")
+    def refresh_llm_client(self):
+        """刷新LLM客户端（当LLM配置更新时调用）"""
+        try:
+            new_client = self._create_llm_client()
+            meta_chunking = self.meta_chunking  # 触发延迟加载
+            if meta_chunking:
+                meta_chunking.api_client = new_client
+                logger.info("ChunkingManager LLM客户端已刷新")
+        except Exception as e:
+            logger.error(f"刷新LLM客户端失败: {e}")
     
     def get_llm_status(self) -> Dict[str, Any]:
+        """获取LLM状态信息"""
+        # 延迟加载检查
+        meta_chunking = self.meta_chunking  # 这会触发延迟加载
         
         status = {
-            "api_client_available": self.meta_chunking.api_client is not None if self.meta_chunking else False,
-            "local_model_available": (self.meta_chunking.model is not None and 
-                                    self.meta_chunking.tokenizer is not None) if self.meta_chunking else False
+            "llm_config_manager_available": self.llm_config_manager is not None,
+            "api_client_available": meta_chunking.api_client is not None if meta_chunking else False,
+            "local_model_available": (meta_chunking.model is not None and 
+                                    meta_chunking.tokenizer is not None) if meta_chunking else False
         }
         
-        if self.meta_chunking and self.meta_chunking.api_client:
-            
+        # LLM配置状态
+        if self.llm_config_manager:
             try:
-                client_type = type(self.meta_chunking.api_client).__name__
+                config_summary = self.llm_config_manager.get_config_summary()
+                status["total_configs"] = config_summary.get("total_configs", 0)
+                status["available_providers"] = config_summary.get("available_providers", 0)
+                
+                active_config = config_summary.get("active_config")
+                if active_config:
+                    status["active_provider"] = active_config.get("provider")
+                    status["active_model"] = active_config.get("model")
+                    status["llm_configured"] = True
+                else:
+                    status["llm_configured"] = False
+                    
+            except Exception as e:
+                logger.error(f"获取LLM配置状态失败: {e}")
+                status["llm_configured"] = False
+        
+        # API客户端类型
+        if meta_chunking and meta_chunking.api_client:
+            try:
+                client_type = type(meta_chunking.api_client).__name__
                 status["api_client_type"] = client_type
             except:
                 status["api_client_type"] = "unknown"

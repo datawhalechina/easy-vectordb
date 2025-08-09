@@ -21,31 +21,30 @@ def fast_milvus_insert(
     milvus_port: int = None
 ) -> Dict[str, Any]:
     """
-    快速Milvus数据插入
-    支持动态连接配置
+    快速Milvus数据插入 - 使用预建立的连接避免阻塞
     """
     try:
-        logger.info(f"开始快速数据插入: {collection_name}")
+        logger.info(f"🚀 开始快速数据插入: {collection_name}")
         logger.info(f"数据量: {len(data_list)}, 插入模式: {insert_mode}")
         
-        # 如果提供了连接参数，确保连接正确
+        # 如果提供了连接参数，更新连接
         if milvus_host and milvus_port:
-            from .persistent_connection import get_persistent_connection
-            conn = get_persistent_connection()
-            
-            # 检查当前连接是否适用
-            if not conn.is_connection_valid_for(milvus_host, milvus_port):
-                logger.info(f"更新Milvus连接: {milvus_host}:{milvus_port}")
-                success = conn.update_connection(milvus_host, milvus_port)
-                if not success:
-                    raise ConnectionError(f"无法连接到Milvus: {milvus_host}:{milvus_port}")
+            logger.info(f"🔄 更新Milvus连接: {milvus_host}:{milvus_port}")
+            import sys
+            import os
+            sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+            from simple_milvus import update_milvus_connection
+            use_lite = milvus_host.endswith('.db')
+            success = update_milvus_connection(milvus_host, milvus_port, use_lite)
+            if not success:
+                raise ConnectionError(f"无法连接到Milvus: {milvus_host}:{milvus_port}")
         
-        # 获取持久化连接
+        # 获取连接别名
         connection_alias = get_milvus_connection()
         if not connection_alias:
-            raise ConnectionError("无法获取Milvus连接，请检查连接配置")
+            raise ConnectionError("无法获取Milvus连接别名，请检查连接状态")
         
-        logger.info(f"使用连接: {connection_alias}")
+        logger.info(f"✅ 使用预建立的连接: {connection_alias}")
         
         # 验证数据
         if not data_list:

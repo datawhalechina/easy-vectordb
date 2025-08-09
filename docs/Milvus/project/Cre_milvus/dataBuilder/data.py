@@ -115,19 +115,19 @@ def data_process(data_location, url_split, chunking_strategy="traditional", chun
     return dataList
 
 
-def get_chunking_config():
-    """获取分块配置"""
-    try:
-        from .chunking.glm_config import get_glm_config_service
-        service = get_glm_config_service()
-        glm_config = service.get_active_config()
-        return {
-            "glm_configured": glm_config is not None,
-            "glm_config": glm_config
-        }
-    except Exception as e:
-        logger.warning(f"获取GLM配置失败: {e}")
-        return {"glm_configured": False}
+# def get_chunking_config():
+#     """获取分块配置"""
+#     try:
+#         from .chunking.glm_config import get_glm_config_service
+#         service = get_glm_config_service()
+#         glm_config = service.get_active_config()
+#         return {
+#             "glm_configured": glm_config is not None,
+#             "glm_config": glm_config
+#         }
+#     except Exception as e:
+#         logger.warning(f"获取GLM配置失败: {e}")
+#         return {"glm_configured": False}
 
 
 def process_txt_with_strategy(txt_path, url_split, chunking_strategy, chunking_params, chunking_manager):
@@ -162,7 +162,8 @@ def process_txt_with_strategy(txt_path, url_split, chunking_strategy, chunking_p
         cleaned_content = clean_content(content)
         
         # 使用新的分块策略
-        config = get_chunking_config()  # 从实际配置中获取
+        # config = get_chunking_config()  # 从实际配置中获取
+        config = {"glm_configured": False}  
         split_docs = chunking_manager.smart_chunking(cleaned_content, chunking_strategy, config, **chunking_params)
         log_event(f"使用 {chunking_strategy} 策略分割TXT文件: {txt_path}, 得到 {len(split_docs)} 个文本块")
         
@@ -257,7 +258,8 @@ def process_pdf_with_strategy(pdf_path, url_split, chunking_strategy, chunking_p
             full_content += clean_content(page.page_content) + "\n"
         
         # 使用新的分块策略
-        config = get_chunking_config()  # 从实际配置中获取
+        # config = get_chunking_config()  # 从实际配置中获取
+        config = {"glm_configured": False}  # 添加这行
         split_docs = chunking_manager.smart_chunking(full_content, chunking_strategy, config, **chunking_params)
         log_event(f"使用 {chunking_strategy} 策略分割PDF文件: {pdf_path}, 得到 {len(split_docs)} 个文本块")
         
@@ -354,7 +356,8 @@ def process_md_with_strategy(md_path, url_split, chunking_strategy, chunking_par
         cleaned_content = clean_content(content)
         
         # 使用新的分块策略
-        config = get_chunking_config()  # 从实际配置中获取
+        # config = get_chunking_config()  # 从实际配置中获取
+        config = {"glm_configured": False}  # 添加这行
         split_docs = chunking_manager.smart_chunking(cleaned_content, chunking_strategy, config, **chunking_params)
         log_event(f"使用 {chunking_strategy} 策略分割Markdown文件: {md_path}, 得到 {len(split_docs)} 个文本块")
         

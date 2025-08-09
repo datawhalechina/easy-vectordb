@@ -8,50 +8,79 @@ import os
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 embedder = None
+
 def get_embedder():
     global embedder
     if embedder is None:
         embedder = SimpleEmbeddingGenerator()
     return embedder
+
 class SimpleEmbeddingGenerator:
-    def __init__(self, model_name="BAAI/bge-large-zh-v1.5"):
+    def __init__(self, model_name="AI-ModelScope/bge-large-zh-v1.5"):
         self.device = torch.device("cpu")
         self.model = None
         self.tokenizer = None
         self.model_name = model_name
+        self.use_modelscope = True  # 标记使用ModelScope
         self.load_model()
     
     import sys
     sys.setrecursionlimit(3000)
+    
     def load_model(self):
         if self.model is not None:
             return True
-        """最可靠的模型加载方法"""
+        """从ModelScope加载BGE模型"""
         try:
-            logger.info(f"尝试加载模型: {self.model_name}")
+            logger.info(f"开始加载模型: {self.model_name}")
             
-            # 1. 加载分词器
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                trust_remote_code=True
-            )
+            # 尝试使用ModelScope加载
+            try:
+                from modelscope import AutoTokenizer, AutoModel
+                logger.info("使用ModelScope加载模型...")
+                
+                # 加载分词器和模型
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    self.model_name,
+                    trust_remote_code=True
+                )
+                
+                self.model = AutoModel.from_pretrained(
+                    self.model_name,
+                    trust_remote_code=True,
+                    device_map="cpu",
+                    torch_dtype=torch.float32
+                )
+                
+                logger.info("✅ ModelScope模型加载成功")
+                
+            except ImportError:
+                # 回退到transformers + HuggingFace
+                logger.warning("ModelScope不可用，使用HuggingFace...")
+                
+                self.tokenizer = AutoTokenizer.from_pretrained(
+                    "BAAI/bge-large-zh-v1.5",
+                    trust_remote_code=True
+                )
+                
+                self.model = AutoModel.from_pretrained(
+                    "BAAI/bge-large-zh-v1.5",
+                    trust_remote_code=True,
+                    device_map="cpu",
+                    torch_dtype=torch.float32
+                )
+                
+                logger.info("✅ HuggingFace模型加载成功")
             
-            # 2. 加载模型 - 强制在 CPU 上
-            self.model = AutoModel.from_pretrained(
-                self.model_name,
-                trust_remote_code=True,
-                device_map="cpu",
-                torch_dtype=torch.float32
-            )
-            
-            # 3. 确保模型在 CPU 上
+            # 设置为CPU并进入评估模式
             self.model.to("cpu")
             self.model.eval()
             
-            logger.info(f"模型加载成功: {self.model_name}")
+            logger.info("✅ 模型加载完成")
             return True
+            
         except Exception as e:
-            logger.error(f"模型加载失败: {str(e)}")
+            logger.error(f"❌ 模型加载失败: {e}")
             return False
 
     def get_embedding(self, text):

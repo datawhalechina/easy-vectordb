@@ -120,14 +120,14 @@ class DependencyChecker:
         
         return commands
     
-    def validate_glm_api_availability(self) -> bool:
-        """验证GLM API可用性"""
-        try:
-            # 这里应该检查GLM API配置
-            # 暂时返回True，实际实现需要检查API配置
-            return True
-        except Exception:
-            return False
+    # def validate_glm_api_availability(self) -> bool:
+    #     """验证GLM API可用性"""
+    #     try:
+    #         # 这里应该检查GLM API配置
+    #         # 暂时返回True，实际实现需要检查API配置
+    #         return True
+    #     except Exception:
+    #         return False
     
     def is_ppl_chunking_available(self) -> bool:
         """检查PPL分块是否可用"""
@@ -167,7 +167,7 @@ class ChunkingStrategyResolver:
         
         参数:
             requested: 用户请求的策略
-            config: 配置信息（包含GLM API等）
+            # config: 配置信息（包含GLM API等）
         
         返回:
             实际可用的策略名称
@@ -261,35 +261,42 @@ class ChunkingStrategyResolver:
             "description": "未知策略"
         })
 
-# 导入依赖
+# 导入依赖 - 使用更安全的导入方式
+Chunking = None
 try:
     from .perplexity_chunking import Chunking
+    logger.debug("成功从相对路径导入Chunking类")
 except ImportError:
     try:
         from perplexity_chunking import Chunking
+        logger.debug("成功从绝对路径导入Chunking类")
     except ImportError:
         logger.warning("无法导入Chunking类，PPL分块功能将不可用")
         Chunking = None
 
+# PyTorch导入
+TORCH_AVAILABLE = False
+torch = None
+F = None
 try:
     import torch
     import torch.nn.functional as F
     TORCH_AVAILABLE = True
+    logger.debug("PyTorch导入成功")
 except ImportError:
     logger.warning("PyTorch不可用，某些分块策略将降级")
-    TORCH_AVAILABLE = False
-    torch = None
-    F = None
 
+# NLP库导入
+NLP_AVAILABLE = False
+sent_tokenize = None
+jieba = None
 try:
     from nltk.tokenize import sent_tokenize
     import jieba 
     NLP_AVAILABLE = True
+    logger.debug("NLTK和jieba导入成功")
 except ImportError:
     logger.warning("NLTK或jieba不可用，将使用简单的文本分割")
-    sent_tokenize = None
-    jieba = None
-    NLP_AVAILABLE = False
 
 
 def split_text_by_punctuation(text, language): 
@@ -426,17 +433,26 @@ import torch
 class MetaChunking:
     
     def __init__(self, model=None, tokenizer=None, api_client=None):
+        """初始化MetaChunking实例"""
+        self._initializing = False  # 防止递归初始化的标志
         self.model = model
         self.tokenizer = tokenizer
         self.api_client = api_client
         self.dependency_checker = DependencyChecker()
+        self.model_path = "Qwen/Qwen2.5-1.5B-Instruct"
         
+        # 只有在没有提供模型时才尝试初始化
         if not self.model or not self.tokenizer:
-            self.model_path = "Qwen/Qwen2.5-1.5B-Instruct"  
-            success = self.initialize_model()
-            if not success:
-                logger.warning("模型初始化失败，某些功能可能不可用")
+            try:
+                success = self.initialize_model()
+                if not success:
+                    logger.warning("模型初始化失败，某些功能可能不可用")
+            except Exception as e:
+                logger.error(f"模型初始化过程中发生异常: {e}")
+                self.model = None
+                self.tokenizer = None
         
+        # 尝试创建API客户端
         if not self.api_client:
             try:
                 from .glm_config import create_glm_api_client
@@ -445,20 +461,27 @@ class MetaChunking:
                     logger.info("成功创建GLM API客户端")
             except Exception as e:
                 logger.debug(f"创建GLM API客户端失败: {e}")
+                self.api_client = None
     
     def initialize_model(self):
-        import os
-        import torch
+        """初始化模型，防止递归调用"""
+        if self._initializing:  # 防止递归
+            return False
         
-        # 检查模型目录是否存在
-        if os.path.exists(self.model_path):
-            logger.info(f"检测到本地模型文件: {self.model_path}")
-            model_source = "本地缓存"
-        else:
-            logger.info(f"未找到本地模型，将从远程加载: {self.model_path}")
-            model_source = "ModelScope"
+        self._initializing = True
         
         try:
+            import os
+            import torch
+            
+            # 检查模型目录是否存在
+            if os.path.exists(self.model_path):
+                logger.info(f"检测到本地模型文件: {self.model_path}")
+                model_source = "本地缓存"
+            else:
+                logger.info(f"未找到本地模型，将从远程加载: {self.model_path}")
+                model_source = "ModelScope"
+            
             try:
                 # 优先尝试使用ModelScope加载
                 from modelscope import AutoTokenizer, AutoModelForCausalLM
@@ -511,6 +534,8 @@ class MetaChunking:
             self.model = None
             self.tokenizer = None
             return False
+        finally:
+            self._initializing = False
 
     
     def smart_chunking(self, text: str, strategy: str, config: Dict, **kwargs) -> List[str]:
@@ -520,7 +545,7 @@ class MetaChunking:
         参数:
             text: 输入文本
             strategy: 请求的策略
-            config: 配置信息
+            # config: 配置信息
             **kwargs: 策略特定参数
         
         返回:
@@ -807,16 +832,24 @@ class MetaChunking:
     #         logger.error(f"PPL分块内部实现失败: {e}")
     #         return self.semantic_chunking(sub_text, similarity_threshold=0.7)
     def _extract_by_ppl(self, text: str, threshold: float, language: str) -> List[str]:
+        """PPL分块的内部实现，包含安全检查"""
         try:
+            # 检查必要的依赖
             if not TORCH_AVAILABLE or not self.model or not self.tokenizer:
-                raise ValueError("PPL分块所需依赖不可用")
+                logger.warning("PPL分块依赖不完整，降级到传统分块")
+                return self.traditional_chunking(text, chunk_size=512, overlap=50)
             
+            # 检查Chunking类是否可用
+            if Chunking is None:
+                logger.warning("Chunking类不可用，降级到传统分块")
+                return self.traditional_chunking(text, chunk_size=512, overlap=50)
+            
+            # 创建Chunking实例
             try:
-                from .perplexity_chunking import Chunking
-            except ImportError:
-                from perplexity_chunking import Chunking
-            
-            chunking = Chunking(self.model, self.tokenizer)
+                chunking = Chunking(self.model, self.tokenizer)
+            except Exception as e:
+                logger.error(f"创建Chunking实例失败: {e}")
+                return self.traditional_chunking(text, chunk_size=512, overlap=50)
             
             segments = split_text_by_punctuation(text, language) 
             segments = [s for s in segments if s.strip()]
@@ -1383,3 +1416,90 @@ def create_meta_chunking(model=None, tokenizer=None, api_client=None):
         MetaChunking实例
     """
     return MetaChunking(model, tokenizer, api_client)
+
+
+def meta_chunking(original_text, base_model, language, ppl_threshold, chunk_length):
+    """
+    应用智能文本分割的主要元分块函数。
+    
+    该函数支持两种分块方法：
+    1. PPL分块：使用基于困惑度的分块
+    2. 边际采样分块：使用基于概率的决策制定
+    
+    参数:
+        original_text: 待分块的输入文本
+        base_model: 分块方法（'PPL Chunking'或'Margin Sampling Chunking'）
+        language: 语言代码（'zh'表示中文，'en'表示英文）
+        ppl_threshold: 基于困惑度分块的阈值
+        chunk_length: 最终块的最大长度
+        
+    返回:
+        final_text: 用双换行符分隔段落的分块文本
+    """
+    try:
+        chunk_length = int(chunk_length)
+        
+        # 创建MetaChunking实例
+        chunking_manager = MetaChunking()
+        
+        if base_model == 'PPL Chunking':
+            # 使用基于困惑度的分块方法
+            strategy = "meta_ppl"
+            params = {"threshold": ppl_threshold, "language": language}
+        else:
+            # 使用边际采样分块方法
+            strategy = "margin_sampling"
+            params = {"language": language, "chunk_length": chunk_length}
+        
+        # 执行分块
+        config = {"glm_configured": False}
+        final_chunks = chunking_manager.smart_chunking(original_text, strategy, config, **params)
+        
+        # 合并块以遵守最大块长度约束
+        merged_paragraphs = []
+        current_paragraph = ""  
+        
+        if language == 'zh':
+            # 对于中文：计算字符数
+            for paragraph in final_chunks:  
+                if len(current_paragraph) + len(paragraph) <= chunk_length:  
+                    current_paragraph += paragraph  
+                else:  
+                    if current_paragraph:
+                        merged_paragraphs.append(current_paragraph)  
+                    current_paragraph = paragraph    
+        else:
+            # 对于英文：计算单词数
+            for paragraph in final_chunks:  
+                if len(current_paragraph.split()) + len(paragraph.split()) <= chunk_length:  
+                    current_paragraph += ' ' + paragraph  
+                else:  
+                    if current_paragraph:
+                        merged_paragraphs.append(current_paragraph)   
+                    current_paragraph = paragraph 
+                
+        # 添加最后一个合并的段落
+        if current_paragraph:  
+            merged_paragraphs.append(current_paragraph) 
+            
+        # 用双换行符连接所有块以实现清晰分离
+        final_text = '\n\n'.join(merged_paragraphs)
+        return final_text
+        
+    except Exception as e:
+        logger.error(f"meta_chunking函数执行失败: {e}")
+        # 降级到简单的传统分块
+        try:
+            chunking_manager = MetaChunking()
+            chunks = chunking_manager.traditional_chunking(original_text, chunk_size=chunk_length, overlap=50)
+            return '\n\n'.join(chunks)
+        except Exception as fallback_error:
+            logger.error(f"降级分块也失败: {fallback_error}")
+            # 最后的fallback：简单按长度切分
+            chunks = []
+            start = 0
+            while start < len(original_text):
+                end = start + chunk_length
+                chunks.append(original_text[start:end])
+                start = end - 50  # 简单重叠
+            return '\n\n'.join(chunks)

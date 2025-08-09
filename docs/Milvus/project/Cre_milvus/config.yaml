@@ -1,19 +1,10 @@
-active_llm_config: glm_default
 chunking:
   chunk_length: 512
   language: zh
   ppl_threshold: 0.3
   strategy: meta_ppl
 data:
-  data_location: ./data/upload/20250001
-llm_configs:
-  glm_default:
-    api_endpoint: https://open.bigmodel.cn/api/paas/v4/chat/completions
-    api_key: awddawdaw.wadawd
-    created_at: '2025-08-05T16:45:26.007883'
-    last_validated: '2025-08-05T16:45:26.007883'
-    model_name: glm-4.5-flash
-    provider: zhipu
+  data_location: ./data/upload/20250809
 milvus:
   collection_name: Test_one
   host: 127.0.0.1
@@ -30,10 +21,6 @@ multimodal:
   - jpeg
   - png
   - bmp
-performance:
-  enable_custom_metrics: true
-  max_history: 1000
-  monitor_interval: 1.0
 search:
   col_choice: hdbscan
   reorder_strategy: distance
@@ -41,11 +28,3 @@ search:
 system:
   insert_mode: overwrite
   url_split: false
-testing:
-  enable_performance_test: true
-  locust_config:
-    run_time: 60s
-    spawn_rate: 1
-    users: 10
-  test_collection_name: locust_test_collection
-  test_data_size: 10000
