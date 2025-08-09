@@ -9,23 +9,126 @@ from typing import List, Dict, Any, Optional
 import time
 from datetime import datetime
 from pydantic import BaseModel
+from contextlib import asynccontextmanager
 
 from dataBuilder.chunking.meta_chunking import DependencyChecker
 from dataBuilder.chunking.chunk_strategies import ChunkingManager
 
-
+_app_initialized = False
+_progress_tracker = None
+_collection_manager = None
 CHUNKING_AVAILABLE = True
 chunking_manager = None
 dependency_checker = None
 
+# 添加处理锁，防止重复处理
+_processing_lock = {}
+import threading
+_lock_mutex = threading.Lock()
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+#全局状态
+_progress_tracker = None
+_collection_manager = None
+def initialize_chunking_services():
+    """初始化分块服务"""
+    global chunking_manager, dependency_checker
+    
+    if not CHUNKING_AVAILABLE:
+        logger.warning("分块模块不可用，跳过初始化")
+        return False
+    
+    try:
+        # 初始化依赖检查器
+        from dataBuilder.chunking.meta_chunking import DependencyChecker
+        dependency_checker = DependencyChecker()
+        
+        # 初始化分块管理器，传入配置
+        from dataBuilder.chunking.chunk_strategies import ChunkingManager
+        chunking_manager = ChunkingManager(config=config)
+        
+        logger.info("分块服务初始化成功")
+        logger.info(f"PPL分块可用性: {dependency_checker.is_ppl_chunking_available()}")
+        
+        return True
+        
+    except Exception as e:
+        logger.error(f"分块服务初始化失败: {e}")
+        return False
 
-app = FastAPI(
-    title="Cre_milvus API",
-    description="简化的向量数据库管理API",
-    version="1.0.0"
-)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用启动时的初始化 - 使用简化组件"""
+    global _collection_manager, _progress_tracker, _app_initialized
+    
+    try:
+        logger.info("=" * 50)
+        logger.info("🚀 LIFESPAN 函数已被调用 - 开始简化初始化")
+        logger.info("=" * 50)
+        
+        # 快速初始化基础组件
+        _progress_tracker = InsertProgressTracker()
+        _collection_manager = CollectionStateManager()
+        
+        # 初始化分块服务
+        if CHUNKING_AVAILABLE:
+            initialize_chunking_services()
+            logger.info("✅ 分块服务初始化完成")
+        
+        # 使用简化的配置加载器
+        success = load_config()
+        logger.info(f"📝 配置加载: {'✅ 成功' if success else '❌ 失败'}")
+        
+        # 标记为已初始化，允许API响应
+        _app_initialized = True
+        logger.info("✅ 基础系统初始化完成，API现在可以响应请求")
+        
+        # 在后台异步初始化连接（不阻塞API启动）
+        import asyncio
+        asyncio.create_task(background_initialize())
+        
+        logger.info("=" * 50)
+        logger.info("✅ 系统快速启动完成！连接初始化在后台进行")
+        logger.info("=" * 50)
+        yield
+    except Exception as e:
+        logger.error(f"❌ 系统初始化失败: {e}")
+        _app_initialized = False
+        yield
+
+async def background_initialize():
+    """后台初始化连接 - 使用简化组件"""
+    try:
+        logger.info("🔄 开始后台连接初始化（使用简化组件）...")
+        
+        # 使用简化的连接初始化
+        from config_loader import load_config
+        from simple_milvus import initialize_milvus_from_config
+        
+        # 加载配置
+        config_data = load_config()
+        logger.info("✅ 配置加载成功")
+        
+        # 初始化Milvus连接（优先级最高）
+        logger.info("🔗 开始初始化Milvus连接（优先级最高）...")
+        success = initialize_milvus_from_config(config_data)
+        
+        if success:
+            logger.info("✅ Milvus连接初始化成功，数据插入功能已就绪")
+        else:
+            logger.warning("⚠️ Milvus连接初始化失败，数据插入功能可能受影响")
+        
+        logger.info("✅ 后台连接初始化完成")
+        
+    except Exception as e:
+        logger.error(f"❌ 后台连接初始化失败: {e}")
+        import traceback
+        logger.debug(f"详细错误: {traceback.format_exc()}")
+
+
+app = FastAPI(lifespan=lifespan)
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -105,7 +208,10 @@ class ChunkingConfig(BaseModel):
     chunk_overlap: int = 50
 
 class SearchRequest(BaseModel):
-    query: str
+    question: str  # 改为question匹配前端
+    col_choice: str = "hdbscan"
+    collection_name: str = "Test_one"
+    enable_visualization: bool = True
     top_k: int = 10
 class InsertProgressTracker:
     """插入进度跟踪器"""
@@ -249,46 +355,7 @@ class InsertProgressTracker:
         for tracking_id in to_remove:
             del self._progress_data[tracking_id]
             logger.info(f"清理旧的跟踪数据: {tracking_id}")
-#全局状态
-_progress_tracker = None
-_collection_manager = None
-def initialize_chunking_services():
-    """初始化分块服务"""
-    global chunking_manager, dependency_checker
-    
-    if not CHUNKING_AVAILABLE:
-        logger.warning("分块模块不可用，跳过初始化")
-        return False
-    
-    try:
-        # 初始化依赖检查器
-        from dataBuilder.chunking.meta_chunking import DependencyChecker
-        dependency_checker = DependencyChecker()
-        
-        # 初始化分块管理器，传入配置
-        from dataBuilder.chunking.chunk_strategies import ChunkingManager
-        chunking_manager = ChunkingManager(config=config)
-        
-        logger.info("分块服务初始化成功")
-        logger.info(f"PPL分块可用性: {dependency_checker.is_ppl_chunking_available()}")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"分块服务初始化失败: {e}")
-        return False
 
-@app.on_event("startup")
-async def startup_event():
-    """应用启动时的初始化"""
-    global _collection_manager
-    logger.info("启动简化版Milvus API服务")
-    _progress_tracker = InsertProgressTracker()
-    _collection_manager = CollectionStateManager()
-    if CHUNKING_AVAILABLE:
-            initialize_chunking_services()
-
-    load_config()
 
 @app.get("/")
 async def root():
@@ -406,6 +473,19 @@ async def update_chunking_config(chunking_config: ChunkingConfig):
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...), folder_name: str = Form(None)):
     """文件上传和处理"""
+    # 简单的重复处理检查
+    folder_key = folder_name.strip() if folder_name and folder_name.strip() else "default"
+    
+    with _lock_mutex:
+        if folder_key in _processing_lock:
+            logger.warning(f"文件夹 {folder_key} 正在处理中，跳过重复请求")
+            return {
+                "success": False,
+                "message": f"文件夹 {folder_key} 正在处理中，请等待完成",
+                "status": "processing"
+            }
+        _processing_lock[folder_key] = True
+    
     try:
         if folder_name and folder_name.strip():
             upload_dir = f"./data/upload/{folder_name.strip()}"
@@ -572,6 +652,12 @@ async def upload_file(file: UploadFile = File(...), folder_name: str = Form(None
             status_code=500,
             detail=f"文件上传失败: {str(e)}"
         )
+    finally:
+        # 无论成功还是失败，都要释放锁
+        with _lock_mutex:
+            if folder_key in _processing_lock:
+                del _processing_lock[folder_key]
+                logger.info(f"释放文件夹 {folder_key} 的处理锁")
 
 @app.post("/search")
 async def search(request: SearchRequest):
@@ -586,11 +672,11 @@ async def search(request: SearchRequest):
         )
     
     try:
-        data = await request.json()
-        question = data.get("question", "")
-        col_choice = data.get("col_choice", "hdbscan")
-        collection_name = data.get("collection_name", "Test_one")
-        enable_visualization = data.get("enable_visualization", True)
+        # 直接使用request对象，不需要再次解析JSON
+        question = request.question
+        col_choice = request.col_choice
+        collection_name = request.collection_name
+        enable_visualization = request.enable_visualization
         
         if not question:
             raise HTTPException(status_code=400, detail="问题不能为空")
@@ -719,6 +805,54 @@ async def search(request: SearchRequest):
     # except Exception as e:
     #     logger.error(f"搜索失败: {e}")
     #     raise HTTPException(status_code=500, detail=str(e))
+def _calculate_search_quality_metrics(search_result: Dict[str, Any]) -> Dict[str, float]:
+    """计算搜索质量指标"""
+    try:
+        clusters = search_result.get("clusters", [])
+        if not clusters:
+            return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
+        
+        total_docs = sum(len(cluster.get("documents", [])) for cluster in clusters)
+        if total_docs == 0:
+            return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
+        
+        # 相关性分数：基于平均距离（距离越小，相关性越高）
+        total_distance = 0
+        for cluster in clusters:
+            for doc in cluster.get("documents", []):
+                total_distance += doc.get("distance", 1.0)
+        
+        avg_distance = total_distance / total_docs
+        relevance_score = max(0, 1 - avg_distance)  # 距离转换为相关性
+        
+        # 多样性分数：基于聚类数量和分布
+        num_clusters = len(clusters)
+        if num_clusters <= 1:
+            diversity_score = 0.0
+        else:
+            # 计算聚类大小的标准差，标准差越小，分布越均匀，多样性越好
+            cluster_sizes = [len(cluster.get("documents", [])) for cluster in clusters]
+            mean_size = sum(cluster_sizes) / len(cluster_sizes)
+            variance = sum((size - mean_size) ** 2 for size in cluster_sizes) / len(cluster_sizes)
+            std_dev = variance ** 0.5
+            
+            # 归一化多样性分数
+            max_possible_std = mean_size * 0.5  # 假设最大标准差为平均值的一半
+            diversity_score = max(0, 1 - (std_dev / max_possible_std)) if max_possible_std > 0 else 0
+        
+        # 覆盖率分数：基于聚类数量相对于文档数量的比例
+        coverage_ratio = num_clusters / total_docs if total_docs > 0 else 0
+        coverage_score = min(1.0, coverage_ratio * 5)  # 假设理想比例是1:5
+        
+        return {
+            "relevance_score": round(relevance_score, 3),
+            "diversity_score": round(diversity_score, 3),
+            "coverage_score": round(coverage_score, 3)
+        }
+        
+    except Exception as e:
+        logger.error(f"计算质量指标失败: {e}")
+        return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
 @app.get("/load-test/list")
 async def list_load_tests():
     """列出所有压力测试"""
@@ -1515,4 +1649,4 @@ async def integration_test():
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动简化版API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8506)
+    uvicorn.run(app, host="0.0.0.0", port=8509)

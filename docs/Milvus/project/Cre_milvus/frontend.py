@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-BACKEND_URL = "http://localhost:8506"
+BACKEND_URL = "http://localhost:8509"
 DEFAULT_TIMEOUT = 10
 
 st.set_page_config(
@@ -669,7 +669,7 @@ if "last_search" not in st.session_state:
 with st.sidebar:
     st.header("🚀 系统快速状态")
     
-    status_response = safe_request("GET", f"{BACKEND_URL}/system/status", timeout=3)
+    status_response = safe_request("GET", f"{BACKEND_URL}/system/status", timeout=DEFAULT_TIMEOUT)
     if status_response and status_response.status_code == 200:
         try:
             status_data = status_response.json()
@@ -1213,7 +1213,7 @@ with st.expander("🔎 检索与可视化", expanded=True):
                 try:
                     # 1. 执行搜索
                     search_response = requests.post(
-                        "http://localhost:8506/search",
+                        f"{BACKEND_URL}/search",
                         json={
                             "question": question, 
                             "col_choice": col_choice,
@@ -1873,7 +1873,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
                         st.markdown("**切分结果:**")
                         for i, chunk in enumerate(chunks):
                             st.markdown(f"**文本块 #{i+1} (长度: {len(chunk)}):**")
-                            st.text_area("", value=chunk, height=100, key=f"chunk_{i}", label_visibility="collapsed")
+                            st.text_area(f"文本块 #{i+1}", value=chunk, height=100, key=f"chunk_{i}", label_visibility="collapsed")
                     else:
                         error_data = response.json() if response.headers.get('content-type') == 'application/json' else {}
                         error_msg = error_data.get("message", response.text)
@@ -1896,7 +1896,7 @@ with st.expander("🖼️ 以文搜图功能", expanded=False):
                 with st.spinner("正在搜索图像..."):
                     try:
                         response = requests.post(
-                            "http://localhost:8506/multimodal/text_to_image_search",
+                            f"{BACKEND_URL}/multimodal/text_to_image_search",
                             json={
                                 "query_text": search_text,
                                 "top_k": search_top_k,
@@ -1939,7 +1939,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         with col_monitor1:
             if st.button("🔄 刷新性能数据", key="refresh_perf_btn"):
                 try:
-                    response = requests.get("http://localhost:8506/performance/current")
+                    response = requests.get(f"{BACKEND_URL}/performance/current")
                     if response.status_code == 200:
                         metrics = response.json().get("metrics", {})
                         
@@ -1999,7 +1999,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                 @st.cache_data(ttl=refresh_seconds)
                 def get_performance_data():
                     try:
-                        return requests.get("http://localhost:8506/performance/current").json()
+                        return requests.get(f"{BACKEND_URL}/performance/current").json()
                     except:
                         return {}
                 
@@ -2015,7 +2015,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
             # 导出监控报告
             if st.button("📊 导出性能报告", key="export_performance_report"):
                 try:
-                    response = requests.get("http://localhost:8506/performance/export_report")
+                    response = requests.get(f"{BACKEND_URL}/performance/export_report")
                     if response.status_code == 200:
                         report_data = response.json()
                         st.download_button(
@@ -2122,7 +2122,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                     with st.spinner("正在启动压力测试..."):
                         try:
                             response = requests.post(
-                                "http://localhost:8506/load-test/start",
+                                f"{BACKEND_URL}/load-test/start",
                                 json=test_params,
                                 timeout=30  # 添加超时设置
                             )
@@ -2186,7 +2186,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         
         # 获取测试列表
         try:
-            response = requests.get("http://localhost:8506/load-test/list")
+            response = requests.get(f"{BACKEND_URL}/load-test/list")
             if response.status_code == 200:
                 tests_data = response.json()
                 tests = tests_data.get("tests", [])
@@ -2225,7 +2225,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                             with col_info2:
                                 # 获取Web界面URL
                                 try:
-                                    url_response = requests.get(f"http://localhost:8506/load-test/web-url/{test_id}")
+                                    url_response = requests.get(f"{BACKEND_URL}/load-test/web-url/{test_id}")
                                     if url_response.status_code == 200:
                                         web_url = url_response.json().get("web_url")
                                         if web_url:
@@ -2237,7 +2237,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                                 if status == "running":
                                     if st.button(f"⏹️ 停止测试", key=f"stop_{test_id}"):
                                         try:
-                                            stop_response = requests.post(f"http://localhost:8506/load-test/stop/{test_id}")
+                                            stop_response = requests.post(f"{BACKEND_URL}/load-test/stop/{test_id}")
                                             if stop_response.status_code == 200:
                                                 st.success("测试已停止")
                                                 st.rerun()
@@ -2258,7 +2258,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         
         if st.button("🔄 刷新测试历史", key="refresh_test_history"):
             try:
-                response = requests.get("http://localhost:8506/testing/list_tests")
+                response = requests.get(f"{BACKEND_URL}/testing/list_tests")
                 if response.status_code == 200:
                     tests = response.json().get("tests", [])
                     
@@ -2430,7 +2430,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
         if st.button("🧪 运行集成测试", key="integration_test_btn"):
             try:
                 with st.spinner("正在运行系统集成测试..."):
-                    response = requests.post("http://localhost:8506/system/integration_test")
+                    response = requests.post(f"{BACKEND_URL}/system/integration_test")
                     if response.status_code == 200:
                         test_data = response.json()
                         test_results = test_data.get("test_results", {})
@@ -2493,7 +2493,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
         if st.button("🔄 重新加载配置", key="reload_config_btn"):
             try:
                 with st.spinner("正在重新加载系统配置..."):
-                    response = requests.post("http://localhost:8506/system/reload_config")
+                    response = requests.post(f"{BACKEND_URL}/system/reload_config")
                     if response.status_code == 200:
                         st.success("系统配置已重新加")
                         st.info("所有模块已重新初始化，新配置已生效")

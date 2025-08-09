@@ -1,136 +1,96 @@
-# """
-# 简化GLM配置管理模块
+"""
+简化GLM配置管理模块
 
-# 专门处理GLM-4.5-flash模型的配置管理、验证和实例化功能
-# 统一使用YAML配置文件管理所有配置
-# """
+专门处理GLM-4.5-flash模型的配置管理、验证和实例化功能
+统一使用YAML配置文件管理所有配置
+"""
 
-# import logging
-# import os
-# import yaml
-# from typing import Dict, Any, Optional, Tuple
-# from dataclasses import dataclass, asdict
-# from cryptography.fernet import Fernet
-# import base64
-# from datetime import datetime
+import logging
+import os
+import yaml
+from typing import Dict, Any, Optional, Tuple
+from dataclasses import dataclass, asdict
+from datetime import datetime
 
-# logger = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-# @dataclass
-# class GLMConfig:
-#     """GLM配置信息"""
-#     model_name: str = "glm-4.5-flash"
-#     api_key: str = ""
-#     api_endpoint: str = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
-#     provider: str = "zhipu"
-#     is_active: bool = True
-#     created_at: Optional[str] = None
-#     last_validated: Optional[str] = None
+@dataclass
+class GLMConfig:
+    """GLM配置信息"""
+    model_name: str = "glm-4.5-flash"
+    api_key: str = ""
+    api_endpoint: str = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
+    provider: str = "zhipu"
+    is_active: bool = True
+    created_at: Optional[str] = None
+    last_validated: Optional[str] = None
     
-#     def to_dict(self) -> Dict[str, Any]:
-#         return asdict(self)
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
     
-#     @classmethod
-#     def from_dict(cls, data: Dict[str, Any]) -> 'GLMConfig':
-#         return cls(
-#             model_name=data.get('model_name', 'glm-4.5-flash'),
-#             api_key=data.get('api_key', ''),
-#             api_endpoint=data.get('api_endpoint', 'https://open.bigmodel.cn/api/paas/v4/chat/completions'),
-#             provider=data.get('provider', 'zhipu'),
-#             is_active=data.get('is_active', True),
-#             created_at=data.get('created_at'),
-#             last_validated=data.get('last_validated')
-#         )
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'GLMConfig':
+        return cls(
+            model_name=data.get('model_name', 'glm-4.5-flash'),
+            api_key=data.get('api_key', ''),
+            api_endpoint=data.get('api_endpoint', 'https://open.bigmodel.cn/api/paas/v4/chat/completions'),
+            provider=data.get('provider', 'zhipu'),
+            is_active=data.get('is_active', True),
+            created_at=data.get('created_at'),
+            last_validated=data.get('last_validated')
+        )
 
 
-# class GLMConfigService:
-#     """GLM配置管理服务 - 基于YAML配置文件"""
+class GLMConfigService:
+    """GLM配置管理服务 - 基于YAML配置文件"""
     
-#     def __init__(self, config_file: str = None):
-#         # 查找config.yaml文件
-#         if config_file is None:
-#             config_file = self._find_config_file()
+    def __init__(self, config_file: str = None):
+        # 查找config.yaml文件
+        if config_file is None:
+            config_file = self._find_config_file()
         
-#         self.config_file = config_file
-#         self.config: Optional[GLMConfig] = None
-#         self._encryption_key = self._get_or_create_encryption_key()
-#         self._load_config()
+        self.config_file = config_file
+        self.config: Optional[GLMConfig] = None
+        self._load_config()
     
-#     def _find_config_file(self) -> str:
-#         """查找config.yaml文件"""
-#         possible_paths = [
-#             os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.yaml"),
-#             os.path.join(os.path.dirname(__file__), "..", "..", "config.yaml"),
-#             "config.yaml"
-#         ]
+    def _find_config_file(self) -> str:
+        """查找config.yaml文件"""
+        possible_paths = [
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.yaml"),
+            os.path.join(os.path.dirname(__file__), "..", "..", "config.yaml"),
+            "config.yaml"
+        ]
         
-#         for path in possible_paths:
-#             if os.path.exists(path):
-#                 return path
+        for path in possible_paths:
+            if os.path.exists(path):
+                return path
         
-#         # 如果找不到，使用默认路径
-#         return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.yaml")
+        # 如果找不到，使用默认路径
+        return os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "config.yaml")
     
-#     def _get_or_create_encryption_key(self) -> bytes:
-#         """获取或创建加密密钥"""
-#         key_file = os.path.join(os.path.dirname(self.config_file), "glm_encryption.key")
-        
-#         if os.path.exists(key_file):
-#             with open(key_file, 'rb') as f:
-#                 return f.read()
-#         else:
-#             # 生成新的加密密钥
-#             key = Fernet.generate_key()
-#             with open(key_file, 'wb') as f:
-#                 f.write(key)
-#             return key
+
     
-#     def _encrypt_api_key(self, api_key: str) -> str:
-#         """加密API密钥"""
-#         try:
-#             fernet = Fernet(self._encryption_key)
-#             encrypted = fernet.encrypt(api_key.encode())
-#             return base64.b64encode(encrypted).decode()
-#         except Exception as e:
-#             logger.error(f"加密API密钥失败: {e}")
-#             return api_key  # 如果加密失败，返回原始密钥
-    
-#     def _decrypt_api_key(self, encrypted_api_key: str) -> str:
-#         """解密API密钥"""
-#         try:
-#             # 如果看起来不像加密的数据，直接返回
-#             if not encrypted_api_key or len(encrypted_api_key) < 20:
-#                 return encrypted_api_key
+    def _load_yaml_config(self) -> Dict[str, Any]:
+        """加载YAML配置文件"""
+        try:
+            if not os.path.exists(self.config_file):
+                return {}
             
-#             fernet = Fernet(self._encryption_key)
-#             encrypted_bytes = base64.b64decode(encrypted_api_key.encode())
-#             decrypted = fernet.decrypt(encrypted_bytes)
-#             return decrypted.decode()
-#         except Exception as e:
-#             logger.debug(f"解密API密钥失败，可能是明文密钥: {e}")
-#             return encrypted_api_key  # 如果解密失败，返回原始值
+            with open(self.config_file, 'r', encoding='utf-8') as f:
+                return yaml.safe_load(f) or {}
+        except Exception as e:
+            logger.error(f"加载YAML配置失败: {e}")
+            return {}
     
-#     def _load_yaml_config(self) -> Dict[str, Any]:
-#         """加载YAML配置文件"""
-#         try:
-#             if not os.path.exists(self.config_file):
-#                 return {}
-            
-#             with open(self.config_file, 'r', encoding='utf-8') as f:
-#                 return yaml.safe_load(f) or {}
-#         except Exception as e:
-#             logger.error(f"加载YAML配置失败: {e}")
-#             return {}
-    
-#     def _save_yaml_config(self, config_data: Dict[str, Any]) -> bool:
-#         """保存YAML配置文件"""
-#         try:
-#             with open(self.config_file, 'w', encoding='utf-8') as f:
-#                 yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True, indent=2)
-#             return True
-#         except Exception as e:
-#             logger.error(f"保存YAML配置失败: {e}")
-#             return False
+    def _save_yaml_config(self, config_data: Dict[str, Any]) -> bool:
+        """保存YAML配置文件"""
+        try:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
+                yaml.dump(config_data, f, default_flow_style=False, allow_unicode=True, indent=2)
+            return True
+        except Exception as e:
+            logger.error(f"保存YAML配置失败: {e}")
+            return False
     
 #     def _load_config(self) -> None:
 #         """从YAML文件加载GLM配置"""

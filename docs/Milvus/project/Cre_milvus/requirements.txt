@@ -3,7 +3,7 @@ numpy>=1.21.0
 scikit-learn>=1.3.0
 hdbscan>=0.8.29
 pyyaml>=6.0
-pymilvus>=2.3.0
+pymilvus>=2.3.0  # Milvus客户端库
 elasticsearch>=7.0.0,<8.0.0
 redis>=4.0.0
 redisvl>=0.0.5
@@ -19,6 +19,8 @@ umap-learn>=0.5.4
 plotly>=5.17.0
 zhipuai>=1.0.0
 modelscope>=1.9.0
+# ModelScope相关依赖
+adaseq>=0.6.0
 python-multipart>=0.0.6
 torch>=2.0.0
 transformers>=4.21.0
@@ -30,12 +32,19 @@ opencv-python>=4.8.0
 ftfy>=6.1.1
 regex>=2022.7.9
 
-locust>=2.14.0
 psutil>=5.9.0
+towhee>=1.1.0
+langchain>=0.1.0
+langchain-community>=0.0.20
+pymupdf>=1.23.0
 
 # 可选依赖（用于更好的性能）
 # accelerate>=0.21.0  # 用于模型加速
 # bitsandbytes>=0.41.0  # 用于模型量化
 
-# 确保你的redis是7.0+ 版本，因为我用到了Redis向量库redisvl
-# pip install -r requirements.txt
+# 注意事项:
+# 1. 确保你的redis是7.0+ 版本，因为我用到了Redis向量库redisvl
+# 2. 需要运行Milvus服务器 (可以使用Docker: docker run -p 19530:19530 milvusdb/milvus:latest)
+# 3. 或者安装并运行本地Milvus服务器
+# 
+# 安装命令: pip install -r requirements.txt
