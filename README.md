@@ -9,8 +9,8 @@
 | **Milvus**     | 章节                                       | 关键内容                                     | 状态   |
 |----------|-------------------------------------------|---------------------------------------------|--------|
 | 前言 | [前言](./docs/Milvus/chapter0/前言.md)    | 项目目标与大纲                                |   ✅    |
-|    第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/技术选型            |   ⌛    |
-|      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略/重建方法           | ✅     |
+|    第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/深入理解架构设计            |   ⌛    |
+|      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略           | ✅     |
 |          | [ 聚类介绍](./docs/Milvus/chapter1/聚类算法介绍.md) | 聚类原理/算法选择/优化策略                  | ✅     |
 |    第二章    | [Milvus Lite部署与应用](./docs/Milvus/chapter2/Milvus%20Lite部署与应用.md) | Lite部署方案             | ✅     |
 |          | [Milvus Standalone部署](./docs/Milvus/chapter2/Milvus%20Standalone部署.md) | Standalone部署方案                            | ✅     |
@@ -22,7 +22,7 @@
 |      第四章| [ Milvus 存储优化](./docs/Milvus/chapter4/milvus%20存储优化.md) | mmp理论与实践，数据切分策略                            | ✅     |
 |          | [ FunsionAnns](./docs/Milvus/chapter4/GPU加速检索-基于FusionANNS.md) | FusionANNS论文解读                 |    ✅    |
 |          | [K-means](./docs/Milvus/chapter4/K-mean算法详解.md) | An efficient K-means clustering algorithm for massive data论文解读                 |    ⌛    |
-|          | [Meta-Chunking：一种新的文本切分策略](./docs//Milvus/chapter4/Meta-Chunking：一种新的文本切分策略.md) | Learning Text Segmentation and Semantic Completion via Logical Perception论文解读                 |    ⌛    |
+|          | [Meta-Chunking：一种新的文本切分策略](./docs//Milvus/chapter4/Meta-Chunking：一种新的文本切分策略.md) | Learning Text Segmentation and Semantic Completion via Logical Perception论文解读                 |    ✅    |
 |      第五章   | [url分割处理](./docs/Milvus/project/url_process/README.md) | 视频数据存储过程中url分割与存放                 |   ✅     |
 |          | [Cre_Milvus](./docs/Milvus/project/Cre_milvus/PROJECT_STRUCTURE.md) | 综合实践                 |     ⌛   |
 |          | [Meta-chunking](./docs/Milvus/project/Meta_chunking/README.md) | Meta-chunking论文实现demo                 |     ✅   |
