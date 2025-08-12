@@ -142,7 +142,7 @@ client.load_collection(
     skip_load_dynamic_field=True 
 )
 ```
-这样做除了能减少内存的消耗外，还有一个好处，即后续使用GPU HMB和SSD对大规模数据进行优化存储和加速检索时，id字段的N Byte因为非常小，在CPU和SSD、HMB之间传输时，性能差异不大，因此可以忽略消耗。
+这样做除了能减少内存的消耗外，还有一个好处，即后续使用GPU HMB和SSD对大规模数据进行优化存储和加速检索时，id字段所占用的空间非常小，往往只有几bit，在CPU和SSD、HMB之间传输时，性能差异不大，因此可以忽略消耗。
 关于这一部分，请学习完成所有知识后，浏览[FusionANNS]()。
 
 当你使用结束此Collection后，请及时释放Collection，释放内存。
@@ -395,7 +395,11 @@ res = client.search(
 
 ### Milvus 核心架构概览
 
-Milvus 采用存储计算分离的分布式架构，核心组件如下：
+Milvus 采用存储计算分离的分布式架构，
+
+![jiagou](../../src/milvus_jiagou.png)
+
+核心组件如下：
 
 1.  **接入层（Access Layer）**：处理客户端请求（SDK, REST API）。
 2.  **协调服务（Coordinator Services）**：集群的“大脑”，管理元数据和任务调度。
@@ -449,6 +453,9 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
 #### 3. 工作节点 (Worker Nodes - 肌肉)
 无状态，可水平扩展。
 *   **Query Node (查询)**：
+
+    ![Qnode](../../src/milvus_querynode.jpeg)
+
     *   **核心职责**：执行向量/标量数据的搜索 (Search) 和查询 (Query)。
     *   **关键机制**：
         *   **订阅日志**：从 Log Broker 订阅负责 Segment 的增量数据，保持内存视图最新。
@@ -472,6 +479,9 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
         *   **索引构建算子**：调用底层库（Faiss/HNSWlib）执行构建（如 IVF 聚类 / HNSW 图构建），完成后将**索引文件**存回 Object Storage。*计算密集型*。
 
 #### 4. 存储层 (Storage Layer - 基石)
+
+![storage](../../src/milvus_storage.jpeg)
+
 *   **元数据存储 (Metadata Storage)**：存储所有系统元数据（Schema, 分区, Segment 元信息, TSO 状态等）。*强一致、高可用* (etcd/MySQL/TiDB)。Root Coord 主要使用者。
 *   **日志存储 (Log Broker)**：数据变更操作（Insert/Delete/DDL）的载体。*高吞吐、低延迟、持久化、顺序保证* (Pulsar/Kafka)。Data Node 的写入来源，Query Node 的数据更新来源。
 *   **对象存储 (Object Storage)**：持久化 Segment 原始数据文件、**索引文件**、Compaction 中间文件。*高可靠、高持久、高扩展、低成本* (MinIO/S3/Azure Blob/GCS)。访问延迟相对较高。
@@ -505,6 +515,9 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
     *   **Data Coord** 通知 **Index Coord** 有新 Segment 产生。
     *   **Index Coord** 调度 **Index Node** 为新 Segment 构建索引。
 10. **异步索引构建 (Index Node)**：
+
+    ![index](../../src/milvus_index.jpeg)
+
     *   **Index Node** 从 **Object Storage** 读取新 Segment 的原始数据。
     *   执行**索引构建算子**（如 IVF 聚类、HNSW 图构建）。
     *   将生成的**索引文件**写回 **Object Storage**。此过程是**异步**的，避免阻塞写入。
