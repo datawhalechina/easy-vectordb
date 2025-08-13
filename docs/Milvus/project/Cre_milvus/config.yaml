@@ -4,7 +4,7 @@ chunking:
   ppl_threshold: 0.3
   strategy: meta_ppl
 data:
-  data_location: ./data/upload/20250809
+  data_location: ./data/upload/20250729
 milvus:
   collection_name: Test_one
   host: 127.0.0.1

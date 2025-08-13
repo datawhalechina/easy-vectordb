@@ -86,7 +86,7 @@ class SimpleServiceManager:
                 "--reload",
                 "--port", str(self.backend_port),
                 "--host", "0.0.0.0",
-                "--timeout-keep-alive", "30"
+                "--timeout-keep-alive", "90"
             ],
             cwd=self.project_root,
             # 让子进程输出直接显示在终端
