@@ -662,8 +662,6 @@ async def upload_file(file: UploadFile = File(...), folder_name: str = Form(None
 @app.post("/search")
 async def search(request: SearchRequest):
     """搜索功能"""
-    # try:
-    #     logger.info(f"搜索请求: {request.query}")
 
     if not _app_initialized:
         raise HTTPException(
@@ -683,11 +681,10 @@ async def search(request: SearchRequest):
         
         logger.info(f"收到搜索请求: {question}, 聚类方法: {col_choice}")
         
-        # 加载配置
+        
         with open("config.yaml", "r", encoding="utf-8") as f:
             config = yaml.safe_load(f)
         
-        # 使用原有的搜索功能
         from System.start import Cre_Search
         
         start_time = time.time()
@@ -696,18 +693,16 @@ async def search(request: SearchRequest):
         
         logger.info(f"基础搜索完成，耗时: {search_time:.2f}秒")
         
-        # 如果启用可视化且有聚类结果，添加可视化数据
         if enable_visualization and "clusters" in result and result["clusters"]:
             try:
                 from Search.clustering import create_clustering_service
                 clustering_service = create_clustering_service()
                 
-                # 转换聚类数据格式
+                
                 clusters = []
                 for cluster_data in result["clusters"]:
                     from Search.clustering import Cluster, SearchResult
                     
-                    # 转换文档数据
                     documents = []
                     for doc in cluster_data.get("documents", []):
                         search_result = SearchResult(
@@ -720,7 +715,6 @@ async def search(request: SearchRequest):
                         )
                         documents.append(search_result)
                     
-                    # 创建聚类对象
                     cluster = Cluster(
                         cluster_id=cluster_data.get("cluster_id", 0),
                         documents=documents,
@@ -731,7 +725,6 @@ async def search(request: SearchRequest):
                     )
                     clusters.append(cluster)
                 
-                # 生成可视化数据
                 viz_start_time = time.time()
                 
                 scatter_plot_data = clustering_service.create_cluster_scatter_plot(clusters)
@@ -782,29 +775,7 @@ async def search(request: SearchRequest):
             status_code=500,
             detail=f"搜索失败: {str(e)}"
         )
-        # 简化的搜索逻辑
-        # 实际项目中可以根据需要添加Milvus搜索
-    #     results = [
-    #         {
-    #             "id": i,
-    #             "text": f"搜索结果 {i}: 与'{request.query}'相关的内容",
-    #             "score": 0.9 - i * 0.1,
-    #             "metadata": {"source": f"document_{i}"}
-    #         }
-    #         for i in range(min(request.top_k, 5))
-    #     ]
         
-    #     return {
-    #         "success": True,
-    #         "query": request.query,
-    #         "results": results,
-    #         "total": len(results),
-    #         "timestamp": datetime.now().isoformat()
-    #     }
-        
-    # except Exception as e:
-    #     logger.error(f"搜索失败: {e}")
-    #     raise HTTPException(status_code=500, detail=str(e))
 def _calculate_search_quality_metrics(search_result: Dict[str, Any]) -> Dict[str, float]:
     """计算搜索质量指标"""
     try:
@@ -816,33 +787,32 @@ def _calculate_search_quality_metrics(search_result: Dict[str, Any]) -> Dict[str
         if total_docs == 0:
             return {"relevance_score": 0.0, "diversity_score": 0.0, "coverage_score": 0.0}
         
-        # 相关性分数：基于平均距离（距离越小，相关性越高）
         total_distance = 0
         for cluster in clusters:
             for doc in cluster.get("documents", []):
                 total_distance += doc.get("distance", 1.0)
         
         avg_distance = total_distance / total_docs
-        relevance_score = max(0, 1 - avg_distance)  # 距离转换为相关性
+        relevance_score = max(0, 1 - avg_distance)  
         
-        # 多样性分数：基于聚类数量和分布
+        
         num_clusters = len(clusters)
         if num_clusters <= 1:
             diversity_score = 0.0
         else:
-            # 计算聚类大小的标准差，标准差越小，分布越均匀，多样性越好
+            
             cluster_sizes = [len(cluster.get("documents", [])) for cluster in clusters]
             mean_size = sum(cluster_sizes) / len(cluster_sizes)
             variance = sum((size - mean_size) ** 2 for size in cluster_sizes) / len(cluster_sizes)
             std_dev = variance ** 0.5
             
-            # 归一化多样性分数
-            max_possible_std = mean_size * 0.5  # 假设最大标准差为平均值的一半
+            
+            max_possible_std = mean_size * 0.5  
             diversity_score = max(0, 1 - (std_dev / max_possible_std)) if max_possible_std > 0 else 0
         
-        # 覆盖率分数：基于聚类数量相对于文档数量的比例
+        
         coverage_ratio = num_clusters / total_docs if total_docs > 0 else 0
-        coverage_score = min(1.0, coverage_ratio * 5)  # 假设理想比例是1:5
+        coverage_score = min(1.0, coverage_ratio * 5)  
         
         return {
             "relevance_score": round(relevance_score, 3),
@@ -871,7 +841,173 @@ async def list_load_tests():
     except Exception as e:
         logger.error(f"列出测试失败: {e}")
         raise HTTPException(status_code=500, detail=f"列出测试失败: {str(e)}")
+
+
+# 压测管理端点
+@app.post("/load-test/start")
+async def start_load_test(request: Request):
+    """启动压力测试"""
+    try:
+        data = await request.json()
         
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        # 创建测试配置
+        config = manager.create_test_config(data)
+        
+        # 启动测试
+        test_id = manager.start_load_test(config)
+        
+        # 获取Web界面URL
+        web_url = manager.get_locust_web_url(test_id)
+        
+        return {
+            "status": "success",
+            "test_id": test_id,
+            "web_url": web_url,
+            "message": "压力测试已启动"
+        }
+        
+    except Exception as e:
+        logger.error(f"启动压力测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"启动压力测试失败: {str(e)}")
+
+
+@app.get("/load-test/status/{test_id}")
+async def get_load_test_status(test_id: str):
+    """获取压力测试状态"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        status = manager.get_test_status(test_id)
+        
+        if status:
+            return {
+                "status": "success",
+                "test_status": status
+            }
+        else:
+            raise HTTPException(status_code=404, detail="测试不存在")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取测试状态失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取测试状态失败: {str(e)}")
+
+
+@app.post("/load-test/stop/{test_id}")
+async def stop_load_test(test_id: str):
+    """停止压力测试"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        success = manager.stop_test(test_id)
+        
+        if success:
+            return {
+                "status": "success",
+                "message": "压力测试已停止"
+            }
+        else:
+            raise HTTPException(status_code=404, detail="测试不存在或已停止")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"停止测试失败: {e}")
+        raise HTTPException(status_code=500, detail=f"停止测试失败: {str(e)}")
+
+
+@app.get("/load-test/web-url/{test_id}")
+async def get_load_test_web_url(test_id: str):
+    """获取Locust Web界面URL"""
+    try:
+        from testing.locust_manager import create_locust_test_manager
+        manager = create_locust_test_manager()
+        
+        web_url = manager.get_locust_web_url(test_id)
+        
+        if web_url:
+            return {
+                "status": "success",
+                "web_url": web_url
+            }
+        else:
+            raise HTTPException(status_code=404, detail="测试不存在或Web界面不可用")
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取Web界面URL失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取Web界面URL失败: {str(e)}")
+
+@app.post("/visualization")
+async def get_visualization_data(request: Request):
+    """
+    获取可视化数据
+    """
+    try:
+        data = await request.json()
+        collection_name = data.get("collection_name", "")
+        
+        if not collection_name:
+            raise HTTPException(status_code=400, detail="集合名称不能为空")
+        
+        logger.info(f"收到可视化请求: {collection_name}")
+        
+        # 尝试获取可视化数据
+        try:
+            from ColBuilder.visualization import get_all_embeddings_and_texts
+            import hdbscan
+            from umap import UMAP
+            import pandas as pd
+            import numpy as np
+            
+            # 获取数据
+            embeddings, texts, ids = get_all_embeddings_and_texts(collection_name)
+            
+            if not embeddings:
+                return []
+            
+            # UMAP降维
+            umap_model = UMAP(n_components=2, random_state=42)
+            embeddings_2d = umap_model.fit_transform(np.array(embeddings))
+            
+            # HDBSCAN聚类
+            clusterer = hdbscan.HDBSCAN(min_samples=3, min_cluster_size=2)
+            cluster_labels = clusterer.fit_predict(embeddings_2d)
+            
+            # 构建结果
+            result = []
+            for i, (x, y) in enumerate(embeddings_2d):
+                result.append({
+                    "x": float(x),
+                    "y": float(y),
+                    "cluster": int(cluster_labels[i]),
+                    "text": texts[i][:100] if i < len(texts) else "",
+                    "id": ids[i] if i < len(ids) else i
+                })
+            
+            return result
+            
+        except ImportError as e:
+            logger.warning(f"可视化模块导入失败: {e}")
+            return []
+        except Exception as e:
+            logger.error(f"可视化数据生成失败: {e}")
+            return []
+        
+    except Exception as e:
+        logger.error(f"可视化请求处理失败: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"可视化请求处理失败: {str(e)}"
+        )
+
 @app.get("/llm/configs")
 async def get_llm_configs():
     """获取LLM配置列表"""

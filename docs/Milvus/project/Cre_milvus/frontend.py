@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 BACKEND_URL = "http://localhost:8509"
-DEFAULT_TIMEOUT = 10
+DEFAULT_TIMEOUT = 60
 
 st.set_page_config(
     page_title="DataWhale-easyVectorDB", 
@@ -729,7 +729,7 @@ with st.sidebar:
     
     if st.button("🧪 快速测试", key="sidebar_test"):
         with st.spinner("运行快速测试..."):
-            test_response = safe_request("POST", f"{BACKEND_URL}/system/integration_test", timeout=10)
+            test_response = safe_request("POST", f"{BACKEND_URL}/system/integration_test", timeout=DEFAULT_TIMEOUT)
             if test_response and test_response.status_code == 200:
                 try:
                     test_data = test_response.json()
@@ -1093,44 +1093,44 @@ with st.expander("📁 上传数据文件区", expanded=True):
                 
                 if tracking_id:
                     status_text.text("🔄 正在处理数据，请稍候...")
-                    max_attempts = 300  
-                    attempt = 0
+                    # max_attempts = 300  
+                    # attempt = 0
                     
-                    while attempt < max_attempts:
-                        try:
-                            progress_response = safe_request("GET", f"{BACKEND_URL}/progress/{tracking_id}")
-                            if progress_response and progress_response.status_code == 200:
-                                progress_data = progress_response.json()
-                                if progress_data.get("status") == "not_found":
-                                    break
-                                
-                                # 更新进度条 (50% + 处理进度的50%)
-                                processing_percentage = progress_data.get("progress_percentage", 0)
-                                total_progress = 50 + (processing_percentage * 0.5)
-                                progress_bar.progress(min(total_progress / 100, 1.0))
-                                
-                                # 更新状态文本
-                                current_status = progress_data.get("current_status", "处理中")
-                                processed = progress_data.get("processed_items", 0)
-                                total = progress_data.get("total_items", 0)
-                                
-                                if total > 0:
-                                    status_text.text(f"📊 {current_status}: {processed}/{total} ({processing_percentage:.1f}%)")
-                                else:
-                                    status_text.text(f"📊 {current_status}")
-                                
-                                # 检查是否完成
-                                if current_status in ["completed", "failed"]:
-                                    break
+                    # while attempt < max_attempts:
+                    try:
+                        progress_response = safe_request("GET", f"{BACKEND_URL}/progress/{tracking_id}")
+                        if progress_response and progress_response.status_code == 200:
+                            progress_data = progress_response.json()
+                            # if progress_data.get("status") == "not_found":
+                            #     break
+                            
+                            # 更新进度条 (50% + 处理进度的50%)
+                            processing_percentage = progress_data.get("progress_percentage", 0)
+                            total_progress = 50 + (processing_percentage * 0.5)
+                            progress_bar.progress(min(total_progress / 100, 1.0))
+                            
+                            # 更新状态文本
+                            current_status = progress_data.get("current_status", "处理中")
+                            processed = progress_data.get("processed_items", 0)
+                            total = progress_data.get("total_items", 0)
+                            
+                            if total > 0:
+                                status_text.text(f"📊 {current_status}: {processed}/{total} ({processing_percentage:.1f}%)")
                             else:
-                                logger.warning(f"无法获取进度状态: {tracking_id}")
-                                break
-                        except Exception as e:
-                            logger.error(f"获取进度状态失败: {e}")
-                            break
-                        
-                        time.sleep(1)  # 每秒检查一次
-                        attempt += 1
+                                status_text.text(f"📊 {current_status}")
+                            
+                            # 检查是否完成
+                            # if current_status in ["completed", "failed"]:
+                            #     break
+                        else:
+                            logger.warning(f"无法获取进度状态: {tracking_id}")
+                            # break
+                    except Exception as e:
+                        logger.error(f"获取进度状态失败: {e}")
+                        # break
+                    
+                    time.sleep(1)  # 每秒检查一次
+                    # attempt += 1
                 
                 # 完成进度条
                 progress_bar.progress(1.0)
@@ -1189,7 +1189,10 @@ with st.expander("📁 上传数据文件区", expanded=True):
 
 st.markdown("---")
 
-with st.expander("🔎 检索与可视化", expanded=True):
+with st.container():
+    st.markdown("### 检索与可视化")
+    st.markdown("---")
+
     question = st.text_input("请输入检索问题", key="search_question")
     col_choice = st.selectbox(
         "聚类算法", 
@@ -1220,7 +1223,7 @@ with st.expander("🔎 检索与可视化", expanded=True):
                             "collection_name": st.session_state.config["milvus"]["collection_name"],
                             "enable_visualization": enable_visualization
                         },
-                        timeout=60  # 添加超时设置
+                        timeout=DEFAULT_TIMEOUT  # 添加超时设置
                     )
                     
                     if search_response.status_code == 200:
@@ -1298,7 +1301,6 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                     if "scatter_plot" in viz_data and viz_data["scatter_plot"]["x"]:
                                         scatter_data = viz_data["scatter_plot"]
                                         
-                                        # 性能优化：对于大量数据点，进行采样
                                         total_points = len(scatter_data["x"])
                                         max_points = 1000  # 最大显示点数
                                         
@@ -1449,7 +1451,8 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                             cluster_quality = 1 - detail['avg_distance'] if detail['avg_distance'] < 1 else 0
                                             quality_badge = create_quality_badge(cluster_quality)
                                             
-                                            with st.expander(f"🔍 聚类 {detail['cluster_id']} - {detail['size']} 个文档", expanded=False):
+                                            with st.container():
+                                                st.markdown(f"#### 聚类 {detail['cluster_id']} - {detail['size']}个文档")
                                                 st.markdown('<div class="cluster-card">', unsafe_allow_html=True)
                                                 
                                                 # 聚类统计信息
@@ -1482,25 +1485,22 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                                 st.markdown('</div>', unsafe_allow_html=True)
                                     else:
                                         st.warning("⚠️ 无法显示聚类摘要：缺少摘要数据")
-                            
-                            # 显示可视化错误（如果有）
+                        
                             elif "visualization_error" in search_result:
                                 st.warning("⚠️ 聚类可视化生成失败")
-                                with st.expander("查看错误详情"):
+                                with st.container():
+                                    st.markdown("查看错误详细")
                                     st.error(search_result["visualization_error"])
                                     st.info("💡 可视化失败不影响基础搜索功能，您仍可以查看下方的检索结果")
                             
                             else:
                                 st.info("ℹ️ 未启用聚类可视化功能，如需查看可视化分析，请在搜索时启用该功能")
                             
-                            # 显示所有召回结果
                             st.subheader("📄 检索结果详情")
                             
-                            # 创建选项卡布局
                             tab1, tab2 = st.tabs(["📋 文档列表", "🗂️ 聚类视图"])
                             
                             with tab1:
-                                # 按距离排序的所有文档
                                 all_docs = []
                                 for cluster_idx, cluster in enumerate(search_result["clusters"]):
                                     for doc in cluster["documents"]:
@@ -1508,7 +1508,6 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                         doc_with_cluster["cluster_id"] = cluster.get("cluster_id", cluster_idx)
                                         all_docs.append(doc_with_cluster)
                                 
-                                # 排序选项
                                 sort_by = st.selectbox(
                                     "排序方式",
                                     ["相似度（距离）", "集群ID", "文档ID"],
@@ -1612,42 +1611,36 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                 with col3:
                                     st.metric("平均文档", f"{avg_docs:.1f}")
                                 
-                                # 应用自定义样
                                 style_metric_cards()
                                 
-                                # 添加排序选项
                                 sort_option = st.selectbox(
                                     "集群排序方式",
                                     ["按平均距离", "按集群大小", "按集群ID"],
                                     key="cluster_sort_option"
                                 )
                                 
-                                # 根据选择排序集群
                                 clusters_to_display = search_result["clusters"].copy()
                                 if sort_option == "按平均距离":
                                     clusters_to_display.sort(key=lambda x: x.get("avg_distance", 0))
                                 elif sort_option == "按集群大小":
                                     clusters_to_display.sort(key=lambda x: len(x["documents"]), reverse=True)
-                                else:  # 按集群ID
+                                else:  
                                     clusters_to_display.sort(key=lambda x: x.get("cluster_id", 0))
                                 
-                                # 显示每个集群的详细信
                                 for i, cluster in enumerate(clusters_to_display):
                                     cluster_id = cluster.get('cluster_id', i)
                                     cluster_size = len(cluster['documents'])
                                     avg_distance = cluster.get('avg_distance', 0.0)
                                     
-                                    # 集群标题和统计信
                                     st.subheader(f"🔍 集群 #{cluster_id}")
                                     
-                                    # 集群统计信息
                                     col_a, col_b, col_c = st.columns(3)
                                     with col_a:
                                         st.metric("文档数量", cluster_size)
                                     with col_b:
                                         st.metric("平均距离", f"{avg_distance:.4f}")
                                     with col_c:
-                                        # 计算集群质量评分
+                                        
                                         quality_score = max(0, min(1, avg_distance)) if avg_distance > 0 else 0
                                         quality_label = "优秀" if quality_score > 0.7 else "良好" if quality_score > 0.5 else "一"
                                         st.metric("质量评分", f"{quality_score:.2f}", delta=quality_label)
@@ -1702,9 +1695,8 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                                 st.markdown("---")
                         
                         else:
-                            st.info("ℹ️ 未找到相关文")
+                            st.info("ℹ️ 未找到相关文档")
                         
-                        # 2. 执行可视化（仅限HDBSCAN
                         if col_choice.lower() == "hdbscan" and "clusters" in search_result and search_result["clusters"]:
                             vis_response = requests.post(
                                 f"{BACKEND_URL}/visualization",
@@ -1718,7 +1710,7 @@ with st.expander("🔎 检索与可视化", expanded=True):
                                     df = pd.DataFrame(vis_data)
                                     
                                     # 显示可视化图
-                                    st.subheader("HDBSCAN聚类可视化（UMAP降维")
+                                    st.subheader("HDBSCAN聚类可视化（UMAP降维）")
                                     fig = px.scatter(
                                         df, x="x", y="y", color="cluster", 
                                         hover_data=["text"],
@@ -1764,11 +1756,12 @@ with st.expander("🧪 文本切分测试", expanded=False):
             st.markdown("**可用策略状态**")
             col_status1, col_status2 = st.columns(2)
             
+            # 不再使用，但保留也不影响
             with col_status1:
                 for strategy in strategies_data[:3]:
                     name = strategy.get("display_name", strategy.get("name", ""))
                     if strategy.get("llm_required", False):
-                        status = "🟢 可用" if strategy.get("llm_available", False) else "🔴 需要LLM配置"
+                        status = "🟢 可用" if strategy.get("available", False) else "🔴 需要LLM配置"
                     else:
                         status = "🟢 可用"
                     st.write(f"- {name}: {status}")
@@ -1777,14 +1770,14 @@ with st.expander("🧪 文本切分测试", expanded=False):
                 for strategy in strategies_data[3:]:
                     name = strategy.get("display_name", strategy.get("name", ""))
                     if strategy.get("llm_required", False):
-                        status = "🟢 可用" if strategy.get("llm_available", False) else "🔴 需要LLM配置"
+                        status = "🟢 可用" if strategy.get("available", False) else "🔴 需要LLM配置"
                     else:
                         status = "🟢 可用"
                     st.write(f"- {name}: {status}")
         else:
-            st.warning("无法获取策略状")
+            st.warning("无法获取策略状态")
     except Exception as e:
-        st.warning(f"获取策略状态失✅ {str(e)}")
+        st.warning(f"获取策略状态失败 {str(e)}")
     
     test_text = st.text_area("输入测试文本", height=150, key="test_text")
     
@@ -1811,18 +1804,18 @@ with st.expander("🧪 文本切分测试", expanded=False):
     
     if st.button("🔄 执行切分测试", key="chunking_test_btn"):
         if test_text:
-            # 检查LLM依赖策略
+            # 检查LLM依赖策略（不再需要）
             llm_required_strategies = ["msp", "meta_ppl"]
-            if test_strategy in llm_required_strategies:
-                try:
-                    configs_response = requests.get(f"{BACKEND_URL}/llm/configs")
-                    if configs_response.status_code == 200:
-                        summary = configs_response.json().get("summary", {})
-                        if not summary.get("active_config"):
-                            st.error(f"策略 '{test_strategy}' 需要LLM配置，请先在上方配置LLM")
-                            st.stop()
-                except Exception:
-                    st.warning("⚠️ 无法检查LLM配置状态")
+            # if test_strategy in llm_required_strategies:
+                # try:
+                #     configs_response = requests.get(f"{BACKEND_URL}/llm/configs")
+                #     if configs_response.status_code == 200:
+                        # summary = configs_response.json().get("summary", {})
+                        # if not summary.get("active_config"):
+                        #     st.error(f"策略 '{test_strategy}' 需要LLM配置，请先在上方配置LLM")
+                        #     st.stop()
+                # except Exception:
+                #     st.warning("⚠️ 无法检查LLM配置状态")
             
             with st.spinner("正在执行文本切分..."):
                 try:
@@ -1847,7 +1840,7 @@ with st.expander("🧪 文本切分测试", expanded=False):
                             "strategy": test_strategy,
                             "params": test_params
                         },
-                        timeout=30  # 添加超时设置
+                        timeout=DEFAULT_TIMEOUT  
                     )
                     
                     if response.status_code == 200:
@@ -2124,7 +2117,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                             response = requests.post(
                                 f"{BACKEND_URL}/load-test/start",
                                 json=test_params,
-                                timeout=30  # 添加超时设置
+                                timeout=DEFAULT_TIMEOUT  
                             )
                             
                             if response.status_code == 200:
@@ -2135,7 +2128,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                                 if result.get("status") == "success":
                                     st.success(f"✅ 压力测试已启动！测试ID: {test_id}")
                                     
-                                    # 显示Web界面链接
+                                    
                                     if web_url:
                                         st.markdown(f"""
                                         ### 🌐 Locust Web界面
@@ -2146,12 +2139,13 @@ with st.expander("📊 性能监控与压测", expanded=False):
                                         或复制链接到浏览器：`{web_url}`
                                         """)
                                         
-                                        # 添加新窗口打开按钮
+                                        
                                         if st.button("🚀 在新窗口中打开Locust界面", key="open_locust_web"):
                                             st.markdown(f'<script>window.open("{web_url}", "_blank");</script>', unsafe_allow_html=True)
                                     
-                                    # 显示测试配置
-                                    with st.expander("查看测试配置", expanded=False):
+                                    
+                                    with st.container():
+                                        st.markdown("查看测试配置")
                                         st.json(test_params)
                                 else:
                                     st.error(f"启动测试失败: {result.get('message', '未知错误')}")
@@ -2161,7 +2155,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
                         except Exception as e:
                             st.error(f"启动压测失败: {str(e)}")
         
-        # 当前运行的测试状态
+        
         st.markdown("### 📊 测试状态管理")
         
         col_status1, col_status2 = st.columns(2)
@@ -2181,7 +2175,7 @@ with st.expander("📊 性能监控与压测", expanded=False):
         
         with col_status2:
             if st.button("🧹 清理完成的测试", key="cleanup_tests"):
-                # 这里可以添加清理逻辑
+                # 待添加清理逻辑
                 st.info("清理功能将在后续版本中实现")
         
         # 获取测试列表
@@ -2213,7 +2207,8 @@ with st.expander("📊 性能监控与压测", expanded=False):
                             status_color = "⚪"
                             status_text = status
                         
-                        with st.expander(f"{status_color} 测试 {test_id} - {status_text}"):
+                        with st.container():
+                            st.markdown(f"{status_color} 测试 {test_id} - {status_text}")
                             col_info1, col_info2 = st.columns(2)
                             
                             with col_info1:
@@ -2281,7 +2276,8 @@ with st.expander("📊 性能监控与压测", expanded=False):
                         
                         # 显示详细结果
                         for test in completed_tests[:5]:  # 只显示最✅
-                            with st.expander(f"测试 {test['test_id']} - {test.get('status', 'unknown')}"):
+                            with st.container():
+                                st.markdown(f"测试 {test['test_id']} - {test.get('status', 'unknown')}")
                                 col_detail1, col_detail2 = st.columns(2)
                                 
                                 with col_detail1:

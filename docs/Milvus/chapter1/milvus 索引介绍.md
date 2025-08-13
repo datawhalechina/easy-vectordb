@@ -36,10 +36,33 @@ ANNS向量索引的分类可从多个维度构建，核心包括实现方法与�
 
 不同分类维度存在显著关联性。例如，基于量化技术的索引（如IVF_SQ8、IVF_PQ）主要属于浮点嵌入索引，**通过量化压缩浮点向量以平衡性能与资源消耗**；二进制嵌入索引的实现常结合量化或哈希方法，将浮点向量二值化后构建索引。以Milvus为例，其索引类型与目标字段数据类型严格映射：**浮点向量字段支持IVF系列、HNSW等多种实现方法的索引；二进制向量字段对应BIN_FLAT等专用索引；稀疏浮点向量字段则适配稀疏反转索引**，体现了向量嵌入类型与实现方法的协同选择逻辑。
 
+下面的示例展示了如何定义一个包含二进制向量字段的集合，并向其中插入一条记录。注意这里我们生成了一个长度为16字节（对应128位）的随机二进制向量作为演示。：
+```python 
+from pymilvus import Collection,FieldSchema,CollectionSchema,DataType
+import numpy as np
+
+field1 = FieldSchema(name="id",dtype=DataType.INT64,is_primary=True)
+field2 = FieldSchema(name="embedding",dtype=DataType.BINARY_VECTOR,dim=128)
+
+schema = CollectionSchema(fields=[field1,field2],description="Test collection")
+
+collection = Collection(name="example_collection",schema=schema)
+
+binary_vector = np.random.randint(0,256,(1,16),dtype=np.uint8).tolist()
+
+data = [
+   [i for i in range(1)],
+   binary_vector
+]
+
+collection.insert(data)
+
+```
+
 | 目标字段数据类型                           | 支持的索引类型                                  |
 | ---------------------------------- | ---------------------------------------- |
 | 浮点向量（FLOAT_VECTOR、FLOAT16_VECTOR等） | 平面、IVF_FLAT、IVF_SQ8、IVF_PQ、GPU_IVF_FLAT、GPU_IVF_PQ、HNSW、DISKANN |
-| 二进制向量                              | BIN_FLAT、BIN_IVF_FLAT                    |
+| 二进制向量                              | BINARY_VECTOR、BIN_IVF_FLAT                    |
 | 稀疏浮点矢量                             | 稀疏反转索引                                   |
 | 变量                                 | 反转（推荐）、BITMAP、Trie                       |
 | BOOL                               | BITMAP（推荐）、反转                            |

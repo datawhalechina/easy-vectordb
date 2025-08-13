@@ -619,22 +619,22 @@ Storage组件中包含Log Broker，用于持久化数据变更日志，数据协
 ![](../../src/mermaid_1.png)
 
 3. **增量数据管理**：首先你需要知道这些增量数据从哪里来，一是从Object Storage中存储的Segment文件（就是数据协调器创建的），二是由Query Node内存中增量生成的。我们消费这些数据是根据分配的TSO来消费的，对于来源一的数据，他的数据的范围即数据中tso <= Flush时间点，即这个数据的创建时间要比他入库Object Storage中的时间要小。对于来源二的数据，他的数据范围是 Flush时间点 < tso <= 当前tso
-```python 
-def execute_local_search(segment, ts_query):
-    # 1. 加载持久化数据（历史快照）
-    base_data = load_segment_from_storage(segment)  # ts ≤ flush_ts
-    
-    # 2. 应用增量变更
-    delta_ops = delta_buffer.get_ops_range(flush_ts+1, ts_query)
-    for op in delta_ops:
-        if op.is_insert:
-            base_data.insert(op.data)
-        elif op.is_delete:
-            base_data.delete(op.ids)
-    
-    # 3. 在合并后数据上执行搜索
-    return search_on_dataset(base_data)
-```
+    ```python 
+    def execute_local_search(segment, ts_query):
+        # 1. 加载持久化数据（历史快照）
+        base_data = load_segment_from_storage(segment)  # ts ≤ flush_ts
+        
+        # 2. 应用增量变更
+        delta_ops = delta_buffer.get_ops_range(flush_ts+1, ts_query)
+        for op in delta_ops:
+            if op.is_insert:
+                base_data.insert(op.data)
+            elif op.is_delete:
+                base_data.delete(op.ids)
+        
+        # 3. 在合并后数据上执行搜索
+        return search_on_dataset(base_data)
+    ```
 
 ### 关键问题/挑战
 

@@ -261,7 +261,6 @@ class ChunkingStrategyResolver:
             "description": "未知策略"
         })
 
-# 导入依赖 - 使用更安全的导入方式
 Chunking = None
 try:
     from .perplexity_chunking import Chunking
@@ -274,7 +273,7 @@ except ImportError:
         logger.warning("无法导入Chunking类，PPL分块功能将不可用")
         Chunking = None
 
-# PyTorch导入
+
 TORCH_AVAILABLE = False
 torch = None
 F = None
@@ -286,7 +285,6 @@ try:
 except ImportError:
     logger.warning("PyTorch不可用，某些分块策略将降级")
 
-# NLP库导入
 NLP_AVAILABLE = False
 sent_tokenize = None
 jieba = None
@@ -320,7 +318,6 @@ def split_text_by_punctuation(text, language):
         sentences = []  
         temp_sentence = ""  
         
-        # 重新组合句子：遇到句末标点符号时结束一个句子
         for word in sentences_list:  
             if word in ["。", "！", "？", "；"]:  # 中文句末标点
                 sentences.append(temp_sentence.strip() + word)  
