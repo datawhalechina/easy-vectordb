@@ -17,7 +17,9 @@ Cre_milvus是一个集成了向量数据库、智能分块、语义搜索和聚�
 
 - Python 3.8+
 - Milvus服务器 (推荐使用Docker)
-- 8GB+ 内存 (用于模型加载)
+- 8GB+ 内存 (用于模型加载) 
+- 注意，一定是空闲内存大于等于8GB
+- **如果你的电脑内存是16GB，请保证运行程序之前，电脑内存占用在5GB-6GB之间**
 
 ## 快速开始
 
@@ -41,7 +43,7 @@ docker run -p 19530:19530 milvusdb/milvus:latest
 ### 3. 启动系统
 
 ```bash
-python start_simple.py
+python simple_startup.py
 ```
 
 系统将自动：
@@ -117,6 +119,7 @@ chunking:
 3. **端口占用**
    - 修改config.yaml中的端口配置
    - 或者停止占用端口的其他程序
+   - 在作者测试的情况下发现，请勿频繁重启项目，系统的向量化或者qwen模型并不会因为你项目ctrl+c终止而终止，**这会导致端口的占用问题，请使用命令行kill掉端口占用**
 
 ### 日志查看
 
@@ -146,9 +149,6 @@ Cre_milvus/
 - **核心逻辑**: `System/start.py`
 - **数据处理**: `dataBuilder/data.py`
 
-## 许可证
-
-本项目采用MIT许可证。
 
 ## 贡献
 
