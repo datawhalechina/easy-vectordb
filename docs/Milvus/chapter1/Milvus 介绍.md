@@ -386,7 +386,7 @@ res = client.search(
 )
 ```
 
-> 后续内容待补充......
+> 后续内容待补充......待补充，待补充。
 
 
 ## 深入 Milvus 架构设计：数据写入和查询高层级流程
@@ -395,11 +395,7 @@ res = client.search(
 
 ### Milvus 核心架构概览
 
-Milvus 采用存储计算分离的分布式架构，
-
-![jiagou](../../src/milvus_jiagou.png)
-
-核心组件如下：
+Milvus 采用存储计算分离的分布式架构，核心组件如下：
 
 1.  **接入层（Access Layer）**：处理客户端请求（SDK, REST API）。
 2.  **协调服务（Coordinator Services）**：集群的“大脑”，管理元数据和任务调度。
@@ -416,24 +412,118 @@ Milvus 采用存储计算分离的分布式架构，
 
 ### 核心设计理念
 
-1.  **存储计算分离**：计算节点无状态，状态（元数据、数据、索引）存于外部服务。实现**弹性扩缩容**、**高可用**（节点故障快速替换）、**成本优化**（计算按需，存储经济）。
+1.  **存储计算分离**：计算节点无状态，状态（元数据、数据、索引）存于外部服务（Query Node以及Data Node从外部的Object Storage和MetaData Storage中获取segment、index file和segment状态、TSO）。实现**弹性扩缩容**、**高可用**（查询节点与数据节点分别归在各个部分的协调器下，当一个节点故障时可快速替换其他节点）、**成本优化**（计算按需，存储经济）。
 2.  **读写分离**：Query Node (读)、Data Node (写)、Index Node (索引构建) 职责清晰，互不干扰。
 3.  **日志即数据**：数据写入首先进入 Log Broker，作为数据的“唯一真实来源”。Data Node 消费日志写存储，Query Node 消费日志保持数据最新视图，确保**数据一致性**和**流批一体**。
+    > **流批一体**：Log Broker 处理实时流，Object Storage 存储批数据，Query Node 通过订阅日志实现流批统一视图。
 4.  **微服务化**：组件独立部署、通信（gRPC），易于维护、升级、扩展。
 5.  **向量优化**：架构围绕高效处理大规模高维向量 ANN 搜索设计。
+6. **增量模型**：该模型是milvus中非常重要的一部分，你可以理解为Milvus采用"基础数据+增量变更"的存储模式，类似于数据库的WAL（Write-Ahead Log）机制。
+
+   **核心思想**：
+   - **基础快照**：Object Storage中存储的Segment文件是某个时间点的完整数据快照
+   - **增量日志**：Log Broker中记录所有后续的Insert/Delete操作
+   - **实时合并**：Query Node在查询时动态合并基础数据+增量变更，呈现最新视图
+    ```
+        # 时间轴
+        t0: 插入向量 [A]
+        t1: 插入向量 [B] 
+        t2: 发起查询Q1
+        t3: 删除向量 [A]
+        t4: 发起查询Q2
+
+        # 快照隔离效果
+        Q1(在t2执行) 看到数据: [A, B]  // 包含t2前的所有写入
+        Q2(在t4执行) 看到数据: [B]    // 包含t4前的所有写入
+
+    ```
 
 ### 核心组件详解
+
+#### 一致性模型&&TSO
+首先，在你看下面的流程性的内容之前，需要**重点**的来理解一下Milvus的TSO到底是什么，在整个底层中扮演了什么角色，起到了什么作用。
+
+如果你学习过分布式系统，那么你应该知道水印watermark这个概念，想象一下你有一个不断流动的水流（数据流），**水印就是标记，到目前为止这些水已经到达水库的那个位置**
+
+在milvus中，**水印就是TSO（时间戳）**，它表示在这个时间点之前的所有数据，已经完成持久化存储（已经被存入到Object Storage）,这个时间戳TSO由根协调器Root Coordinator分配，由Data Coordinator维护（当根协调器分配TSO给数据协调器后，数据协调器分发给下面的数据节点Data Node，当data node完成数据的Flush后更新TSO）。我们用一段伪代码来理解TSO的分配以及使用流程：
+```python 
+def handle_data_update(request):
+    # 1. 客户端发起请求 
+    client_request = {"operation": "insert", "data": [...]}
+    
+    # 2. Proxy转发给Root Coord 
+    root_coord = RootCoordinator()
+    tso = root_coord.alloc_timestamp()  # 分配全局TSO
+    
+    # 3. 写入Log Broker 
+    log_broker.publish(
+        channel="collection-01", 
+        message={"data": request["data"], "ts": tso}
+    )
+    
+    # 4. Data Coord 的职责开始
+    data_coord = DataCoordinator()
+    
+    # 5. Data Coord 分配Segment给Data Node
+    if not has_assigned_segment("collection-01"):
+        # 选择Data Node (负载均衡)
+        data_node = select_data_node_by_load()
+        
+        # 分配Segment ID并记录元数据
+        segment_id = generate_segment_id()
+        metadata_store.save(
+            collection="collection-01",
+            segment_id=segment_id,
+            assigned_node=data_node.id
+        )
+        
+        # 通知Data Node开始消费日志
+        data_node.watch_channel(
+            channel="collection-01",
+            segment_id=segment_id
+        )
+    
+    # 6. Data Node 持续消费日志 
+    data_node.consume_logs(
+        channel="collection-01",
+        segment_id=segment_id,
+        callback=process_data
+    )
+
+def process_data(data, segment_id):
+    # 7. Data Node处理数据
+    buffer = get_buffer(segment_id)
+    buffer.append(data)
+    
+    # 达到阈值时触发Flush
+    if buffer.size() > FLUSH_THRESHOLD:
+        flush_to_storage(segment_id, buffer)
+        update_watermark(segment_id, data["ts"])  # 更新水印
+```
+补充一点说明，你可以在代码中看到有一个地方写了**负载均衡**，这个负载均衡是由谁来完成的呢，是Data Coordinator还是k8s呢？
+其实，**此处**的Data Node的负载均衡是由上层的Data Coordinator完成的，具体实现算法等到之后另外的章节再详细介绍，Data Coord负责向Data Node发放Segment，处于应用层，k8s负责milvus的整体，也就是基础设施层，当Data Node Pod的CPU使用率持续>70%，k8s会自动扩容，比如从3 Pod -> 5 Pod，**新的Pod启动后会自动向Data Coordinator注册**，所以总结来说，k8s控制的是上层数据流量的均衡（因为它只知道CPU/内存使用情况，不知道Segment大小），Data Coord负责Milvus中数据节点的负载均衡（因为Segment是有状态的，需要持久化到Metadata Storage中，k8s做不到这一点），最重要的一点，为什么不能用k8s做数据协调器向下面的Data Node的负载均衡，当我们的一个request进来后，你不可能等待好几秒甚至数分钟才得到相应吧，受不了的，k8s的HPA要完成节点的segment的负载均衡，往往需要数分钟（**假设**可以管理segment），而协调器则可以在ms级别做出响应，决定Segmen应该发放到哪个Node。
+
+
+> 回到代码中，问一个问题请你判断是否正确：Data Coordinator检测到来自根协调器发出的数据更新请求后，下发给某一个拿到segmentID的Data Node然后Data Node去消费日志。对吗？
+
+> 答案自然是不对的，很容易理解成这种错误的意思，实际情况是**根协调器只负责分配TSO**，请求是客户端发起的。Data Coordinator不检测请求，**只管理Segemnt的分配（分给哪个Data Node）**，然后通知Data Node去消费日志（更准确来说是节点订阅了协调器的topic），Data Node拿到从Data Coordinator分配的segment后才开始消费特定的channel。这个描述一定要准确，各个组件的功能和责任要分清楚！
+
+
+---
+下面我们进入整体流程的讲解。
+
+
+![jiagou](../../src/milvus_jiagou.png)
 
 #### 1. 接入层 (Access Layer)
 *   **SDKs / RESTful Gateway**：用户交互入口（如 `pymilvus.insert()` / `.search()`）。
 *   **负载均衡器** (LB)：分发请求到后端 Coordinator（通常由 K8s Service 或 Nginx 实现）。
-*   **设计要点**：易用性、协议兼容性、连接管理。
 
-#### 2. 协调服务 (Coordinator Service - 大脑)
+#### 2. 协调服务 (Coordinator Service)
 由多个角色组成（可同进程或不同进程部署）：
 *   **Root Coordinator (Root Coord)**：
     *   管理 DDL（创建/删除集合/分区/索引）。
-    *   分配全局唯一递增的时间戳 (TSO - Timestamp Oracle)，保证操作顺序和快照隔离一致性。
+    *   分配全局唯一递增的**时间戳** (TSO - Timestamp Oracle)，保证操作顺序和快照隔离一致性。
     *   收集展示集群指标。*唯一有状态角色*（状态存于 Metadata Storage）。
 *   **Query Coordinator (Query Coord)**：
     *   接收查询请求，解析查询计划。
@@ -448,10 +538,9 @@ Milvus 采用存储计算分离的分布式架构，
     *   接收索引创建请求。
     *   分配索引构建任务给 Index Node，监控状态。
     *   管理 Index Node 负载均衡和故障转移。
-*   **设计要点**：高可用（依赖 etcd/ZK 选主）、高效调度、元数据缓存（减少后端访问压力）。
 
-#### 3. 工作节点 (Worker Nodes - 肌肉)
-无状态，可水平扩展。
+#### 3. 工作节点 (Worker Nodes)
+分为Query Node和Data Node,两者都是无状态，可水平扩展。
 *   **Query Node (查询)**：
 
     ![Qnode](../../src/milvus_querynode.jpeg)
@@ -461,7 +550,7 @@ Milvus 采用存储计算分离的分布式架构，
         *   **订阅日志**：从 Log Broker 订阅负责 Segment 的增量数据，保持内存视图最新。
         *   **加载 Segment**：按 Query Coord 调度，从 Object Storage 加载 Segment 数据（向量、标量、**索引文件**）到内存或本地 SSD 缓存（*冷数据加载*）。
         *   **执行引擎**：包含核心**算子**：
-            *   **向量距离计算算子** (SIMD/多线程/GPU 优化)：L2, IP, Cosine 等。
+            *   **向量距离计算算子** (多线程/GPU 优化)：支持L2, IP, Cosine 等。
             *   **ANN 搜索算子** (基于索引如 IVF_FLAT/HNSW)：在内存索引上执行近似搜索。
             *   **标量过滤算子**：执行属性过滤 (`price>100`, `color='red'`)，涉及布尔运算、比较等。
             *   **结果合并与排序算子**：对局部结果进行合并、全局 TopK 排序（堆排序/归并排序）。
@@ -471,18 +560,21 @@ Milvus 采用存储计算分离的分布式架构，
     *   **关键机制**：
         *   **消费日志**：从 Log Broker 消费 Insert/Delete 消息。
         *   **写 Buffer & Flush**：内存缓冲数据，达到阈值（时间/大小）后以 **Segment 文件**形式 Flush 到 Object Storage。
+            > query node 在之后的查询阶段是会先从缓存里面查询数据的，这保证了查询速度并且可以确保增量数据能及时被查询到。所以此处data node要先写缓存，等达到阈值后再进行flush操作，将数据刷入Object Storage中。
         *   **Compaction 算子**：后台合并小 Segment、清理删除数据，优化查询性能。
+            > segment合并的必要性：占用存储空间、并且最重要的是影响query node的计算，可以想象一下，你打开attu查看数据，全是小分段，很影响召回率。
 *   **Index Node (索引构建)**：
     *   **核心职责**：为 Data Node Flush 生成的 Segment 文件构建索引。
     *   **关键机制**：
         *   **加载 Segment 数据**：从 Object Storage 加载数据。
-        *   **索引构建算子**：调用底层库（Faiss/HNSWlib）执行构建（如 IVF 聚类 / HNSW 图构建），完成后将**索引文件**存回 Object Storage。*计算密集型*。
+        *   **索引构建算子**：调用底层库执行构建（如 IVF 聚类 / HNSW 图构建），完成后将**索引文件**存回 Object Storage。
 
-#### 4. 存储层 (Storage Layer - 基石)
+#### 4. 存储层 (Storage Layer)
 
 ![storage](../../src/milvus_storage.jpeg)
 
-*   **元数据存储 (Metadata Storage)**：存储所有系统元数据（Schema, 分区, Segment 元信息, TSO 状态等）。*强一致、高可用* (etcd/MySQL/TiDB)。Root Coord 主要使用者。
+*   **元数据存储 (Metadata Storage)**：存储所有系统元数据（Schema, 分区, Segment 元信息, TSO 状态等）。采用*强一致、高可用* (etcd/MySQL/TiDB)。Root Coord 是其主要的使用者。
+    > 为什么根协调器是主要使用者呢？因为根协调器控制着查询协调器与数据协调器，根协调器从MetaData Storage中获取最新TSO，处理、分配给两个子协调器，这样保证了两个协调器间服务的一致性。
 *   **日志存储 (Log Broker)**：数据变更操作（Insert/Delete/DDL）的载体。*高吞吐、低延迟、持久化、顺序保证* (Pulsar/Kafka)。Data Node 的写入来源，Query Node 的数据更新来源。
 *   **对象存储 (Object Storage)**：持久化 Segment 原始数据文件、**索引文件**、Compaction 中间文件。*高可靠、高持久、高扩展、低成本* (MinIO/S3/Azure Blob/GCS)。访问延迟相对较高。
 
@@ -505,7 +597,7 @@ Milvus 采用存储计算分离的分布式架构，
     *   决定数据存储位置（创建新 Segment 或使用现有写入 Segment）。
     *   记录 Segment ID、状态、分配信息到 **Metadata Storage**。
 6.  **日志先行 (Log Broker)**：**所有数据变更必须首先写入 Log Broker** (如 Pulsar/Kafka)，保证操作的持久性和严格顺序性。这是“日志即数据”理念的核心体现。
-7.  & **8. 数据节点消费与持久化 (Data Node)**：
+7. & 8. **数据节点消费与持久化 (Data Node)**：
     *   **Data Node** 订阅并消费 **Log Broker** 中的 Insert/Delete 消息。
     *   数据先写入**内存缓冲区** (*此时即可被 Query Node 订阅消费用于实时查询*)。
     *   当缓冲区达到阈值（时间或大小）时，触发 **Flush** 操作：
@@ -546,7 +638,7 @@ Milvus 采用存储计算分离的分布式架构，
 5.  **本地搜索执行 (Query Node - 核心算子)**：
     *   **标量过滤算子**：首先应用属性过滤条件 (如 `price>100`) 进行剪枝，得到候选向量 ID 集。
     *   **ANN 搜索算子**：在加载的**索引文件**结构上执行近似最近邻搜索（利用索引加速）。
-    *   **向量距离计算算子**：对 ANN 返回的候选向量，精确计算与查询向量的距离 (L2/IP/Cosine)。*高度优化点 (SIMD/多线程/GPU)*。
+    *   **向量距离计算算子**：对 ANN 返回的候选向量，精确计算与查询向量的距离 (L2/IP/Cosine)。*高度优化点 (多线程/GPU)*。
     *   **局部 TopK 算子**：基于精确距离，计算并保留当前 Query Node 负责的 Segment 数据中的局部 TopK 结果 (ID + 距离)。
 6.  **结果合并与返回 (Query Coord)**：
     *   **Query Coord** 收集所有 **Query Node** 返回的**局部 TopK** 结果。
