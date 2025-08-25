@@ -220,8 +220,6 @@ client.query(
 ```
 不过，对于某些问答系统，分区的设计会影响查询性能。我们很难确定对于某一个问题的答案，应该从哪个分区中查询，除此之外，我们不能保证另一个不相干的分区中是否包含了某条可能对最终回答产生重要影响的数据。所以，不建议使用分区。
 
-### Shema
-待完善
 ### 索引
 参考[Milvus 索引介绍](./milvus%20索引介绍.md)
 ## 基本向量搜索
@@ -256,81 +254,325 @@ AUTOINDEX：自动分析集合数据分布，优化索引参数，降低使用�
 
 
 了解完这些基本的概念后，我们可以开始编写代码来使用 Milvus 进行搜索。
-### 单向量搜索
-单向量搜索指的是只涉及一个查询向量的搜索。根据预建索引和搜索请求中携带的度量类型
->  “度量类型” 是什么？
-    简单说，是 “判断两个向量有多像的尺子”。不同的场景用不同的尺子，结果也不一样。
 
-    举几个常见的：
-    * L2（欧氏距离）：像量两个点之间的直线距离。比如比较两个水果的向量（颜色、大小、甜度），L2 值越小，说明两个水果越像。
-    * COSINE（余弦相似度）：像看两个向量的 “方向” 有多一致。比如两句话 “我爱吃苹果” 和 “苹果是我最爱”，它们的向量方向很像，余弦值接近 1，说明意思相似（忽略句子长度，只看语义方向）。
-    * IP（内积）：可以理解成 “特征重叠度”。比如两个用户的兴趣向量（喜欢的电影、音乐），IP 值越大，说明兴趣越重合，适合推荐系统。
 
-本节将介绍如何进行单向量搜索。搜索请求携带单个查询向量，要求 Milvus 使用内积（IP）计算查询向量与 Collections 中向量的相似度，并返回三个最相似的向量。
+### 标量查询（Query）
+
+与向量搜索不同，标量查询主要用于根据标量字段的条件来检索数据，不涉及向量相似度计算。
+
+#### 基本查询操作
+
 ```python
 from pymilvus import MilvusClient
 
-client = MilvusClient(
-    uri="http://localhost:19530")
+client = MilvusClient("http://localhost:19530")
 
-query_vector = [...................]
-res = client.search(
-    collection_name="Dw_easy_vectorDB",
-    anns_field="embedding",
-    data=[query_vector],
-    limit=3,
-    search_params={"metric_type": "IP"}# 注意，这里的metric_type 必须与创建索引时设置的一致
+# 1. 查询所有数据
+results = client.query(
+    collection_name="product_recommendation",
+    expr="",  # 空表达式表示查询所有数据
+    output_fields=["id", "category", "brand", "price"]
 )
 
-for hits in res:
-    for hit in hits:
-        print(hit)
-
-# [
-#     [
-#         {
-#             "id": 551,
-#             "distance": 0.08821295201778412,
-#             "entity": {}
-#         },
-#         {
-#             "id": 296,
-#             "distance": 0.0800950899720192,
-#             "entity": {}
-#         },
-#         {
-#             "id": 43,
-#             "distance": 0.07794742286205292,
-#             "entity": {}
-#         }
-#     ]
-# ]
+print("所有商品数据：")
+for result in results:
+    print(f"ID: {result['id']}, 类别: {result['category']}, "
+          f"品牌: {result['brand']}, 价格: {result['price']}")
 ```
-Milvus 根据搜索结果与查询向量的相似度得分从高到低排列搜索结果。相似度得分也称为与查询向量的距离，其值范围随使用的度量类型而变化。
 
-### 批量向量搜索
+#### 条件查询
 
-批量向量搜索
-同样，您也可以在一个搜索请求中包含多个查询向量。Milvus 将并行对查询向量进行 ANN 搜索，并返回两组结果。
 ```python
-query_vectors = [
-    [.....],
-    [.....],
-    [.....],
-    [.....]
+# 2. 基于单个条件查询
+results = client.query(
+    collection_name="product_recommendation",
+    expr='category == "electronics"',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+print("电子产品：")
+for result in results:
+    print(f"ID: {result['id']}, 品牌: {result['brand']}, 价格: {result['price']}")
+
+# 3. 基于数值范围查询
+results = client.query(
+    collection_name="product_recommendation",
+    expr='price >= 100 and price <= 1000',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+print("价格在100-1000之间的商品：")
+for result in results:
+    print(f"ID: {result['id']}, 类别: {result['category']}, "
+          f"品牌: {result['brand']}, 价格: {result['price']}")
+```
+
+#### 复杂查询表达式
+
+```python
+# 4. 使用 IN 操作符
+results = client.query(
+    collection_name="product_recommendation",
+    expr='category in ["electronics", "clothing"] and price < 500',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+# 5. 使用 LIKE 操作符（字符串模糊匹配）
+results = client.query(
+    collection_name="product_recommendation",
+    expr='brand like "App%"',  # 查找以"App"开头的品牌
+    output_fields=["id", "category", "brand", "price"]
+)
+
+# 6. 使用逻辑运算符组合条件
+results = client.query(
+    collection_name="product_recommendation",
+    expr='(category == "electronics" and price > 500) or (category == "clothing" and price < 100)',
+    output_fields=["id", "category", "brand", "price"]
+)
+```
+
+#### 查询结果限制和排序
+
+```python
+# 7. 限制返回结果数量
+results = client.query(
+    collection_name="product_recommendation",
+    expr='category == "electronics"',
+    output_fields=["id", "category", "brand", "price"],
+    limit=10  # 只返回前10条结果
+)
+
+# 8. 使用偏移量实现分页
+results = client.query(
+    collection_name="product_recommendation",
+    expr='category == "electronics"',
+    output_fields=["id", "category", "brand", "price"],
+    limit=10,
+    offset=20  # 跳过前20条，返回第21-30条
+)
+```
+
+### 数据删除操作
+
+Milvus 支持根据条件删除数据，删除操作是异步执行的。
+
+```python
+# 1. 根据主键删除
+client.delete(
+    collection_name="product_recommendation",
+    expr="id in [1, 2, 3]"  # 删除ID为1,2,3的记录
+)
+
+# 2. 根据条件删除
+client.delete(
+    collection_name="product_recommendation",
+    expr='category == "discontinued" and price < 10'  # 删除停产且价格低于10的商品
+)
+
+# 3. 删除特定品牌的所有商品
+client.delete(
+    collection_name="product_recommendation",
+    expr='brand == "OldBrand"'
+)
+
+print("删除操作已提交，正在异步执行...")
+```
+
+### 数据更新操作（Upsert）
+
+Milvus 支持 Upsert 操作，即如果数据存在则更新，不存在则插入。
+
+```python
+# 准备更新数据
+upsert_data = [
+    {
+        "id": 1,  # 如果ID=1存在，则更新；否则插入
+        "category": "electronics",
+        "brand": "Apple",
+        "price": 1099.99,  # 更新价格
+        "embedding": [0.1, 0.2, 0.3, ...]  # 更新向量
+    },
+    {
+        "id": 100,  # 新的ID，将被插入
+        "category": "electronics",
+        "brand": "Google",
+        "price": 599.99,
+        "embedding": [0.4, 0.5, 0.6, ...]
+    }
 ]
 
-res = client.search(
-    collection_name="Dw_easy_vectorDB",
-    data=query_vectors,
-    limit=3,
+# 执行 Upsert 操作
+client.upsert(
+    collection_name="product_recommendation",
+    data=upsert_data
 )
 
-for hits in res:
-    print("TopK results:")
-    for hit in hits:
-        print(hit)
+print("Upsert 操作完成")
+```
 
+### 数据统计和聚合
+
+```python
+# 1. 统计总记录数
+count_result = client.query(
+    collection_name="product_recommendation",
+    expr="",
+    output_fields=["count(*)"]
+)
+print(f"总记录数: {count_result[0]['count(*)']}")
+
+# 2. 按条件统计
+electronics_count = client.query(
+    collection_name="product_recommendation",
+    expr='category == "electronics"',
+    output_fields=["count(*)"]
+)
+print(f"电子产品数量: {electronics_count[0]['count(*)']}")
+
+# 3. 统计不同类别的商品数量
+categories = ["electronics", "clothing", "books"]
+for category in categories:
+    count = client.query(
+        collection_name="product_recommendation",
+        expr=f'category == "{category}"',
+        output_fields=["count(*)"]
+    )
+    print(f"{category} 商品数量: {count[0]['count(*)']}")
+```
+
+## 混合搜索（Hybrid Search）
+
+混合搜索是 Milvus 的高级功能，允许同时进行向量搜索和标量过滤，实现更精确的查询结果。
+
+### 向量搜索 + 标量过滤
+```python
+# 1. 基本混合搜索
+query_vector = [0.1, 0.2, 0.3, ...]
+
+results = client.search(
+    collection_name="product_recommendation",
+    data=[query_vector],
+    limit=10,
+    # 向量搜索的同时进行标量过滤
+    expr='category == "electronics" and price >= 500 and price <= 1500',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+print("混合搜索结果（电子产品，价格500-1500）：")
+for hits in results:
+    for hit in hits:
+        print(f"ID: {hit['id']}, 品牌: {hit['entity']['brand']}, "
+              f"价格: {hit['entity']['price']}, 相似度: {hit['distance']}")
+```
+
+### 多条件复合过滤
+
+```python
+# 2. 复杂条件组合
+results = client.search(
+    collection_name="product_recommendation",
+    data=[query_vector],
+    limit=5,
+    # 复杂的过滤条件
+    expr='(category == "electronics" and brand in ["Apple", "Samsung"]) or (category == "clothing" and price < 200)',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+# 3. 时间范围过滤（假设有时间字段）
+# 注意：需要在Schema中定义时间字段
+results = client.search(
+    collection_name="product_recommendation",
+    data=[query_vector],
+    limit=10,
+    expr='category == "electronics" and created_time >= "2024-01-01" and created_time <= "2024-12-31"',
+    output_fields=["id", "category", "brand", "price", "created_time"]
+)
+```
+
+### 地理位置搜索示例
+
+```python
+# 假设有地理位置相关的Collection
+# 4. 地理位置范围搜索
+results = client.search(
+    collection_name="location_based_products",
+    data=[query_vector],
+    limit=10,
+    # 搜索特定地理范围内的商品
+    expr='latitude >= 39.9 and latitude <= 40.1 and longitude >= 116.3 and longitude <= 116.5',
+    output_fields=["id", "name", "latitude", "longitude", "category"]
+)
+```
+
+## 批量操作和事务
+
+### 批量插入优化
+
+```python
+# 1. 大批量数据插入
+def batch_insert_large_data(client, collection_name, data, batch_size=1000):
+    """
+    分批插入大量数据，避免单次插入过多导致的性能问题
+    """
+    total_count = len(data)
+    
+    for i in range(0, total_count, batch_size):
+        batch_data = data[i:i + batch_size]
+        
+        try:
+            client.insert(
+                collection_name=collection_name,
+                data=batch_data
+            )
+            print(f"已插入 {min(i + batch_size, total_count)}/{total_count} 条记录")
+            
+        except Exception as e:
+            print(f"批次 {i//batch_size + 1} 插入失败: {e}")
+            # 可以选择重试或跳过
+            continue
+
+# 使用示例
+large_dataset = []
+for i in range(10000):
+    large_dataset.append({
+        "id": i,
+        "category": f"category_{i % 10}",
+        "brand": f"brand_{i % 100}",
+        "price": 10.0 + (i % 1000),
+        "embedding": [random.random() for _ in range(768)]
+    })
+
+batch_insert_large_data(client, "product_recommendation", large_dataset)
+```
+
+### 批量删除
+
+```python
+# 2. 批量删除操作
+def batch_delete_by_ids(client, collection_name, ids, batch_size=100):
+    """
+    分批删除大量数据
+    """
+    total_count = len(ids)
+    
+    for i in range(0, total_count, batch_size):
+        batch_ids = ids[i:i + batch_size]
+        id_list_str = ",".join(map(str, batch_ids))
+        
+        try:
+            client.delete(
+                collection_name=collection_name,
+                expr=f"id in [{id_list_str}]"
+            )
+            print(f"已删除 {min(i + batch_size, total_count)}/{total_count} 条记录")
+            
+        except Exception as e:
+            print(f"批次删除失败: {e}")
+
+# 删除ID从1000到2000的所有记录
+ids_to_delete = list(range(1000, 2001))
+batch_delete_by_ids(client, "product_recommendation", ids_to_delete)
 ```
 
 ### 分区中的 ANN 搜索
@@ -355,13 +597,12 @@ for hits in res:
 
 在搜索结果中，Milvus 默认包含包含 top-K 向量嵌入的实体的主字段值和相似性距离/分数。您可以在搜索请求中包含目标字段（包括向量和标量字段）的名称作为输出字段，以使搜索结果携带这些实体中其他字段的值。
 ```python
-# 4. Single vector search
 query_vector = [0.3580376395471989, -0.6023495712049978, 0.18414012509913835, -0.26286205330961354, 0.9029438446296592],
 
 res = client.search(
     collection_name="Dw_easy_vectorDB",
     data=[query_vector],
-    limit=3, # The number of results to return
+    limit=3, 
     search_params={"metric_type": "IP"}，
     output_fields=["color"]
 )
@@ -386,7 +627,260 @@ res = client.search(
 )
 ```
 
-> 后续内容待补充......待补充，待补充。
+### 使用分区密钥
+
+分区密钥（Partition Key）是一种基于分区的搜索优化解决方案。通过指定特定标量字段作为 Partition Key，并在搜索过程中根据 Partition Key 指定过滤条件，可以将搜索范围缩小到多个分区，从而提高搜索效率。
+
+#### 什么是分区密钥？
+
+分区密钥是一种特殊的标量字段，用于自动将数据分布到不同的分区中。与手动创建分区不同，使用分区密钥可以让 Milvus 根据字段值自动管理数据分布，实现更高效的查询性能。
+
+举个例子：
+假设你有一个电商推荐系统，存储了不同类别商品的向量数据。如果将 "category"（商品类别）设置为分区密钥，Milvus 会自动将 "electronics"、"clothing"、"books" 等不同类别的商品数据分布到不同的分区中。
+
+#### 创建带分区密钥的 Collection
+
+首先，我们需要在创建 Collection 时指定分区密钥：
+
+```python
+from pymilvus import MilvusClient, CollectionSchema, FieldSchema, DataType
+
+client = MilvusClient("http://localhost:19530")
+
+fields = [
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
+    FieldSchema(name="category", dtype=DataType.VARCHAR, max_length=64),  # 分区密钥字段
+    FieldSchema(name="brand", dtype=DataType.VARCHAR, max_length=64),
+    FieldSchema(name="price", dtype=DataType.FLOAT),
+    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)
+]
+
+schema = CollectionSchema(
+    fields=fields,
+    description="Product recommendation collection with partition key"
+)
+
+# 创建 Collection 并指定分区密钥
+client.create_collection(
+    collection_name="product_recommendation",
+    schema=schema,
+    # 指定 category 字段作为分区密钥
+    partition_key_field="category",
+    # 可选：指定最大分区数量（默认为 1024）
+    num_partitions=64
+)
+```
+
+#### 插入数据到分区密钥 Collection
+
+插入数据时，Milvus 会根据分区密钥字段的值自动将数据分配到相应的分区：
+
+```python
+# 准备插入数据
+entities = [
+    {
+        "id": 1,
+        "category": "electronics",
+        "brand": "Apple",
+        "price": 999.99,
+        "embedding": [0.1, 0.2, 0.3, ...] # 768维向量
+    },
+    {
+        "id": 2,
+        "category": "clothing",
+        "brand": "Nike",
+        "price": 89.99,
+        "embedding": [0.4, 0.5, 0.6, ...] # 768维向量
+    },
+    {
+        "id": 3,
+        "category": "electronics",
+        "brand": "Samsung",
+        "price": 799.99,
+        "embedding": [0.7, 0.8, 0.9, ...] # 768维向量
+    },
+    {
+        "id": 4,
+        "category": "books",
+        "brand": "Penguin",
+        "price": 19.99,
+        "embedding": [0.2, 0.4, 0.6, ...] # 768维向量
+    }
+]
+
+# 插入数据，Milvus 会根据 category 字段自动分区
+client.insert(
+    collection_name="product_recommendation",
+    data=entities
+)
+
+print("数据插入完成，已根据 category 字段自动分区")
+```
+
+#### 使用分区密钥进行高效搜索
+
+使用分区密钥进行搜索时，可以显著提升查询性能：
+
+```python
+# 1. 基于分区密钥的精确搜索
+# 只在 "electronics" 分区中搜索
+query_vector = [0.1, 0.2, 0.3, ...]  # 查询向量
+
+res = client.search(
+    collection_name="product_recommendation",
+    data=[query_vector],
+    limit=5,
+    # 使用分区密钥过滤，只搜索电子产品分区
+    expr='category == "electronics"',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+print("电子产品搜索结果：")
+for hits in res:
+    for hit in hits:
+        print(f"ID: {hit['id']}, 品牌: {hit['entity']['brand']}, "
+              f"价格: {hit['entity']['price']}, 距离: {hit['distance']}")
+```
+
+```python
+# 2. 多分区搜索
+# 在多个分区中搜索
+res = client.search(
+    collection_name="product_recommendation",
+    data=[query_vector],
+    limit=5,
+    # 搜索多个类别
+    expr='category in ["electronics", "clothing"]',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+print("电子产品和服装搜索结果：")
+for hits in res:
+    for hit in hits:
+        print(f"ID: {hit['id']}, 类别: {hit['entity']['category']}, "
+              f"品牌: {hit['entity']['brand']}, 距离: {hit['distance']}")
+```
+
+```python
+# 3. 结合其他过滤条件
+# 在特定分区中进行复合条件搜索
+res = client.search(
+    collection_name="product_recommendation",
+    data=[query_vector],
+    limit=5,
+    # 组合分区密钥和其他条件
+    expr='category == "electronics" and price < 900',
+    output_fields=["id", "category", "brand", "price"]
+)
+
+print("价格低于900的电子产品：")
+for hits in res:
+    for hit in hits:
+        print(f"ID: {hit['id']}, 品牌: {hit['entity']['brand']}, "
+              f"价格: {hit['entity']['price']}, 距离: {hit['distance']}")
+```
+
+#### 查看分区信息
+
+可以查看 Collection 的分区分布情况：
+
+```python
+# 查看所有分区
+partitions = client.list_partitions(collection_name="product_recommendation")
+print("分区列表：", partitions)
+
+# 查看 Collection 详细信息
+collection_info = client.describe_collection(collection_name="product_recommendation")
+print("Collection 信息：", collection_info)
+
+# 统计各分区的数据量
+for partition in partitions:
+    count = client.query(
+        collection_name="product_recommendation",
+        expr="",
+        output_fields=["count(*)"],
+        partition_names=[partition]
+    )
+    print(f"分区 {partition} 数据量: {count}")
+```
+
+**注意事项：**
+1. **分区密钥选择**：
+   - 选择具有良好分布特性的字段（避免数据倾斜）
+   - 常用于查询过滤的字段
+   - 基数适中的字段（不要太少也不要太多）
+
+```txt
+# 好的分区密钥示例
+# - 用户地区：["北京", "上海", "广州", "深圳", ...]
+# - 商品类别：["electronics", "clothing", "books", ...]
+# - 时间分片：["2024-01", "2024-02", "2024-03", ...]
+```
+```txt
+# 不好的分区密钥示例
+# - 用户ID：基数太大，分区过多
+# - 性别：基数太小，分区太少
+# - 连续数值：如价格，分布不均匀
+```
+
+2. **查询模式**：
+   - 尽量在查询中包含分区密钥过滤条件
+   - 避免跨所有分区的全局搜索
+
+```python
+# 推荐的查询方式
+expr='category == "electronics"'  # 利用分区密钥
+
+# 不推荐的查询方式  
+expr='price > 100'  # 没有使用分区密钥，需要扫描所有分区
+```
+
+3. **分区数量限制**：
+   - 默认最大分区数为 1024
+   - 分区过多会影响性能
+   - 建议根据实际数据分布调整
+
+#### 实际应用场景
+
+**1. 多租户系统**
+```python
+# 以租户ID作为分区密钥
+fields = [
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
+    FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=32),  # 分区密钥
+    FieldSchema(name="document", dtype=DataType.VARCHAR, max_length=1000),
+    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)
+]
+
+# 查询时只搜索特定租户的数据
+res = client.search(
+    collection_name="multi_tenant_docs",
+    data=[query_vector],
+    expr='tenant_id == "company_a"',
+    limit=10
+)
+```
+
+**2. 时间序列数据**
+```python
+# 以时间分片作为分区密钥
+fields = [
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
+    FieldSchema(name="time_bucket", dtype=DataType.VARCHAR, max_length=16),  # 如 "2024-01"
+    FieldSchema(name="sensor_data", dtype=DataType.FLOAT_VECTOR, dim=128)
+]
+
+# 查询特定时间段的数据
+res = client.search(
+    collection_name="sensor_data",
+    data=[query_vector],
+    expr='time_bucket in ["2024-01", "2024-02"]',
+    limit=10
+)
+```
+
+通过合理使用分区密钥，可以在大规模向量数据场景下获得显著的性能提升，同时简化数据管理的复杂度。
+
 
 
 ## 深入 Milvus 架构设计：数据写入和查询高层级流程
