@@ -78,14 +78,14 @@ class UnifiedSystemManager:
         """初始化向量模型"""
         try:
             logger.info("🧠 初始化向量模型...")
-            from Search.embedding import EmbeddingModel
+            from Search.embedding import SimpleEmbeddingGenerator
             
             # 尝试初始化embedding模型
-            embedding_model = EmbeddingModel()
+            embedding_model = SimpleEmbeddingGenerator()
             test_text = "测试文本"
-            test_embedding = embedding_model.encode([test_text])
+            test_embedding = embedding_model.get_embedding(test_text)
             
-            if test_embedding is not None and len(test_embedding) > 0:
+            if test_embedding and len(test_embedding) > 0:
                 logger.info("✅ 向量模型初始化成功")
                 self.initialization_status["embedding_model_loaded"] = True
                 return True
@@ -95,6 +95,7 @@ class UnifiedSystemManager:
         except Exception as e:
             logger.error(f"❌ 向量模型初始化异常: {e}")
             logger.info("💡 系统将继续运行，但向量化功能可能受影响")
+            logger.info("💡 建议检查网络连接或使用本地模型")
             return False
     
     def initialize_qwen_model(self) -> bool:
@@ -110,11 +111,13 @@ class UnifiedSystemManager:
                 return True
             else:
                 logger.warning("⚠️ Qwen模型依赖不完整，PPL分块功能将不可用")
-                logger.info("💡 系统将继续运行，使用传统分块策略")
+                logger.info("💡 系统将继续运行，使用其他分块策略（语义分块、传统分块）")
+                logger.info("💡 如需PPL分块功能，请参考 PPL_SETUP_GUIDE.md 文件")
                 return False
         except Exception as e:
             logger.error(f"❌ Qwen模型初始化异常: {e}")
-            logger.info("💡 系统将继续运行，使用传统分块策略")
+            logger.info("💡 系统将继续运行，使用其他分块策略")
+            logger.info("💡 如需PPL分块功能，请参考 PPL_SETUP_GUIDE.md 文件")
             return False
     
     def start_services(self) -> bool:

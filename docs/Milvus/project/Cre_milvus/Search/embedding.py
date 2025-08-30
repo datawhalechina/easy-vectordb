@@ -24,50 +24,75 @@ class SimpleEmbeddingGenerator:
         self.use_modelscope = True  # 标记使用ModelScope
         self.load_model()
     
+    # 设置递归限制在类级别
     import sys
-    sys.setrecursionlimit(3000)
+    original_limit = sys.getrecursionlimit()
+    if original_limit < 2000:
+        sys.setrecursionlimit(2000)
     
     def load_model(self):
         if self.model is not None:
             return True
         """从ModelScope加载BGE模型"""
         try:
+            import os
+            import socket
+            
             logger.info(f"开始加载模型: {self.model_name}")
+            
+            # 设置网络超时以避免递归问题
+            socket.setdefaulttimeout(30)
+            
+            # 设置环境变量
+            os.environ.setdefault('HF_HUB_DISABLE_PROGRESS_BARS', '1')
             
             # 尝试使用ModelScope加载
             try:
                 from modelscope import AutoTokenizer, AutoModel
                 logger.info("使用ModelScope加载模型...")
                 
+                # 检查本地是否已有模型
+                local_model_exists = os.path.exists(os.path.expanduser(f"~/.cache/modelscope/hub/models/{self.model_name}"))
+                
                 # 加载分词器和模型
                 self.tokenizer = AutoTokenizer.from_pretrained(
                     self.model_name,
-                    trust_remote_code=True
+                    trust_remote_code=True,
+                    local_files_only=local_model_exists
                 )
                 
                 self.model = AutoModel.from_pretrained(
                     self.model_name,
                     trust_remote_code=True,
                     device_map="cpu",
-                    torch_dtype=torch.float32
+                    torch_dtype=torch.float32,
+                    local_files_only=local_model_exists
                 )
                 
                 logger.info("✅ ModelScope模型加载成功")
                 
-            except ImportError:
+            except (ImportError, Exception) as modelscope_error:
                 # 回退到transformers + HuggingFace
-                logger.warning("ModelScope不可用，使用HuggingFace...")
+                logger.warning(f"ModelScope加载失败: {modelscope_error}")
+                logger.warning("使用HuggingFace...")
+                
+                from transformers import AutoTokenizer, AutoModel
+                
+                hf_model_name = "BAAI/bge-large-zh-v1.5"
+                local_hf_exists = os.path.exists(os.path.expanduser(f"~/.cache/huggingface/transformers/{hf_model_name}"))
                 
                 self.tokenizer = AutoTokenizer.from_pretrained(
-                    "BAAI/bge-large-zh-v1.5",
-                    trust_remote_code=True
+                    hf_model_name,
+                    trust_remote_code=True,
+                    local_files_only=local_hf_exists
                 )
                 
                 self.model = AutoModel.from_pretrained(
-                    "BAAI/bge-large-zh-v1.5",
+                    hf_model_name,
                     trust_remote_code=True,
                     device_map="cpu",
-                    torch_dtype=torch.float32
+                    torch_dtype=torch.float32,
+                    local_files_only=local_hf_exists
                 )
                 
                 logger.info("✅ HuggingFace模型加载成功")
@@ -81,6 +106,7 @@ class SimpleEmbeddingGenerator:
             
         except Exception as e:
             logger.error(f"❌ 模型加载失败: {e}")
+            logger.info("将跳过向量模型初始化")
             return False
 
     def get_embedding(self, text):
@@ -164,6 +190,19 @@ class SimpleEmbeddingGenerator:
             "model_name": self.model_name,
             "embedding_dimension": self.get_embedding_dimension() if self.model else 1024
         }
+
+# 向后兼容的别名
+class EmbeddingModel(SimpleEmbeddingGenerator):
+    """向后兼容的EmbeddingModel类"""
+    
+    def encode(self, texts):
+        """兼容旧接口的encode方法"""
+        if isinstance(texts, str):
+            return [self.get_embedding(texts)]
+        elif isinstance(texts, list):
+            return self.batch_get_embedding(texts)
+        else:
+            return []
 
 # 全局实例
 embedder = SimpleEmbeddingGenerator()

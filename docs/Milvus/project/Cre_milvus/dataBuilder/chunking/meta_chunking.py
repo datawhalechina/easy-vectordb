@@ -431,14 +431,13 @@ class MetaChunking:
     
     def __init__(self, model=None, tokenizer=None, api_client=None):
         """初始化MetaChunking实例"""
-        self._initializing = False  # 防止递归初始化的标志
+        self._initializing = False  
         self.model = model
         self.tokenizer = tokenizer
         self.api_client = api_client
         self.dependency_checker = DependencyChecker()
         self.model_path = "Qwen/Qwen2.5-1.5B-Instruct"
         
-        # 只有在没有提供模型时才尝试初始化
         if not self.model or not self.tokenizer:
             try:
                 success = self.initialize_model()
@@ -449,7 +448,6 @@ class MetaChunking:
                 self.model = None
                 self.tokenizer = None
         
-        # 尝试创建API客户端
         if not self.api_client:
             try:
                 from .glm_config import create_glm_api_client
@@ -461,73 +459,75 @@ class MetaChunking:
                 self.api_client = None
     
     def initialize_model(self):
-        """初始化模型，防止递归调用"""
-        if self._initializing:  # 防止递归
+        """初始化模型，完全避免网络请求和递归问题"""
+        if getattr(self, '_initializing', False):  
             return False
-        
         self._initializing = True
         
         try:
             import os
             import torch
             
-            # 检查模型目录是否存在
-            if os.path.exists(self.model_path):
-                logger.info(f"检测到本地模型文件: {self.model_path}")
-                model_source = "本地缓存"
-            else:
-                logger.info(f"未找到本地模型，将从远程加载: {self.model_path}")
-                model_source = "ModelScope"
+            logger.info("开始检查本地模型...")
             
-            try:
-                # 优先尝试使用ModelScope加载
-                from modelscope import AutoTokenizer, AutoModelForCausalLM
-                
-                self.tokenizer = AutoTokenizer.from_pretrained(
-                    self.model_path, 
-                    trust_remote_code=True
-                )
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    self.model_path,
-                    device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-                )
-                self.model.eval()
-                logger.info(f"成功从{model_source}加载模型: {self.model_path}")
-                return True
-                
-            except ImportError:
-                # 如果ModelScope不可用，回退到HuggingFace
-                logger.warning("ModelScope不可用，回退到HuggingFace")
-                from transformers import AutoTokenizer, AutoModelForCausalLM
-                
-                # 再次检查本地是否存在（回退时可能不同路径）
-                if os.path.exists(self.model_path):
-                    load_path = self.model_path
-                    model_source = "本地缓存"
-                else:
-                    # 使用HuggingFace的默认模型路径
-                    load_path = "Qwen/Qwen2-1.5B-Instruct"
-                    model_source = "HuggingFace"
-                    logger.info(f"未找到本地模型，将从HuggingFace加载: {load_path}")
-                
-                self.tokenizer = AutoTokenizer.from_pretrained(
-                    load_path, 
-                    trust_remote_code=True
-                )
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    load_path,
-                    device_map="auto",
-                    trust_remote_code=True,
-                    torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32
-                )
-                self.model.eval()
-                logger.info(f"成功从{model_source}加载模型: {load_path}")
-                return True
+            # 检查常见的本地模型路径
+            possible_local_paths = [
+                self.model_path,
+                os.path.expanduser(f"~/.cache/modelscope/hub/models/{self.model_path}"),
+                os.path.expanduser(f"~/.cache/huggingface/hub/models--{self.model_path.replace('/', '--')}"),
+                os.path.expanduser(f"~/.cache/huggingface/transformers/{self.model_path}"),
+                f"./models/{self.model_path}",
+                f"./{self.model_path}"
+            ]
+            
+            local_model_path = None
+            for path in possible_local_paths:
+                if os.path.exists(path) and os.path.isdir(path):
+                    # 检查是否包含必要的模型文件
+                    config_file = os.path.join(path, "config.json")
+                    if os.path.exists(config_file):
+                        local_model_path = path
+                        logger.info(f"找到本地模型: {path}")
+                        break
+            
+            if local_model_path:
+                try:
+                    # 只使用本地文件，完全避免网络请求
+                    from transformers import AutoTokenizer, AutoModelForCausalLM
+                    logger.info("使用本地模型文件...")
+                    
+                    self.tokenizer = AutoTokenizer.from_pretrained(
+                        local_model_path,
+                        trust_remote_code=True,
+                        local_files_only=True,
+                        use_fast=False  # 避免某些tokenizer的问题
+                    )
+                    
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        local_model_path,
+                        device_map="cpu",
+                        trust_remote_code=True,
+                        torch_dtype=torch.float32,
+                        local_files_only=True,
+                        low_cpu_mem_usage=True
+                    )
+                    
+                    self.model.eval()
+                    logger.info("✅ 本地模型加载成功")
+                    return True
+                    
+                except Exception as local_error:
+                    logger.warning(f"本地模型加载失败: {local_error}")
+            
+            # 如果没有找到本地模型，直接跳过初始化
+            logger.warning("未找到可用的本地模型")
+            logger.info("PPL分块功能将不可用，系统将使用其他分块策略")
+            self.model = None
+            self.tokenizer = None
+            return False
                 
         except Exception as e:
-            logger.error(f"模型加载失败: {e}")
+            logger.error(f"模型初始化失败: {e}")
             self.model = None
             self.tokenizer = None
             return False
@@ -551,7 +551,6 @@ class MetaChunking:
         resolver = ChunkingStrategyResolver(self.dependency_checker)
         actual_strategy = resolver.resolve_strategy(strategy, config)
         
-        # 记录策略决策
         decision = {
             "requested": strategy,
             "actual": actual_strategy,
@@ -639,16 +638,27 @@ class MetaChunking:
             分块后的文本列表
         """
         try:
-            # 优先使用本地模型实现
-            if (self.dependency_checker.is_ppl_chunking_available() and
-                self.model and self.tokenizer and TORCH_AVAILABLE):
+            # 检查是否有可用的模型和依赖
+            if (self.model and self.tokenizer and TORCH_AVAILABLE and 
+                self.dependency_checker.is_ppl_chunking_available()):
                 logger.info("使用本地模型进行PPL分块")
                 return self._extract_by_ppl(text, threshold, language)
             else:
-                logger.warning("PPL分块依赖不可用,降级到传统分块")
-                return self.traditional_chunking(text)
+                # 记录具体缺失的依赖
+                missing_items = []
+                if not self.model or not self.tokenizer:
+                    missing_items.append("模型未加载")
+                if not TORCH_AVAILABLE:
+                    missing_items.append("PyTorch不可用")
+                if not self.dependency_checker.is_ppl_chunking_available():
+                    missing_items.append("PPL分块依赖不完整")
+                
+                logger.warning(f"PPL分块不可用: {', '.join(missing_items)}")
+                logger.info("降级到语义分块策略")
+                return self.semantic_chunking(text, similarity_threshold=0.7)
         except Exception as e:
             logger.error(f"PPL分块失败: {e}")
+            logger.info("降级到传统分块")
             return self.traditional_chunking(text)
     def margin_sampling_chunking(self, text: str, language: str = 'zh', chunk_length: int = 512) -> List[str]:
         """
@@ -689,6 +699,13 @@ class MetaChunking:
         返回:
             分块后的文本列表
         """
+        if not text or chunk_size <= 0:
+            return [text] if text else []
+        
+        # 确保overlap不会导致无限循环
+        if overlap >= chunk_size:
+            overlap = chunk_size // 2
+        
         chunks = []
         start = 0
         
@@ -696,7 +713,12 @@ class MetaChunking:
             end = start + chunk_size
             chunk = text[start:end]
             chunks.append(chunk)
-            start = end - overlap
+            
+            # 计算下一个起始位置，确保有进展
+            next_start = end - overlap
+            if next_start <= start:  # 防止无限循环
+                next_start = start + max(1, chunk_size - overlap)
+            start = next_start
             
         return chunks
     
