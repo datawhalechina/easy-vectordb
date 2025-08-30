@@ -1,10 +1,10 @@
 chunking:
   chunk_length: 512
+  confidence_threshold: 0.7
   language: zh
-  ppl_threshold: 0.3
-  strategy: meta_ppl
+  strategy: msp
 data:
-  data_location: ./data/upload/20250729
+  data_location: ./data/upload/20250002
 milvus:
   collection_name: Test_one
   host: 127.0.0.1
