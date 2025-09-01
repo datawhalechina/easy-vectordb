@@ -9,7 +9,7 @@
 | **Milvus**     | 章节                                       | 关键内容                                     | 状态   |
 |----------|-------------------------------------------|---------------------------------------------|--------|
 | 前言 | [前言](./docs/Milvus/chapter0/前言.md)    | 项目目标与大纲                                |   ✅    |
-|    第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/深入理解架构设计            |   ⌛    |
+|    第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/深入理解架构设计            |   ✅    |
 |      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略           | ✅     |
 |          | [ 聚类介绍](./docs/Milvus/chapter1/聚类算法介绍.md) | 聚类原理/算法选择/优化策略                  | ✅     |
 |    第二章    | [Milvus Lite部署与应用](./docs/Milvus/chapter2/Milvus%20Lite部署与应用.md) | Lite部署方案             | ✅     |
@@ -69,3 +69,4 @@
 ## LICENSE
 
 <a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey" /></a><br />本作品采用<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议</a>进行许可。
+
