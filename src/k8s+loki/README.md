@@ -51,28 +51,28 @@ http://localhost:30001
 
 ### 7. 添加 Loki 数据源
 1. 登录 Grafana 后，在左侧框中选中Connection
-   ![pic](../../../src/k8sx.png) 
+   ![pic](../../docs/public/images/k8sx.png) 
 
 2. 选择 Connection下的Data sources，选择 Add data source，搜索并选择 Loki。
-   ![pic](../../../src/k8saa.png)
-   ![pic](../../../src/k8sa.png)
-   ![pic](../../../src/k8s.png)
+   ![pic](../../docs/public/images/k8saa.png)
+   ![pic](../../docs/public/images/k8sa.png)
+   ![pic](../../docs/public/images/k8s.png)
 3. 回到Connections
 4. URL 填写：`http://loki:3100`
-   ![pic](../../../src/k8sb.png)
+   ![pic](../../docs/public/images/k8sb.png)
 5. 点击 Save & Test 测试连接。
-   ![pic](../../../src/k8sbb.png)
+   ![pic](../../docs/public/images/k8sbb.png)
 6. 测试成功后回到loki中，点击explore
-   ![pic](../../../src/k8saaa.png)
+   ![pic](../../docs/public/images/k8saaa.png)
 
 ### 8. 日志查询示例
 在 Grafana 左侧选择 Explore，
 选择Loki，输入查询语句
-   ![pic](../../../src/k8sxx.png)
+   ![pic](../../docs/public/images/k8sxx.png)
 1. 运行查询
-   ![pic](../../../src/k8sbbb.png)
+   ![pic](../../docs/public/images/k8sbbb.png)
 2. 测试结果
-   ![pic](../../../src/k8sxxx.png)
+   ![pic](../../docs/public/images/k8sxxx.png)
 即可实时查看 Milvus 相关日志。
 
 
