@@ -6,6 +6,7 @@ export default defineConfig({
   lang: 'zh-CN',
   base: '/easy-vectordb/',
   lastUpdated: true,
+  ignoreDeadLinks: true,
 
   head: [
     // ['link', { rel: 'icon', href: '/images/image.png' }],
@@ -18,6 +19,10 @@ export default defineConfig({
     image: {
       lazyLoading: false
     }
+  },
+
+  vite: {
+    assetsInclude: ['**/*.PNG', '**/*.JPG', '**/*.JPEG', '**/*.GIF', '**/*.SVG']
   },
 
   themeConfig: {
