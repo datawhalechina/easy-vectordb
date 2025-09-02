@@ -202,7 +202,7 @@ FLAT索引作为一种精确检索索引，其核心原理是**不对向量进�
     > DataWhale: [文档2]
     > easy_vectorDB: [文档3]
 IVF系列索引的核心机制是通过基于中心点的分区策略将向量聚类到多个桶中，在搜索过程中仅扫描与查询向量中心点相近的桶内向量，从而显著降低计算成本。
-![](/docs/src/IVF1.png)
+![alt text](/images/IVF1.png)
 上图中你可以看到IVF系列索引对数据的聚类，通过不同的聚类算法将数据聚类到不同的桶中，每一聚类都有一个聚类中心。
 ![alt text](/images/IVF2.png)
 每一个聚类中心对应的有一个向量表示，如上图所示。
@@ -464,29 +464,12 @@ SCANN（可扩展最近邻搜索）索引的核心参数为reorder_k（重排序
 
 在向量索引的实际部署中，内存与存储资源的高效利用是关键挑战之一。以100万128维向量为例，不同索引类型的内存占用差异显著，如IVF_PQ索引仅需11MB内存，而HNSW_PQ索引则需136MB，这种差异凸显了优化策略的重要性。
 
-<BarChart>
 
-```
-width={500}
-height={300}
-data={[
-    { name: 'IVF_PQ', memory: 11 },
-    { name: 'HNSW_PQ', memory: 136 }
-]}
-margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-```
 
-> 
+**内存占用对比数据：**
+- IVF_PQ 索引：11 MB
+- HNSW_PQ 索引：136 MB
 
-```
-<CartesianGrid strokeDasharray="3 3" />
-<XAxis dataKey="name" />
-<YAxis label={{ value: '内存占用 (MB)', angle: -90, position: 'insideLeft' }} />
-<Tooltip formatter={(value) => [`${value} MB`, '内存占用']} />
-<Bar dataKey="memory" fill="#8884d8" name="内存占用 (MB)" />
-```
-
-</BarChart>
 
 
 
@@ -548,24 +531,9 @@ margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
 
 **PQ与SQ的压缩率差异**体现在量化粒度：标量量化（SQ）如IVF_SQ8对每个向量维度独立压缩，将4字节浮点值转为1字节整数，内存占用减少75%；乘积量化（PQ）如IVF_PQ（以8个子量化器为例）将向量分割为子向量后分别量化，可将512字节向量压缩至8字节，实现64倍压缩率。两者相比，PQ压缩率远高于SQ，但可能伴随更高的精度损失。  
 
-<BarChart>
-  <BarChart
-    width={500}
-    height={300}
-    data={[
-      { name: 'IVF_SQ8', "压缩倍数": 4 },
-      { name: 'IVF_PQ', "压缩倍数": 64 }
-    ]}
-    margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-  >
-    <CartesianGrid strokeDasharray="3 3" />
-    <XAxis dataKey="name" />
-    <YAxis label={{ value: '压缩倍数', angle: -90, position: 'insideLeft' }} />
-    <Tooltip />
-    <Bar dataKey="压缩倍数" fill="#8884d8" name="压缩倍数" />
-  </BarChart>
-</BarChart>
-
+**压缩倍数对比数据：**
+- IVF_SQ8 索引：4倍压缩
+- IVF_PQ 索引：64倍压缩
 
 
 | 量化策略    | 压缩方式            | 原始大小 (每向量) | 压缩后大小 (每向量) | 内存减少比例  | 压缩倍数 |

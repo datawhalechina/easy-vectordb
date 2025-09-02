@@ -65,7 +65,7 @@ Creating milvus-minio ... done
 Creating milvus-standalone ... done
 ```
 
-![milvus启动](/docs/src/fig2.png)
+![milvus启动](/images/fig2.png)
 
 ## 3.Attu安装
 
@@ -89,7 +89,7 @@ ipconfig
 
 找到如下IP（WSL (Hyper-V firewall) IPv4地址）
 
-![fig3](/docs/src/fig3.png)
+![fig3](/images/fig3.png)
 
 2、执行安装attu
 
@@ -113,16 +113,16 @@ docker run -p 8000:3000 -e MILVUS_URL=172.X.X.1:19530 zilliz/attu:v2.5.6  # 根�
 
 等待执行完毕
 
-![fig4](/docs/src/fig4.png)
+![fig4](/images/fig4.png)
 
 在浏览器打开：http://127.0.0.1:8000/
 
-![fig5](/docs/src/fig5.png)
+![fig5](/images/fig5.png)
 
 ### 方法二、
 
 attu 官方提供了windows系统独立安装包，[下载链接](https://github.com/zilliztech/attu/releases/tag/v2.5.8)
-![fig6](/docs/src/fig6.png)
+![fig6](/images/fig6.png)
 
 安装完成以后
-![fig7](/docs/src/fig7.png)
+![fig7](/images/fig7.png)

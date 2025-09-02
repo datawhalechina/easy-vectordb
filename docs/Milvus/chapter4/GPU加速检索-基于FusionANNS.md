@@ -4,7 +4,7 @@
 
 高维空间中的近似最近邻搜索(ANNS)旨在找出与给定查询向量最相似的前 k 个向量。该技术在数据挖掘、搜索引擎以及 AI 驱动的推荐系统等诸多领域具有广泛应用。特别是在大型语言模型(LLMs)近期蓬勃发展的推动下，ANNS 系统已成为现代 AI 基础设施的关键组成部分。
 
-![alt text](/docs/src/x1.png)
+![alt text](/images/x1.png)
 
 检索增强生成(RAG)的典型框架：领域特定知识首先被嵌入为高维向量并存储于向量数据库中。当聊天机器人接收到查询时，会通过 ANNS 引擎从向量数据库中检索最相关的知识，使 LLM 能够将这些知识作为额外上下文进行更精准的推理。
 
@@ -53,7 +53,7 @@ FusionANNS 通过上述协同设计，相比现有最先进的方案（基于 SS
 - **高性价比硬件**：仅需一个入门级 GPU（如 NVIDIA V100 32GB）和配备 SSD 的通用服务器即可支持十亿级数据集，硬件成本远低于全内存 GPU 方案。
 # 流程详解
 
-![系统架构序列](/docs/src/x11.png) 
+![系统架构序列](/images/x11.png) 
 
 在进入下面的学习之前，我们先根据上图，对架构进行一个大概的了解，我将围绕两个问题来介绍FusionANNS系统：
 
@@ -241,12 +241,12 @@ Q1 = (256,78,3,41,25,97,62,187)
 可用`8 x 256= 2048`个线程并行计算距离表......反正就是多开几个线程，算的快一些。
 ## 二、分层索引与边界优化
 ### 2.1 多层级聚类结构
-![pic](/docs/src/x12.png)
+![pic](/images/x12.png)
 对于上图，我们对每一个部分进行更加详细的解释说明：
 
 FusionANNS 采用独特的多层级聚类结构，如下图所示。
 
-![pic](/docs/src/1.png)
+![pic](/images/1.png)
 FusionANNS 首先利用分层平衡聚类算法（如 k-means）对十亿级向量数据集进行迭代划分。系统将 10 亿向量依次进行 H1、H2、H3、H4 层聚类，以 H1 层为例，会聚类成 2 个质心，H2 层有 3 个质心，H3 层 5 个质心，H4 层 8 个质心，最终形成多个 Posting List，每个 Posting List 包含多个向量 ID 及其对应的向量内容。在聚类过程中，为提升聚类质量，采用复制机制处理边界向量。当向量位于多个聚类边界时，依据公式 $v \in C_i \Leftrightarrow Dist(v, C_i) \leq (1+\varepsilon) \times Dist(v, C_1)$（其中 $v$ 代表待分配向量，$C_i$ 表示第 $i$ 个聚类，$C_1$ 是距离 $v$ 最近的聚类，$\varepsilon$ 用于平衡查询精度和效率），将边界向量分配到多个相关聚类中，每个向量最多分配到 8 个聚类。通过这种分层聚类方式，有效组织数据，缩小搜索空间。
 
 
@@ -371,19 +371,19 @@ def heuristic_reranking(candidates, query_vec, k=10, batch_size=1000, ε=0.4, β
 
 在启发式重排序阶段获取的组N，可保证与查询query vector 高度相似，构建导航图，为每一个质心分配存储桶Bucket,存放最接近该质心的若干向量ID。
 
-![pic](/docs/src/存储2.png)
+![pic](/images/存储2.png)
 
 将向量按到质心距离排序填充到 Bucket 中，然后跨 Bucket 合并填充 4KB 页，以最小化碎片，从而提高存储效率和 I/O 性能。
 
-![pic](/docs/src/存储布局.png)
+![pic](/images/存储布局.png)
 
 ### 4.2 二级 I/O 去重机制
 
- ![pic](/docs/src/x13.png)
+ ![pic](/images/x13.png)
 
 FusionANNS 还设计了二级 I/O 去重机制，包括批内合并和批间复用。在批内合并方面，以 Mini-batch 请求 V2, V4, V6 为例，系统通过映射表获取每个向量对应的页 ID，发现 V2 和 V6 位于同一页 P0，V4 位于页 P2，最终实际 I/O 操作只需读取 2 次页面（P0 和 P2），替代了原本 3 次的 I/O 请求。在批间复用方面，若 Batch0 已加载 P0（包含 V2、V6）和 P2（包含 V4）到缓存中，当 Batch1 请求 V5（位于 P2）、V8（位于 P1）、V9（位于 P3）时，由于 P2 已在缓存中，Batch1 实际只需读取 P1 和 P3 两次页面即可。通过这样的 I/O 去重机制，在实际测试中，随机存储情况下 I/O 次数为 40,000 次，数据读取量为 160MB，而经过优化后，I/O 次数减少到 30,800 次，数据读取量降低至 123MB，I/O 次数和数据读取量均减少了 23%。
 ## 五、端到端查询流程
-FusionANNS 的端到端查询流程涉及多个组件协同工作，其流程如![系统架构序列](/docs/src/x11.png) 所示。
+FusionANNS 的端到端查询流程涉及多个组件协同工作，其流程如![系统架构序列](/images/x11.png) 所示。
 当 Client 发送查询向量 Q 后，整个端到端流程如下：
 1. **GPU 生成距离表**：GPU 首先生成查询向量的距离表，用于后续 PQ 距离计算。
 2. **CPU 定位候选簇集**：同时，CPU 遍历内存中的导航图，找到与查询向量最接近的 top-m 个发布列表（而非固定的 Top-64，具体数量根据场景调整）。
@@ -399,46 +399,46 @@ FusionANNS 的端到端查询流程涉及多个组件协同工作，其流程如
 **上面的一大串文字，可能看起来不太容易，下面将配合着图片来解释：**
 对于我们所有存储在SSD中的数据，
 
-![pi'c](/docs/src/ssd.png)
+![pi'c](/images/ssd.png)
 
 我们对其进行分层聚类得到Posting List。
 
-![pic](/docs/src/postingList.png)
+![pic](/images/postingList.png)
 
 对于图中Posting List倒排索引列表，里面的ID为图的节点ID。
 我们根据这个倒排索引列表，构建下图：
 
-![pic](/docs/src/graph.png)
+![pic](/images/graph.png)
 
 存放进入CPU，然后丢弃倒排索引列表，只保留图(注意：只存储向量的ID列表，不存实际的向量数据！)。对于新加入的点：
 1. 计算与附近Top64个最近的点的Distance并连接
 2. 类似于HNSW索引的多层小世界图
-   ![pic](/docs/src/hnsw.png)
+   ![pic](/images/hnsw.png)
 3. 取64个PL的Meta Data PQ量化存储到GPU HBM中
 4. GPU 根据ID List 从HBM中获取PQ量化后的组，进行Dist表的构建
 5. 其中，CPU -> SSD(根据IDs 从SSD中获取原始向量，计算精确距离，从而弥补PQ造成的精度损失，返回Top-k)
 
 貌似有些抽象，我们回到原始的图中：
 
-![pic](/docs/src/x12.png)
+![pic](/images/x12.png)
 
 首先我们看离线层的逻辑操作：
 
-![pic](/docs/src/22.png)
+![pic](/images/22.png)
 
 这是我们的SSD中存储的数据，包含了向量的ID和具体数据，当然，实际应用中，数据格式不可能是这么简单的，但100%包含ID 和 embedding这两个。
 我们有两件事情要做的：
 
 **首先**：将这些数据进行PQ量化后存储到GPU HBM中，
-![pic](/docs/src/25.png)
+![pic](/images/25.png)
 
 **其次**我们对这些数据进行分组和倒排索引（关于这一部分，请看[索引部分](../chapter1/milvus%20索引介绍.md)），得到Posting List。
 
-![pic](/docs/src/postingList.png)
+![pic](/images/postingList.png)
 
 然后构建图并丢弃Posting List：
 
-![pic](/docs/src/24.png)
+![pic](/images/24.png)
 
 你可以看到，图中的节点ID就是Posting List中的ID。我们将这一部分数据都放到了CPU存储中，图中的每一个节点都包含：
 1. 节点ID
@@ -446,27 +446,27 @@ FusionANNS 的端到端查询流程涉及多个组件协同工作，其流程如
 
 现在，我们离线层的数据构建就做好了，接下来，我们看在线层的逻辑操作：
 
-![pic](/docs/src/16.png)
+![pic](/images/16.png)
 
 详细看过上面内容的小伙伴应该知道，这里query的计算过程，我们进入内存导航图，确定最近的PL，假设是上图中的那几个节点，我们可以组合这些ID List，可以得到：
 
-![pic](/docs/src/17.png)
+![pic](/images/17.png)
 
 然后，GPU根据这些从CPU 传来的ID List，从自己的 HBM中获取PQ量化后的向量，得到每个V_ID (v0,v1,v3,v4 ... ... )的PQ向量。
 
 构建距离表，
 
-![pic](/docs/src/18.png)
+![pic](/images/18.png)
 
 然后根据距离表，计算精确距离，返回Top-k。
 
-![pic](/docs/src/20.png)
+![pic](/images/20.png)
 
 我们可以看到 v2 v0 v5 是最近的，然后就到最后了，我们将这三个ID进入I/O Engine 取SSD查询。
 
 ## 六、性能实验与工业价值
 ### 6.1 性能对比实验
-为验证 FusionANNS 的性能优势，我们在特定实验环境下进行测试。实验环境配置为：CPU 采用 2×Xeon 64-core，GPU 为 NVIDIA V100（32GB HBM），SSD 使用 Samsung 990Pro 2TB。在吞吐量对比（QPS）方面，不同数据集下的实验结果如 ![吞吐量对比图](/docs/src/x14.png) 所示，FusionANNS 在 SIFT1B、SPACEV1B、DEEP1B 等数据集上，相较于 SPANN 和 RUMMY，QPS 均有显著提升，展现出强大的处理能力。
+为验证 FusionANNS 的性能优势，我们在特定实验环境下进行测试。实验环境配置为：CPU 采用 2×Xeon 64-core，GPU 为 NVIDIA V100（32GB HBM），SSD 使用 Samsung 990Pro 2TB。在吞吐量对比（QPS）方面，不同数据集下的实验结果如 ![吞吐量对比图](/images/x14.png) 所示，FusionANNS 在 SIFT1B、SPACEV1B、DEEP1B 等数据集上，相较于 SPANN 和 RUMMY，QPS 均有显著提升，展现出强大的处理能力。
 ### 6.2 工业应用场景
 在工业应用中，FusionANNS 可有效优化 RAG 架构，如 [此处插入 RAG 架构优化示意图] 所示。当用户提问后，Query 经过嵌入处理进入 FusionANNS 引擎，引擎从知识库中快速检索相关向量，获取 Top-K 相关文档，为 LLM 生成回答提供准确信息。在实际应用中，原本占比 50% 的延迟降低至 10%，对于 10 亿级向量的检索，P99 延迟小于 100ms。其适用场景广泛，涵盖法律 AI（如 ChatLaw 千亿级法律条文检索）、家装设计（如 ChatHome 百万级 3D 模型检索）、金融风控（如 Xuanyuan 2.0 实时交易监测）、电商推荐（十亿级商品向量实时匹配）等多个领域，为各行业的智能化发展提供了有力支持。
 ## 七、结论与创新价值

@@ -140,7 +140,7 @@ connections.connect("default", host="localhost", port="19530")
 
 可以看到milvus在default库中建了3个表
 
-![fig10](/docs/src/fig10.png)
+![fig10](/images/fig10.png)
 
 ## 五、模型召回与重排
 
@@ -228,4 +228,4 @@ def search_question(reranker,query: str, top_k: int = 5):
 
 看一下最终的召回结果
 
-![fig11](/docs/src/fig11.png)
+![fig11](/images/fig11.png)
