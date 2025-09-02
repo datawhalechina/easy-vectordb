@@ -106,9 +106,9 @@ collection.load()  # 将索引加载到内存
 
 数据写入完成后，查看Attu，可以看到数据已经写入到库中了
 
-![fig9](/docs/src/fig9.png)
+![fig9](/images/fig9.png)
 
-![fig8](/docs/src/fig8.png)
+![fig8](/images/fig8.png)
 
 # 4.数据检索
 

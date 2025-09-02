@@ -1007,7 +1007,7 @@ def process_data(data, segment_id):
 下面我们进入整体流程的讲解。
 
 
-![jiagou](../../src/milvus_jiagou.png)
+![jiagou](/images/milvus_jiagou.png)
 
 #### 1. 接入层 (Access Layer)
 *   **SDKs / RESTful Gateway**：用户交互入口（如 `pymilvus.insert()` / `.search()`）。
@@ -1037,7 +1037,7 @@ def process_data(data, segment_id):
 分为Query Node和Data Node,两者都是无状态，可水平扩展。
 *   **Query Node (查询)**：
 
-    ![Qnode](../../src/milvus_querynode.jpeg)
+    ![Qnode](/images/milvus_querynode.jpeg)
 
     *   **核心职责**：执行向量/标量数据的搜索 (Search) 和查询 (Query)。
     *   **关键机制**：
@@ -1065,7 +1065,7 @@ def process_data(data, segment_id):
 
 #### 4. 存储层 (Storage Layer)
 
-![storage](../../src/milvus_storage.jpeg)
+![storage](/images/milvus_storage.jpeg)
 
 *   **元数据存储 (Metadata Storage)**：存储所有系统元数据（Schema, 分区, Segment 元信息, TSO 状态等）。采用*强一致、高可用* (etcd/MySQL/TiDB)。Root Coord 是其主要的使用者。
     > 为什么根协调器是主要使用者呢？因为根协调器控制着查询协调器与数据协调器，根协调器从MetaData Storage中获取最新TSO，处理、分配给两个子协调器，这样保证了两个协调器间服务的一致性。
@@ -1076,7 +1076,7 @@ def process_data(data, segment_id):
 
 ### Milvus 数据写入高层级流程 (结合图片步骤)
 
-![datanode](../../src/milvus_dataNode.jpg)
+![datanode](/images/milvus_dataNode.jpg)
 
 1.  **用户请求**：客户端通过 SDK (如 `pymilvus.insert()`) 发起插入请求。
 2.  **接入代理**：请求到达 Proxy 网关。
@@ -1102,7 +1102,7 @@ def process_data(data, segment_id):
     *   **Index Coord** 调度 **Index Node** 为新 Segment 构建索引。
 10. **异步索引构建 (Index Node)**：
 
-    ![index](../../src/milvus_index.jpeg)
+    ![index](/images/milvus_index.jpeg)
 
     *   **Index Node** 从 **Object Storage** 读取新 Segment 的原始数据。
     *   执行**索引构建算子**（如 IVF 聚类、HNSW 图构建）。
@@ -1110,7 +1110,7 @@ def process_data(data, segment_id):
 
 ### Milvus 查询高层级流程 (结合图片步骤)
 
-![querynode](../../src/milvus_queryNode.jpg)
+![querynode](/images/milvus_queryNode.jpg)
 
 1.  **用户请求**：客户端通过 SDK (如 `pymilvus.search()`) 发起搜索请求。
 2.  **接入代理**：请求到达 Proxy 网关。
@@ -1202,7 +1202,7 @@ Storage组件中包含Log Broker，用于持久化数据变更日志，数据协
     }
     ```
 2. **TSO全局一致性**：当用户通过SDK发起请求后，进入Proxy网关代理，Proxy从Root Cooordinator中获取一个全局TSO，假如这次请求是用户查询请求，那可以设置ts_query = 5000，这个5000就作为整个流程下的时钟。
-![](../../src/mermaid_1.png)
+![](/images/mermaid_1.png)
 
 3. **增量数据管理**：首先你需要知道这些增量数据从哪里来，一是从Object Storage中存储的Segment文件（就是数据协调器创建的），二是由Query Node内存中增量生成的。我们消费这些数据是根据分配的TSO来消费的，对于来源一的数据，他的数据的范围即数据中tso <= Flush时间点，即这个数据的创建时间要比他入库Object Storage中的时间要小。对于来源二的数据，他的数据范围是 Flush时间点 < tso <= 当前tso
     ```python 
@@ -1237,7 +1237,7 @@ Storage组件中包含Log Broker，用于持久化数据变更日志，数据协
     ```
     下面的Query Coordinator收到数据变更的通知后：要求Query Node停止使用旧的增量，比如这里的flush_ts=4500，那表示ts<=4500的数据以及被持久化存储到Object Storage中了，然后就可以加载新的Segment文件了。
 
-    ![](../../src/mermain_2.png)
+    ![](/images/mermain_2.png)
 
     上图中，根协调器异步的将请求发送到查询协调器和数据协调器，或者说，这种发布-订阅的模式，使得查询节点和数据节点无需直接通信即可获取相同的数据变更，并且根据tso判断待处理的segment，这就保证了数据的实时性获取。但数据协调器和查询协调器又不是完全的互不关联的，两者通过etcd共享segment的状态（回过头想一想，那一步用到了segment状态？）确保存储层和查询层对数据可见性达成共识。
 
