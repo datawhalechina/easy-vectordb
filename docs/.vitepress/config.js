@@ -74,7 +74,7 @@ export default defineConfig({
           items: [
             { text: 'milvus 存储优化', link: '/Milvus/chapter4/milvus 存储优化' },
             { text: 'GPU 加速检索 - 基于 FusionANNS', link: '/Milvus/chapter4/GPU加速检索-基于FusionANNS' },
-            { text: 'K-mean 算法详解', link: '/Milvus/chapter4/K-mean算法详解' },
+            { text: '向量', link: '/Milvus/chapter4/向量/向量.md' },
             { text: 'Meta-Chunking：一种新的文本切分策略', link: '/Milvus/chapter4/Meta-Chunking：一种新的文本切分策略' }
           ]
         }
