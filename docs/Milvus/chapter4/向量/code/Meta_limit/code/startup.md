@@ -253,7 +253,7 @@ final_loss 和 best_loss_monitored: 这些是优化过程中的损失值。较�
 
 ## 结果图片的含义
 
-![](/docs/public/images/image0.png)
+![](/images/image0.png)
 
 这张图表展示了在特定嵌入维度 d 和 k（在这个实验中 d=4, k=2）下，随着文档数量 N 的增加，最终准确率 (final_accuracy) 的变化。
 
@@ -271,7 +271,7 @@ Y 轴 (final_accuracy)：这表示模型在给定 N 值下，能够正确捕获�
 
 现在我们综合一下，当d=4\\5\\6的时候，结果图以及其为我们所展示的含义
 
-![](/docs/public/images/image1.png)
+![](/images/image1.png)
 
 这张图表通过三条不同颜色的线，描绘了在 `k=2` 的情况下，不同嵌入维度 (`d=4`, `d=5`, `d=6`) 如何影响模型识别所有可能文档组合的准确率。
 **从图中我们可以看到：**
@@ -288,7 +288,7 @@ Y 轴 (final_accuracy)：这表示模型在给定 N 值下，能够正确捕获�
 
 这张图表的数据与论文中的 Table 6 是吻合的。Table 6 列出的 `Critical-n` 值就是图中准确率首次从 1.00 下降时的 `N` 值。
 
-![](/docs/public/images/table6.bmp)
+![](/images/table6.bmp)
 
 *   Table 6 显示 `d=4` 对应 `Critical-n=10`。
 *   `d=5` 对应 `Critical-n=14`。
