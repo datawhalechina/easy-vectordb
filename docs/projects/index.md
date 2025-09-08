@@ -27,6 +27,11 @@ Meta-chunking论文的代码实现demo。
 
 **源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/Meta_chunking
 
+### 🧠 [Limit](../Milvus/chapter4/向量/code/Meta_limit/code/startup.md)
+Meta:Limit论文的代码实现demo。
+
+**源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/docs/Milvus/chapter4/%E5%90%91%E9%87%8F/code/Meta_limit
+
 ### ⚡ [Locust性能测试](./locust/)
 Milvus性能测试工具和基准测试。
 
@@ -38,3 +43,4 @@ Milvus性能测试工具和基准测试。
 2. **进阶**: 学习Cre_milvus主项目
 3. **部署**: 掌握K8s+Loki监控
 4. **优化**: 研究Meta-chunking和性能测试
+5. **扩展**: 探索Meta-limit和其他项目
