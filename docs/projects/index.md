@@ -16,6 +16,12 @@
 **技术栈**: Milvus + Streamlit + FastAPI
 **源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/Cre_milvus
 
+### 🚀 [Text_search_pic](./text_search_img)
+文搜图
+
+**技术栈**: Milvus + towhere
+**源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/text_search_img
+
 ### 📊 [K8s+Loki 监控](./k8s-loki/)
 基于Kubernetes部署的Milvus日志监控系统。
 
