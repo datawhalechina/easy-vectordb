@@ -22,6 +22,12 @@
 **技术栈**: Milvus + towhere
 **源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/text_search_img
 
+### 🚀 [HDBSCAN](./HDBSCAN)
+聚类数据可视化
+
+**技术栈**: Milvus + HDBSCAN + umap
+**源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/HDBSCAN
+
 ### 📊 [K8s+Loki 监控](./k8s-loki/)
 基于Kubernetes部署的Milvus日志监控系统。
 
@@ -46,7 +52,8 @@ Milvus性能测试工具和基准测试。
 ## 学习路径
 
 1. **入门**: 从URL处理实践开始
-2. **进阶**: 学习Cre_milvus主项目
-3. **部署**: 掌握K8s+Loki监控
-4. **优化**: 研究Meta-chunking和性能测试
-5. **扩展**: 探索Meta-limit和其他项目
+2. **使用**: 尝试文搜图以及HDBSCAN聚类
+3. **进阶**：学习Cre_milvus主项目(开发ing)
+4. **部署**: 掌握K8s+Loki监控
+5. **优化**: 研究Meta-chunking和性能测试
+6. **扩展**: 探索Meta-limit和其他项目
