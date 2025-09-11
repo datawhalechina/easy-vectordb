@@ -18,7 +18,13 @@ pip install -r requirements.txt
 ```
 
 - 确保本地 Milvus 已运行并监听 `127.0.0.1:19530`。
-- 模型文件已放置在 `model/` 目录（`bge-small-zh-v1.5` 权重与 tokenizer）。
+- 模型文件放置在 `model/` 目录（`bge-small-zh-v1.5` 权重与 tokenizer）。
+- 注意，你需要去[modelscope](https://www.modelscope.cn/models/BAAI/bge-small-zh-v1.5/files)下载5个文件放到model文件夹下，分别是:
+    1. config.json
+    2. pytorch_model.bin
+    3. special_tokens_map.json
+    4. tokenizer_config.json
+    5. vocab.txt
 
 ### 启动运行
 
