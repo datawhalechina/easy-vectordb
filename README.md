@@ -40,7 +40,7 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 |      | [Meta-Chunking：一种新的文本切分策略](./docs//Milvus/chapter4/Meta-Chunking：一种新的文本切分策略.md) | Learning Text Segmentation and Semantic Completion via Logical Perception论文解读 | ✅    |
 | 第五章  | [url分割处理](./docs/Milvus/project/url_process/README.md) | 视频数据存储过程中url分割与存放                        | ✅    |
 |      | [Cre_milvus](./docs/Milvus/project/Cre_milvus/README.md) | 综合实践                                      | ⌛    |
-|      | [Text_search_pic](./docs/Milvus/project/1_build_text_image_search_engine.ipynb) | 综合实践                                      | ✅    |
+|      | [Text_search_pic](./docs/Milvus/project/1_build_text_image_search_engine.ipynb) | 文搜图                                      | ✅    |
 |      | [Meta-chunking](./docs/Milvus/project/Meta_chunking/README.md) | Meta-chunking论文实现demo                    | ✅    |
 |      | [Limit](./docs/Milvus/chapter4/向量/code/Meta_limit/code/startup.md) | Meta-limit论文实践                           | ✅    |
 |      | [Locust](./docs/Milvus/project/locustProj/README.md) | 基于Locust的Milvus性能测试工具                    | ✅    |
