@@ -20,7 +20,7 @@ Milvus 是一款开源向量数据库，适配各种规模的 AI 应用，在本
 
 Milvus 就是这样一个专门存向量的数据库，就像 “向量的仓库”。
 ## 快速入门
-1. 设置向量数据库
+#### 1. 设置向量数据库
 要创建本地的 Milvus 向量数据库，仅需实例化一个`MilvusClient`，并指定用于存储所有数据的文件名，如`"milvus_demo.db"`。
 ```python
 client = MilvusClient("milvus_demo.db")
@@ -37,7 +37,7 @@ schema = CollectionSchema(fields)
 client.create_collection("my_collection", schema)
 ```
 上述代码中，主键和向量字段采用默认名称`（"id"和"vector"）`，度量类型（向量距离定义）设为默认值（COSINE） 。
-2. 插入向量
+#### 2. 插入向量
 Milvus 期望数据以字典列表的形式插入，每个字典代表一条数据记录，称作一个实体。假设已有向量化后的数据vectors（为浮点数数组列表），以及对应的实体 ID 列表ids，可按如下方式插入数据：
 ```python
 entities = [
@@ -46,7 +46,7 @@ entities = [
 ]
 client.insert("my_collection", entities)
 ```
-3. 向量搜索
+#### 3. 向量搜索
 Milvus 可同时处理一个或多个向量搜索请求。`query_vectors`变量是一个向量列表，其中每个向量都是一个浮点数数组。
 ```python
 query_vectors = embedding_fn.encode_queries(("Who is Alan Turing?",))
@@ -72,7 +72,7 @@ results = client.search(
     expr=expr
 )
 ```
-4. 加载现有数据
+#### 4. 加载现有数据
 由于 Milvus Lite 的所有数据都存储于本地文件，即便程序终止，也能通过创建带有现有文件的MilvusClient，将所有数据加载至内存。例如，恢复"milvus_demo.db"文件中的集合，并继续写入数据：
 ```python
 client = MilvusClient("milvus_demo.db")
@@ -143,7 +143,7 @@ client.load_collection(
 )
 ```
 这样做除了能减少内存的消耗外，还有一个好处，即后续使用GPU HMB和SSD对大规模数据进行优化存储和加速检索时，id字段所占用的空间非常小，往往只有几bit，在CPU和SSD、HMB之间传输时，性能差异不大，因此可以忽略消耗。
-关于这一部分，请学习完成所有知识后，浏览[FusionANNS]()。
+关于这一部分，请学习完成所有知识后，浏览[FusionANNS](https://datawhalechina.github.io/easy-vectordb/Milvus/chapter4/GPU%E5%8A%A0%E9%80%9F%E6%A3%80%E7%B4%A2-%E5%9F%BA%E4%BA%8EFusionANNS.html)。
 
 当你使用结束此Collection后，请及时释放Collection，释放内存。
 ```python
