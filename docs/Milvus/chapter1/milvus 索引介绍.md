@@ -472,7 +472,7 @@ GPU_BRUTE_FORCE采用暴力搜索方式，能够实现100%的召回率，但其�
 
 ## 代码实践
 学习完上述的索引的知识后，我们将通过代码来更加可观的观察不同索引在定量数据集上的表现。
-![alt text](../images/milvus_perf_comparison_20250710-003445.png)
+![alt text](/images/milvus_perf_comparison_20250710-003445.png)
 
 点击:[代码实践](milvus_perf_test.py)
 运行如下命令，安装需要的包
