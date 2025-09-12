@@ -3,7 +3,7 @@
 Milvus 是一款开源向量数据库，适配各种规模的 AI 应用，在本指南中，将引领你在数分钟内完成 Milvus 的本地设置，并借助 Python 客户端库实现向量的生成、存储与搜索。这里运用的 Milvus Lite，是pymilvus中包含的 Python 库，可嵌入客户端应用程序。
 你需要先理解：
 
-1. 什么是 “向量”？
+#### 1. 什么是 “向量”？
 你可以把 “向量” 理解成一串数字组成的 “特征密码”。生活中任何东西（比如一张图片、一句话、一个水果）都有自己的特征，向量就是把这些特征转换成数字的形式，方便后续进行相似度检索。
 
 举个例子：
@@ -13,7 +13,7 @@ Milvus 是一款开源向量数据库，适配各种规模的 AI 应用，在本
 
 在 AI 里，图片、文字都会被转换成这样的向量。比如一句话 “我爱吃苹果”，AI 会提取它的语义特征，变成一串更长的数字（比如 128 个数字），这就是 “文本向量”。
 
-2. 什么是 “向量数据库”？
+#### 2. 什么是 “向量数据库”？
 普通数据库（比如 Excel 表格）存的是文字、数字（比如 “苹果，红色，5 元”），而向量数据库专门存上面说的 “向量”（也就是 “特征密码”）。
 
 为啥要专门存向量？因为 AI 处理数据时，不是直接比文字，而是比向量。比如想找和 “我爱吃苹果” 意思相似的句子，AI 会先把这句话转成向量，再去向量数据库里找 “数字长得最像” 的向量，对应的句子就是相似的。
@@ -90,33 +90,33 @@ Collection是一个二维表格，拥有固定的列和行，每一列表示一�
 
 首先，对于Schema，参考如下代码：
 ```python
-        # 连接Milvus服务器
-        connections.connect("default", host="localhost", port="19530")
+# 连接Milvus服务器
+connections.connect("default", host="localhost", port="19530")
 
-        # 检查并创建collection
-        collection_name = 'video_push'
-        fields = [
-            FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
-            FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=1024),
-            FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=1024),
-            # 你可以选择构建一些其他的字段
-        ]
-        schema = CollectionSchema(fields, collection_name)
-        collection = Collection(name=collection_name, schema=schema)
+# 检查并创建collection
+collection_name = 'video_push'
+fields = [
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True, auto_id=False),
+    FieldSchema(name="content", dtype=DataType.VARCHAR, max_length=1024),
+    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=1024),
+    # 你可以选择构建一些其他的字段
+]
+schema = CollectionSchema(fields, collection_name)
+collection = Collection(name=collection_name, schema=schema)
 ```
 其次创建索引，加载集合
 ```python
-        collection.create_index(
-            # 索引字段名
-            field_name="embedding",
-            # 索引参数设置
-            index_params={
-                "metric_type": "IP",
-                "index_type": "IVF_FLAT",
-                "params": {"nlist": 1024}
-            }
-        )
-        collection.load()
+collection.create_index(
+    # 索引字段名
+    field_name="embedding",
+    # 索引参数设置
+    index_params={
+        "metric_type": "IP",
+        "index_type": "IVF_FLAT",
+        "params": {"nlist": 1024}
+    }
+)
+collection.load()
 ```
 你可以使用如下代码检查你数据库中存在的Collection:
 ```python
@@ -896,13 +896,13 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
 3.  **工作节点（Worker Nodes）**：执行具体任务的“肌肉”（查询、写入、索引）。
 4.  **存储层（Storage）**：持久化数据和元数据的“基石”。
 
-| 组件               | 存储内容                                   | 后端技术                          |
-| :----------------- | :----------------------------------------- | :-------------------------------- |
-| **Log Broker**     | 数据变更日志（Insert/Delete/Update）       | Pulsar/Kafka/RocksDB              |
-| **Object Storage** | 向量原始数据、索引文件、Segment 文件       | MinIO/S3/Azure Blob/GCS/本地文件  |
-| **Metadata Storage** | 集合Schema、Segment状态、节点信息、TSO     | ETCD/MySQL/TiDB                   |
-| **Query Node**     | *热数据缓存*、内存索引、执行引擎           | 本地SSD/Memory/GPU                |
-| **Data Node**      | 写入缓冲区（WAL）                          | 本地磁盘                          |
+| 组件                 | 存储内容                               | 后端技术                         |
+| :------------------- | :------------------------------------- | :------------------------------- |
+| **Log Broker**       | 数据变更日志（Insert/Delete/Update）   | Pulsar/Kafka/RocksDB             |
+| **Object Storage**   | 向量原始数据、索引文件、Segment 文件   | MinIO/S3/Azure Blob/GCS/本地文件 |
+| **Metadata Storage** | 集合Schema、Segment状态、节点信息、TSO | ETCD/MySQL/TiDB                  |
+| **Query Node**       | *热数据缓存*、内存索引、执行引擎       | 本地SSD/Memory/GPU               |
+| **Data Node**        | 写入缓冲区（WAL）                      | 本地磁盘                         |
 
 ### 核心设计理念
 
@@ -925,11 +925,11 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
         t2: 发起查询Q1
         t3: 删除向量 [A]
         t4: 发起查询Q2
-
+   
         # 快照隔离效果
         Q1(在t2执行) 看到数据: [A, B]  // 包含t2前的所有写入
         Q2(在t4执行) 看到数据: [B]    // 包含t4前的所有写入
-
+   
     ```
 
 ### 核心组件详解
