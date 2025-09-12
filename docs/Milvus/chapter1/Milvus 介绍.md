@@ -1161,7 +1161,7 @@ def process_data(data, segment_id):
 
 回过头来，回顾一下各个组件的作用
 
-各个组件分为三个部分，协调器（Coordinator）、Node、Storage组件。
+整个milvus的底层架构分为三个大组件，分别是协调器（Coordinator）、Node、Storage组件。
 
 协调器组件中包含Root Coordinator，用于分配全局唯一的TSO，并管理集合、分区的元数据；Data Coordinator，管理Segment，创建和状态切换，然后触发flush刷入数据，并且通知索引协调器构建索引；Query Coordinator查询协调器，负责负载均衡查询节点，管理segment的分布，即分布到不同的node上，合并全局Topk结果，这个topk是从各个query node中获取的局部topk的总和；Index Coordinator索引协调器，被data coordinator协调器调用，segment被构建后，会进行索引的构建任务，并且索引协调器会监控索引的构建状态。
 
