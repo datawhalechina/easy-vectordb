@@ -56,7 +56,7 @@ entities = [
 client.insert("my_collection", entities)
 ```
 3. 向量搜索
-Milvus 可同时处理一个或多个向量搜索请求。查询向量应该是一个向量列表，其中每个向量都是一个浮点数数组。
+Milvus 可同时处理一个或多个向量搜索请求。`query_vectors`变量是一个向量列表，其中每个向量都是一个浮点数数组。
 ```python
 query_vectors = embedding_fn.encode_queries(("Who is Alan Turing?",))
 ```
@@ -80,7 +80,7 @@ results = client.search(
     filter='category == "tech"'
 )
 ```
-4. 加载现有数据
+1. 加载现有数据
 由于 Milvus Lite 的所有数据都存储于本地文件，即便程序终止，也能通过创建带有现有文件的MilvusClient，将所有数据加载至内存。例如，恢复"milvus_demo.db"文件中的集合，并继续写入数据：
 ```python
 client = MilvusClient("milvus_demo.db")
