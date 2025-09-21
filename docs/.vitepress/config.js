@@ -41,7 +41,7 @@ export default defineConfig({
         {
           text: 'Chapter 0 · 开始学习',
           items: [
-            { text: '前言', link: '/Milvus/chapter0/前言' }
+            { text: '为什么需要向量数据库', link: '/Milvus/chapter0/前言' }
           ]
         },
         {
