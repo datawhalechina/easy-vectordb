@@ -4,91 +4,106 @@ Milvus 是一款开源向量数据库，适配各种规模的 AI 应用，在本
 你需要先理解：
 
 1. 什么是 “向量”？
-你可以把 “向量” 理解成一串数字组成的 “特征密码”。生活中任何东西（比如一张图片、一句话、一个水果）都有自己的特征，向量就是把这些特征转换成数字的形式，方便后续进行相似度检索。
 
-举个例子：
+    你可以把 “向量” 理解成一串数字组成的 “特征密码”。生活中任何东西（比如一张图片、一句话、一个水果）都有自己的特征，向量就是把这些特征转换成数字的形式，方便后续进行相似度检索。
 
-比如描述一个苹果，它的特征可能是：颜色（红色 = 1，绿色 = 0）、形状（圆形 = 1，方形 = 0）、甜度（0-10 分，假设 8 分）、大小（直径 5cm=5）。
-那这个苹果的向量可能就是 [1, 1, 8, 5]—— 这串数字就代表了苹果的 “特征密码”。
+    >举个例子：
+    >
+    >比如描述一个苹果，它的特征可能是：颜色（红色 = 1，绿色 = 0）、形状（圆形 = 1，方形 = 0）、甜度（0-10 分，假设 8 分）、大小（直径 5cm=5）。
+    >
+    >那这个苹果的向量可能就是 [1, 1, 8, 5]—— 这串数字就代表了苹果的 “特征密码”。
 
-在 AI 里，图片、文字都会被转换成这样的向量。比如一句话 “我爱吃苹果”，AI 会提取它的语义特征，变成一串更长的数字（比如 128 个数字），这就是 “文本向量”。
+    在 AI 里，图片、文字都会被转换成这样的向量。比如一句话 “我爱吃苹果”，AI 会提取它的语义特征，变成一串更长的数字（比如 128 个数字），这就是 “文本向量”。
 
 2. 什么是 “向量数据库”？
-普通数据库（比如 Excel 表格）存的是文字、数字（比如 “苹果，红色，5 元”），而向量数据库专门存上面说的 “向量”（也就是 “特征密码”）。
+    普通数据库（比如 Excel 表格）存的是文字、数字（比如 “苹果，红色，5 元”），而向量数据库专门存上面说的 “向量”（也就是 “特征密码”）。
 
-为啥要专门存向量？因为 AI 处理数据时，不是直接比文字，而是比向量。比如想找和 “我爱吃苹果” 意思相似的句子，AI 会先把这句话转成向量，再去向量数据库里找 “数字长得最像” 的向量，对应的句子就是相似的。
+    为啥要专门存向量？因为 AI 处理数据时，不是直接比文字，而是比向量。比如想找和 “我爱吃苹果” 意思相似的句子，AI 会先把这句话转成向量，再去向量数据库里找 “数字长得最像” 的向量，对应的句子就是相似的。
 
-Milvus 就是这样一个专门存向量的数据库，就像 “向量的仓库”。
+    Milvus 就是这样一个专门存向量的数据库，就像 “向量的仓库”。
 ## 快速入门
 1. 设置向量数据库
+
 要创建本地的 Milvus 向量数据库，仅需实例化一个`MilvusClient`，并指定用于存储所有数据的文件名，如`"milvus_demo.db"`。
 
 在 Milvus 里，需要借助 `Collections` 来存储向量及其相关元数据，可将其类比为传统 SQL 数据库中的表格。创建 `Collections` 时，能定义 `Schema` 和索引参数，以此配置向量规格，包括维度、索引类型和远距离度量等。此外，还有一些复杂概念用于优化索引，提升向量搜索性能。但就目前而言，重点关注基础知识，并尽量采用默认设置。至少，需设定 Collections 的名称和向量场的维度。例如：
 ```python
 from pymilvus import MilvusClient, DataType
 
-client = MilvusClient("milvus_demo.db")
+client = MilvusClient("milvus_demo.db")  # 数据库文件路径
 
 # 创建schema
 schema = client.create_schema(
-    auto_id=False,
-    enable_dynamic_field=True,
+    auto_id=False,  # 是否自动生成主键ID
+    enable_dynamic_field=True,  # 是否启用动态字段
 )
 
 # 添加字段
-schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
-schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=128)
+schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)  # 字段名、数据类型、是否为主键
+schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=128)  # 向量字段，维度为128
 
 # 创建集合
 client.create_collection(
-    collection_name="my_collection",
-    schema=schema
+    collection_name="my_collection",  # 集合名称
+    schema=schema  # 集合的模式定义
 )
 ```
 上述代码中，主键和向量字段采用默认名称`（"id"和"vector"）`，度量类型（向量距离定义）设为默认值（COSINE） 。
+
 2. 插入向量
+
 Milvus 期望数据以字典列表的形式插入，每个字典代表一条数据记录，称作一个实体。假设已有向量化后的数据vectors（为浮点数数组列表），以及对应的实体 ID 列表ids，可按如下方式插入数据：
 ```python
 entities = [
-    {"id": id, "vector": vector}
-    for id, vector in zip(ids, vectors)
+    {"id": id, "vector": vector}  # 实体字典，包含ID和向量数据
+    for id, vector in zip(ids, vectors)  # 将ID列表和向量列表组合
 ]
-client.insert("my_collection", entities)
+client.insert("my_collection", entities)  # 集合名称，要插入的实体列表
 ```
+
 3. 向量搜索
+
 Milvus 可同时处理一个或多个向量搜索请求。`query_vectors`变量是一个向量列表，其中每个向量都是一个浮点数数组。
 ```python
-query_vectors = embedding_fn.encode_queries(("Who is Alan Turing?",))
+query_vectors = embedding_fn.encode_queries(("Who is Alan Turing?",))  # 将查询文本编码为向量
 ```
 执行搜索的示例代码如下：
 ```python
 results = client.search(
-    collection_name="my_collection",
-    data=query_vectors,
-    limit=5,
-    output_fields=["id"]
+    collection_name="my_collection",  # 要搜索的集合名称
+    data=query_vectors,  # 查询向量数据
+    limit=5,  # 返回结果的最大数量
+    output_fields=["id"]  # 需要返回的字段列表
 )
 ```
 输出结果是一个结果列表，每个结果对应一个向量搜索查询。每个查询包含一个结果列表，其中每个结果涵盖实体主键、到查询向量的距离，以及指定output_fields的实体详细信息。
+
 还能在过滤指定的标量（标量指非向量数据）的同时进行向量搜索，可通过指定特定条件的过滤表达式达成。例如，假设集合中存在一个名为"category"的标量字段，要搜索"category"为"tech"的相关向量，可这样操作：
+
 ```python
 results = client.search(
     collection_name="my_collection",
     data=query_vectors,
     limit=5,
     output_fields=["id"],
-    filter='category == "tech"'
+    filter='category == "tech"'  # 过滤条件表达式
 )
 ```
-1. 加载现有数据
+
+4. 加载现有数据
+
 由于 Milvus Lite 的所有数据都存储于本地文件，即便程序终止，也能通过创建带有现有文件的MilvusClient，将所有数据加载至内存。例如，恢复"milvus_demo.db"文件中的集合，并继续写入数据：
 ```python
-client = MilvusClient("milvus_demo.db")
+client = MilvusClient("milvus_demo.db")  # 连接到现有的数据库文件
 ```
+
 ## Collection
+
 每个数据库中可包含多个Collection，类似于关系数据库中的表和记录。
 Collection是一个二维表格，拥有固定的列和行，每一列表示一个字段，每一行表示一个实体，
+
 ### 构建Collection
+
 构建一个Collection需要如下三个步骤：
 
 1. 需要创建Schema，Schema定义了Collection的列和字段的类型。
@@ -97,70 +112,70 @@ Collection是一个二维表格，拥有固定的列和行，每一列表示一�
 
 首先，对于Schema，参考如下代码：
 ```python
-        from pymilvus import MilvusClient, DataType
+from pymilvus import MilvusClient, DataType
 
-        # 创建MilvusClient实例
-        client = MilvusClient(uri="http://localhost:19530")
+# 创建MilvusClient实例
+client = MilvusClient(uri="http://localhost:19530")  # Milvus服务器地址
 
-        # 定义collection schema
-        schema = client.create_schema(
-            auto_id=False,
-            enable_dynamic_fields=True,
-        )
+# 定义collection schema
+schema = client.create_schema(
+    auto_id=False,  # 不自动生成ID
+    enable_dynamic_fields=True,  # 启用动态字段
+)
 
-        schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
-        schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=1024)
-        schema.add_field(field_name="embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)
+schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
+schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=1024)  # 文本字段，最大长度1024
+schema.add_field(field_name="embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)  # 1024维向量字段
 ```
 其次创建索引，加载集合
 ```python
-        # 设置索引参数
-        index_params = {
-            "index_type": "IVF_FLAT",
-            "metric_type": "IP",
-            "params": {
-                "nlist": 1024
-            }
-        }
+# 设置索引参数
+index_params = {
+    "index_type": "IVF_FLAT",  # 索引类型：倒排文件平面索引
+    "metric_type": "IP",  # 距离度量类型：内积
+    "params": {
+        "nlist": 1024  # 聚类中心数量
+    }
+}
 
-        # 在vector字段上创建索引
-        collection.create_index(
-            field_name="embedding", 
-            index_params=index_params, 
-            timeout=None
-        )
+# 在vector字段上创建索引
+collection.create_index(
+    field_name="embedding",  # 要创建索引的字段名
+    index_params=index_params,  # 索引参数配置
+    timeout=None  # 超时时间，None表示无限等待
+)
 
-        # 加载整个collection
-        collection.load()
+# 加载整个collection
+collection.load()  # 将集合加载到内存中
 
-        # 或加载指定字段
-        collection.load(
-            load_fields=["id", "embedding"],
-            skip_load_dynamic_field=True
-        )
+# 或加载指定字段
+collection.load(
+    load_fields=["id", "embedding"],  # 指定要加载的字段列表
+    skip_load_dynamic_field=True  # 跳过动态字段的加载
+)
 ```
 你可以使用如下代码检查你数据库中存在的Collection:
 ```python
 res = client.describe_collection(
-    collection_name="quick_setup"
+    collection_name="quick_setup"  # 要查看的集合名称
 )
 
-print(res)
+print(res)  # 打印集合详细信息
 
 ```
 您可以按以下方式重命名一个 Collection:
 ```python
 client.rename_collection(
-    old_name="video_push",
-    new_name="Dw_easy_vectorDB"
+    old_name="video_push",  # 原集合名称
+    new_name="Dw_easy_vectorDB"  # 新集合名称
 )
 ```
 Milvus在查询时速度很快，是因为每次加载的Collection的数据会缓存在内存中。为了减少内存的消耗，您可以使用动态字段的方式加载你需要的数据进入Milvus。
 ```python
 client.load_collection(
-    collection_name="Dw_easy_vectorDB",
-    load_fields=["id", "embedding"]
-    skip_load_dynamic_field=True 
+    collection_name="Dw_easy_vectorDB",  # 要加载的集合名称
+    load_fields=["id", "embedding"],  # 指定加载的字段
+    skip_load_dynamic_field=True  # 跳过动态字段加载
 )
 ```
 这样做除了能减少内存的消耗外，还有一个好处，即后续使用GPU HMB和SSD对大规模数据进行优化存储和加速检索时，id字段所占用的空间非常小，往往只有几bit，在CPU和SSD、HMB之间传输时，性能差异不大，因此可以忽略消耗。
@@ -169,14 +184,14 @@ client.load_collection(
 当你使用结束此Collection后，请及时释放Collection，释放内存。
 ```python
 client.release_collection(
-    collection_name="Dw_easy_vectorDB"
+    collection_name="Dw_easy_vectorDB"  # 要释放的集合名称
 )
 
 res = client.get_load_state(
-    collection_name="Dw_easy_vectorDB"
+    collection_name="Dw_easy_vectorDB"  # 要查询加载状态的集合名称
 )
 
-print(res)
+print(res)  # 打印加载状态
 ```
 释放collection后，get_load_state()会返回NotLoad状态，表明collection已成功从内存中释放。
 这样做可以有效减少内存消耗，特别是在处理大规模数据时非常重要
@@ -195,10 +210,10 @@ print(res)
 from pymilvus import MilvusClient
 
 client.create_collection(
-    collection_name="Dw_easy_vectorDB",
-    schema=schema,
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    schema=schema,  # 集合模式
     properties={
-        "collection.ttl.seconds": 604800 # 7天
+        "collection.ttl.seconds": 604800  # TTL设置，7天后自动删除数据
     }
 )
 
@@ -206,8 +221,8 @@ client.create_collection(
 ```python
 #  修改已存在的集合
 client.alter_collection_properties(
-    collection_name="Dw_easy_vectorDB",
-    properties={"collection.ttl.seconds": 604800}
+    collection_name="Dw_easy_vectorDB",  # 要修改的集合名称
+    properties={"collection.ttl.seconds": 604800}  # 新的TTL属性设置
 )
 ```
 
@@ -217,15 +232,15 @@ client.alter_collection_properties(
 创建分区：
 ```python
 client.create_partition(
-    collection_name="Dw_easy_vectorDB",
-    partition_name="partition_1"
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    partition_name="partition_1"  # 分区名称
 )
 ```
 释放分区：
 ```python
 client.release_partitions(
-    collection_name="Dw_easy_vectorDB",
-    partition_names=["partition_1"]
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    partition_names=["partition_1"]  # 要释放的分区名称列表
 )
 ```
 删除分区之前必须要先释放分区。
@@ -233,30 +248,30 @@ client.release_partitions(
 删除分区：
 ```python
 client.drop_partition(
-    collection_name="Dw_easy_vectorDB",
-    partition_name="partition_1"
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    partition_name="partition_1"  # 要删除的分区名称
 )
 ```
 查询分区：
 ```python
 client.list_partitions(
-    collection_name="Dw_easy_vectorDB"
+    collection_name="Dw_easy_vectorDB"  # 要查询分区的集合名称
 )
 ```
 向分区中插入数据：
 ```python
 client.insert(
-    collection_name="Dw_easy_vectorDB",
-    partition_name="partition_1",
-    data=entities
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    partition_name="partition_1",  # 目标分区名称
+    data=entities  # 要插入的实体数据
 )
 ```
 查询分区中的数据：
 ```python
 client.query(
-    collection_name="Dw_easy_vectorDB",
-    partition_names=["partition_1"],  
-    filter="your_filter_expression"   # 这里放置过滤条件
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    partition_names=["partition_1"],  # 要查询的分区名称列表
+    filter="your_filter_expression"  # 过滤条件表达式
 )
 ```
 不过，对于某些问答系统，分区的设计会影响查询性能。我们很难确定对于某一个问题的答案，应该从哪个分区中查询，除此之外，我们不能保证另一个不相干的分区中是否包含了某条可能对最终回答产生重要影响的数据。所以，不建议使用分区。
@@ -306,12 +321,12 @@ AUTOINDEX：自动分析集合数据分布，优化索引参数，降低使用�
 ```python
 from pymilvus import MilvusClient
 
-client = MilvusClient("http://localhost:19530")
+client = MilvusClient("http://localhost:19530")  # 连接到Milvus服务器
 
 results = client.query(
-    collection_name="product_recommendation",
+    collection_name="product_recommendation",  # 要查询的集合名称
     filter="",  # 空表达式查询所有数据
-    output_fields=["id", "category", "brand", "price"],
+    output_fields=["id", "category", "brand", "price"],  # 要返回的字段列表
     limit=100  # 限制返回100条记录
 )
 
@@ -327,7 +342,7 @@ for result in results:
 # 2. 基于单个条件查询
 results = client.query(
     collection_name="product_recommendation",
-    filter='category == "electronics"',
+    filter='category == "electronics"',  # 单个条件过滤
     output_fields=["id", "category", "brand", "price"]
 )
 
@@ -338,7 +353,7 @@ for result in results:
 # 3. 基于数值范围查询
 results = client.query(
     collection_name="product_recommendation",
-    filter='price >= 100 and price <= 1000',
+    filter='price >= 100 and price <= 1000',  # 数值范围过滤条件
     output_fields=["id", "category", "brand", "price"]
 )
 
@@ -354,21 +369,21 @@ for result in results:
 # 4. 使用 IN 操作符
 results = client.query(
     collection_name="product_recommendation",
-    filter='category in ["electronics", "clothing"] and price < 500',
+    filter='category in ["electronics", "clothing"] and price < 500',  # IN操作符和逻辑AND组合
     output_fields=["id", "category", "brand", "price"]
 )
 
 # 5. 使用 LIKE 操作符（字符串模糊匹配）
 results = client.query(
     collection_name="product_recommendation",
-    filter='brand like "App%"',  # 查找以"App"开头的品牌
+    filter='brand like "App%"',  # LIKE操作符，%为通配符
     output_fields=["id", "category", "brand", "price"]
 )
 
 # 6. 使用逻辑运算符组合条件
 results = client.query(
     collection_name="product_recommendation",
-    filter='(category == "electronics" and price > 500) or (category == "clothing" and price < 100)',
+    filter='(category == "electronics" and price > 500) or (category == "clothing" and price < 100)',  # 复杂逻辑组合
     output_fields=["id", "category", "brand", "price"]
 )
 ```
@@ -389,8 +404,8 @@ results = client.query(
     collection_name="product_recommendation",
     filter='category == "electronics"',
     output_fields=["id", "category", "brand", "price"],
-    limit=10,
-    offset=20  # 跳过前20条，返回第21-30条
+    limit=10,  # 每页返回10条
+    offset=20  # 跳过前20条，实现分页
 )
 ```
 
@@ -401,20 +416,20 @@ Milvus 支持根据条件删除数据，删除操作是异步执行的,过期的
 ```python
 # 1. 根据主键删除
 client.delete(
-    collection_name="product_recommendation",
-    filter="id in [1, 2, 3]"  # 删除ID为1,2,3的记录
+    collection_name="product_recommendation",  # 目标集合名称
+    filter="id in [1, 2, 3]"  # 删除条件：ID在指定列表中的记录
 )
 
 # 2. 根据条件删除
 client.delete(
     collection_name="product_recommendation",
-    filter='category == "discontinued" and price < 10'  # 删除停产且价格低于10的商品
+    filter='category == "discontinued" and price < 10'  # 复合删除条件
 )
 
 # 3. 删除特定品牌的所有商品
 client.delete(
     collection_name="product_recommendation",
-    filter='brand == "OldBrand"'
+    filter='brand == "OldBrand"'  # 按品牌删除
 )
 
 print("删除操作已提交，正在异步执行...")
@@ -433,17 +448,17 @@ Milvus 支持 Upsert 操作，即如果数据存在则更新，不存在则插�
 from pymilvus import MilvusClient
 
 client = MilvusClient(
-    uri="http://localhost:19530",
-    token="root:Milvus"
+    uri="http://localhost:19530",  # Milvus服务器地址
+    token="root:Milvus"  # 认证令牌，格式为用户名:密码
 )
 
 
 res = client.upsert(
-    collection_name="test_collection",
-    data=[
+    collection_name="test_collection",  # 目标集合名称
+    data=[  # 要插入或更新的数据列表
         {
-            'id': 1,
-             'vector': [
+            'id': 1,  # 实体ID
+             'vector': [  # 向量数据
                  0.3457690490452393,
                  -0.9401784221711342,
                  0.9123948134344333,
@@ -464,7 +479,7 @@ res = client.upsert(
    ]
 )
 
-# {'upsert_count': 2}
+# {'upsert_count': 2}  # 返回结果：更新插入的记录数量
 ```
 ### 数据统计和聚合
 
@@ -472,26 +487,26 @@ res = client.upsert(
 # 1. 统计总记录数
 count_result = client.query(
     collection_name="product_recommendation",
-    filter="",  
-    limit=10, # 使用空的filter的时候，必须指定limit限制返回的实体数量！
-    output_fields=["count(*)"]
+    filter="",  # 空过滤条件
+    limit=10,  # 使用空filter时必须指定limit
+    output_fields=["count(*)"]  # 返回计数聚合函数结果
 )
 print(f"总记录数: {count_result[0]['count(*)']}")
 
 # 2. 按条件统计
 electronics_count = client.query(
     collection_name="product_recommendation",
-    filter='category == "electronics"',  
-    output_fields=["count(*)"]
+    filter='category == "electronics"',  # 按类别过滤
+    output_fields=["count(*)"]  # 统计函数
 )
 print(f"电子产品数量: {electronics_count[0]['count(*)']}")
 
 # 3. 统计不同类别的商品数量
-categories = ["electronics", "clothing", "books"]
+categories = ["electronics", "clothing", "books"]  # 类别列表
 for category in categories:
     count = client.query(
         collection_name="product_recommendation",
-        filter=f'category == "{category}"',  
+        filter=f'category == "{category}"',  # 动态构建过滤条件
         output_fields=["count(*)"]
     )
     print(f"{category} 商品数量: {count[0]['count(*)']}")
@@ -508,22 +523,22 @@ from pymilvus import AnnSearchRequest
 
 # 创建多个搜索请求
 search_param_1 = {
-    "data": [query_dense_vector],
-    "anns_field": "text_dense",
-    "param": {"nprobe": 10},
-    "limit": 2
+    "data": [query_dense_vector],  # 密集向量查询数据
+    "anns_field": "text_dense",  # 要搜索的密集向量字段名
+    "param": {"nprobe": 10},  # 搜索参数：探测的聚类数量
+    "limit": 2  # 返回结果数量限制
 }
-request_1 = AnnSearchRequest(**search_param_1)
+request_1 = AnnSearchRequest(**search_param_1)  # 创建ANN搜索请求对象
 
 search_param_2 = {
-    "data": [query_text],
-    "anns_field": "text_sparse",
-    "param": {"drop_ratio_search": 0.2},
+    "data": [query_text],  # 稀疏向量查询数据
+    "anns_field": "text_sparse",  # 要搜索的稀疏向量字段名
+    "param": {"drop_ratio_search": 0.2},  # 搜索参数：丢弃比例
     "limit": 2
 }
 request_2 = AnnSearchRequest(**search_param_2)
 
-reqs = [request_1, request_2]
+reqs = [request_1, request_2]  # 搜索请求列表
 ```
 
 ### 多条件复合过滤
@@ -532,10 +547,10 @@ reqs = [request_1, request_2]
 # 2. 复杂条件组合
 results = client.search(
     collection_name="product_recommendation",
-    data=[query_vector],
+    data=[query_vector],  # 查询向量
     limit=5,
     # 复杂的过滤条件
-    filter='(category == "electronics" and brand in ["Apple", "Samsung"]) or (category == "clothing" and price < 200)',
+    filter='(category == "electronics" and brand in ["Apple", "Samsung"]) or (category == "clothing" and price < 200)',  # 多条件逻辑组合
     output_fields=["id", "category", "brand", "price"]
 )
 
@@ -545,8 +560,8 @@ results = client.search(
     collection_name="product_recommendation",
     data=[query_vector],
     limit=10,
-    filter='category == "electronics" and created_time >= "2024-01-01" and created_time <= "2024-12-31"',
-    output_fields=["id", "category", "brand", "price", "created_time"]
+    filter='category == "electronics" and created_time >= "2024-01-01" and created_time <= "2024-12-31"',  # 时间范围过滤
+    output_fields=["id", "category", "brand", "price", "created_time"]  # 包含时间字段的输出
 )
 ```
 
@@ -556,12 +571,12 @@ results = client.search(
 # 假设有地理位置相关的Collection
 # 4. 地理位置范围搜索
 results = client.search(
-    collection_name="location_based_products",
+    collection_name="location_based_products",  # 基于位置的产品集合
     data=[query_vector],
     limit=10,
     # 搜索特定地理范围内的商品
-    filter='latitude >= 39.9 and latitude <= 40.1 and longitude >= 116.3 and longitude <= 116.5',
-    output_fields=["id", "name", "latitude", "longitude", "category"]
+    filter='latitude >= 39.9 and latitude <= 40.1 and longitude >= 116.3 and longitude <= 116.5',  # 地理坐标范围过滤
+    output_fields=["id", "name", "latitude", "longitude", "category"]  # 包含地理位置的输出字段
 )
 ```
 
@@ -577,38 +592,38 @@ def batch_insert_large_data(client, collection_name, data, batch_size=1000):
     """
     分批插入大量数据，避免单次插入过多导致的性能问题
     """
-    total_count = len(data)
-    
-    for i in range(0, total_count, batch_size):
-        batch_data = data[i:i + batch_size]
-        
+    total_count = len(data)  # 总数据量
+
+    for i in range(0, total_count, batch_size):  # 按批次大小分割数据
+        batch_data = data[i:i + batch_size]  # 当前批次数据
+
         try:
             client.insert(
-                collection_name=collection_name,
-                data=batch_data
+                collection_name=collection_name,  # 目标集合
+                data=batch_data  # 当前批次的数据
             )
             print(f"已插入 {min(i + batch_size, total_count)}/{total_count} 条记录")
-            
+
         except Exception as e:
             print(f"批次 {i//batch_size + 1} 插入失败: {e}")
-            continue
+            continue  # 跳过失败的批次，继续处理下一批
 
 # 创建客户端
 client = MilvusClient(uri="http://localhost:19530")
 
 # 生成测试数据
 large_dataset = []
-for i in range(10000):
+for i in range(10000):  # 生成10000条测试数据
     large_dataset.append({
-        "id": i,
-        "category": f"category_{i % 10}",
-        "brand": f"brand_{i % 100}",
-        "price": 10.0 + (i % 1000),
-        "embedding": [random.random() for _ in range(768)]
+        "id": i,  # 唯一ID
+        "category": f"category_{i % 10}",  # 循环生成10个类别
+        "brand": f"brand_{i % 100}",  # 循环生成100个品牌
+        "price": 10.0 + (i % 1000),  # 价格范围10-1010
+        "embedding": [random.random() for _ in range(768)]  # 768维随机向量
     })
 
 # 调用函数
-batch_insert_large_data(client, "product_recommendation", large_dataset)
+batch_insert_large_data(client, "product_recommendation", large_dataset)  # 执行批量插入
 ```
 
 ### 批量删除
@@ -621,22 +636,22 @@ def batch_delete_by_ids(client, collection_name, ids, batch_size=100):
     """
     分批删除大量数据 - 使用 ids 参数
     """
-    total_count = len(ids)
-    
-    for i in range(0, total_count, batch_size):
-        batch_ids = ids[i:i + batch_size]
-        
+    total_count = len(ids)  # 要删除的ID总数
+
+    for i in range(0, total_count, batch_size):  # 按批次处理
+        batch_ids = ids[i:i + batch_size]  # 当前批次的ID列表
+
         try:
             result = client.delete(
-                collection_name=collection_name,
-                ids=batch_ids
+                collection_name=collection_name,  # 目标集合
+                ids=batch_ids  # 要删除的ID列表
             )
             print(f"已删除 {min(i + batch_size, total_count)}/{total_count} 条记录")
-            print(f"删除数量: {result.get('delete_count', 0)}")
-            
+            print(f"删除数量: {result.get('delete_count', 0)}")  # 实际删除数量
+
         except Exception as e:
             print(f"批次删除失败: {e}")
-            continue
+            continue  # 跳过失败批次
 
 def batch_delete_by_filter(client, collection_name, filter_expr, batch_size=100):
     """
@@ -644,11 +659,11 @@ def batch_delete_by_filter(client, collection_name, filter_expr, batch_size=100)
     """
     try:
         result = client.delete(
-            collection_name=collection_name,
-            filter=filter_expr
+            collection_name=collection_name,  # 目标集合
+            filter=filter_expr  # 删除条件表达式
         )
         print(f"根据条件删除完成，删除数量: {result.get('delete_count', 0)}")
-        
+
     except Exception as e:
         print(f"条件删除失败: {e}")
 
@@ -656,14 +671,14 @@ def batch_delete_by_filter(client, collection_name, filter_expr, batch_size=100)
 client = MilvusClient(uri="http://localhost:19530")
 
 # 方式1: 通过 ID 列表删除
-ids_to_delete = list(range(1000, 2001))
+ids_to_delete = list(range(1000, 2001))  # 生成ID范围1000-2000的列表
 batch_delete_by_ids(client, "product_recommendation", ids_to_delete)
 
 # 方式2: 通过过滤条件删除
 batch_delete_by_filter(
-    client, 
-    "product_recommendation", 
-    "id >= 1000 and id <= 2000"
+    client,
+    "product_recommendation",
+    "id >= 1000 and id <= 2000"  # 删除条件：ID在指定范围内
 )
 ```
 
@@ -672,49 +687,49 @@ batch_delete_by_filter(
 
 下面的代码片段假定在你的 Collections 中有一个名为PartitionA的分区。
 ```python
-query_vector = [.........]
+query_vector = [.........]  # 查询向量数据
 res = client.search(
-    collection_name="Dw_easy_vectorDB",
-    partition_names=["partitionA"],
-    data=[query_vector],
-    limit=3,
+    collection_name="Dw_easy_vectorDB",  # 目标集合名称
+    partition_names=["partitionA"],  # 指定要搜索的分区列表
+    data=[query_vector],  # 查询向量列表
+    limit=3,  # 返回前3个最相似结果
 )
 
-for hits in res:
+for hits in res:  # 遍历搜索结果
     print("TopK results:")
-    for hit in hits:
-        print(hit)
+    for hit in hits:  # 遍历每个命中结果
+        print(hit)  # 打印结果详情
 ```
 ### 使用输出字段
 
 在搜索结果中，Milvus 默认包含包含 top-K 向量嵌入的实体的主字段值和相似性距离/分数。您可以在搜索请求中包含目标字段（包括向量和标量字段）的名称作为输出字段，以使搜索结果携带这些实体中其他字段的值。
 ```python
-query_vector = [0.3580376395471989, -0.6023495712049978, 0.18414012509913835, -0.26286205330961354, 0.9029438446296592],
+query_vector = [0.3580376395471989, -0.6023495712049978, 0.18414012509913835, -0.26286205330961354, 0.9029438446296592],  # 查询向量
 
 res = client.search(
-    collection_name="Dw_easy_vectorDB",
-    data=[query_vector],
-    limit=3, 
-    search_params={"metric_type": "IP"},
-    output_fields=["color"]
+    collection_name="Dw_easy_vectorDB",  # 集合名称
+    data=[query_vector],  # 查询向量数据
+    limit=3,  # 返回结果数量限制
+    search_params={"metric_type": "IP"},  # 搜索参数：使用内积距离度量
+    output_fields=["color"]  # 指定返回的额外字段
 )
 
-print(res)
+print(res)  # 打印搜索结果
 ```
 
 ### 使用限制和偏移
 您可能会注意到，搜索请求中携带的参数limit 决定了搜索结果中包含的实体数量。该参数指定了单次搜索中返回实体的最大数量，通常称为top-K。
 比如搜出来 100 个相似结果，一页显示 20 个，就可以用 “limit=20”（每页 20 个）和 “offset=20”（跳过前 20 个，看第 2 页）。但注意：一次最多看 16384 个结果，太多了会变慢。
 ```python
-query_vector = [.............],
+query_vector = [.............],  # 查询向量
 
 res = client.search(
     collection_name="Dw_easy_vectorDB",
     data=[query_vector],
-    limit=3, 
+    limit=3,  # 每页返回3条结果
     search_params={
-        "metric_type": "IP", 
-        "offset": 10 
+        "metric_type": "IP",  # 距离度量类型
+        "offset": 10  # 偏移量：跳过前10条结果
     }
 )
 ```
@@ -740,23 +755,23 @@ from pymilvus import MilvusClient, CollectionSchema, FieldSchema, DataType
 client = MilvusClient("http://localhost:19530")
 
 fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),  # 主键字段
     FieldSchema(name="category", dtype=DataType.VARCHAR, max_length=64, is_partition_key=True),  # 分区密钥字段
-    FieldSchema(name="brand", dtype=DataType.VARCHAR, max_length=64),
-    FieldSchema(name="price", dtype=DataType.FLOAT),
-    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)
+    FieldSchema(name="brand", dtype=DataType.VARCHAR, max_length=64),  # 品牌字段，最大长度64
+    FieldSchema(name="price", dtype=DataType.FLOAT),  # 价格字段，浮点数类型
+    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)  # 768维向量字段
 ]
 
 schema = CollectionSchema(
-    fields=fields,
-    description="Product recommendation collection with partition key"
+    fields=fields,  # 字段定义列表
+    description="Product recommendation collection with partition key"  # 集合描述
 )
 
 # 创建 Collection
 client.create_collection(
-    collection_name="product_recommendation",
-    schema=schema,
-    num_partitions=64
+    collection_name="product_recommendation",  # 集合名称
+    schema=schema,  # 集合模式
+    num_partitions=64  # 分区数量
 )
 ```
 
@@ -768,39 +783,39 @@ client.create_collection(
 # 准备插入数据
 entities = [
     {
-        "id": 1,
-        "category": "electronics",
-        "brand": "Apple",
-        "price": 999.99,
-        "embedding": [0.1, 0.2, 0.3, ...] # 768维向量
+        "id": 1,  # 实体ID
+        "category": "electronics",  # 分区密钥：电子产品
+        "brand": "Apple",  # 品牌
+        "price": 999.99,  # 价格
+        "embedding": [0.1, 0.2, 0.3, ...]  # 768维向量数据
     },
     {
         "id": 2,
-        "category": "clothing",
+        "category": "clothing",  # 分区密钥：服装
         "brand": "Nike",
         "price": 89.99,
-        "embedding": [0.4, 0.5, 0.6, ...] # 768维向量
+        "embedding": [0.4, 0.5, 0.6, ...]  # 768维向量
     },
     {
         "id": 3,
-        "category": "electronics",
+        "category": "electronics",  # 分区密钥：电子产品
         "brand": "Samsung",
         "price": 799.99,
-        "embedding": [0.7, 0.8, 0.9, ...] # 768维向量
+        "embedding": [0.7, 0.8, 0.9, ...]  # 768维向量
     },
     {
         "id": 4,
-        "category": "books",
+        "category": "books",  # 分区密钥：图书
         "brand": "Penguin",
         "price": 19.99,
-        "embedding": [0.2, 0.4, 0.6, ...] # 768维向量
+        "embedding": [0.2, 0.4, 0.6, ...]  # 768维向量
     }
 ]
 
 # 插入数据，Milvus 会根据 category 字段自动分区
 client.insert(
-    collection_name="product_recommendation",
-    data=entities
+    collection_name="product_recommendation",  # 目标集合
+    data=entities  # 要插入的实体数据列表
 )
 
 print("数据插入完成，已根据 category 字段自动分区")
@@ -817,18 +832,18 @@ query_vector = [0.1, 0.2, 0.3, ...]  # 查询向量
 
 res = client.search(
     collection_name="product_recommendation",
-    data=[query_vector],
-    limit=5,
+    data=[query_vector],  # 查询向量列表
+    limit=5,  # 返回结果数量
     # 使用分区密钥过滤，只搜索电子产品分区
-    filter='category == "electronics"',
-    output_fields=["id", "category", "brand", "price"]
+    filter='category == "electronics"',  # 分区密钥过滤条件
+    output_fields=["id", "category", "brand", "price"]  # 返回字段
 )
 
 print("电子产品搜索结果：")
-for hits in res:
-    for hit in hits:
+for hits in res:  # 遍历搜索结果
+    for hit in hits:  # 遍历每个命中结果
         print(f"ID: {hit['id']}, 品牌: {hit['entity']['brand']}, "
-              f"价格: {hit['entity']['price']}, 距离: {hit['distance']}")
+              f"价格: {hit['entity']['price']}, 距离: {hit['distance']}")  # 打印结果详情
 ```
 
 ```python
@@ -839,7 +854,7 @@ res = client.search(
     data=[query_vector],
     limit=5,
     # 搜索多个类别
-    filter='category in ["electronics", "clothing"]',
+    filter='category in ["electronics", "clothing"]',  # 多分区密钥过滤
     output_fields=["id", "category", "brand", "price"]
 )
 
@@ -858,7 +873,7 @@ res = client.search(
     data=[query_vector],
     limit=5,
     # 组合分区密钥和其他条件
-    filter='category == "electronics" && price < 900',
+    filter='category == "electronics" && price < 900',  # 分区密钥+价格条件组合
     output_fields=["id", "category", "brand", "price"]
 )
 
@@ -875,21 +890,21 @@ for hits in res:
 
 ```python
 # 查看所有分区
-partitions = client.list_partitions(collection_name="product_recommendation")
+partitions = client.list_partitions(collection_name="product_recommendation")  # 获取分区列表
 print("分区列表：", partitions)
 
 # 查看 Collection 详细信息
-collection_info = client.describe_collection(collection_name="product_recommendation")
+collection_info = client.describe_collection(collection_name="product_recommendation")  # 获取集合详细信息
 print("Collection 信息：", collection_info)
 
 # 统计不同类别的数据量
-categories = ["electronics", "clothing", "books"]  # 您的分区密钥值
+categories = ["electronics", "clothing", "books"]  # 分区密钥值列表
 
-for category in categories:
+for category in categories:  # 遍历每个类别
     count = client.query(
         collection_name="product_recommendation",
-        filter=f'category == "{category}"',
-        output_fields=["count(*)"]
+        filter=f'category == "{category}"',  # 按类别过滤
+        output_fields=["count(*)"]  # 返回计数结果
     )
     print(f"类别 {category} 数据量: {count}")
 ```
@@ -942,18 +957,18 @@ filter='partition_key in ["x", "y", "z"] && <other conditions>'
 ```python
 # 以租户ID作为分区密钥
 fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
-    FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=32, is_partition_key=True),  # 分区密钥
-    FieldSchema(name="document", dtype=DataType.VARCHAR, max_length=1000),
-    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),  # 主键字段
+    FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=32, is_partition_key=True),  # 租户ID作为分区密钥
+    FieldSchema(name="document", dtype=DataType.VARCHAR, max_length=1000),  # 文档内容字段
+    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)  # 文档向量字段
 ]
 
 # 查询时只搜索特定租户的数据
 res = client.search(
-    collection_name="multi_tenant_docs",
-    data=[query_vector],
-    filter='tenant_id == "company_a"',
-    limit=10
+    collection_name="multi_tenant_docs",  # 多租户文档集合
+    data=[query_vector],  # 查询向量
+    filter='tenant_id == "company_a"',  # 租户过滤条件
+    limit=10  # 返回结果数量
 )
 ```
 
@@ -961,17 +976,17 @@ res = client.search(
 ```python
 # 以时间分片作为分区密钥
 fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),
-    FieldSchema(name="time_bucket", dtype=DataType.VARCHAR, max_length=16, is_partition_key=True),  # 如 "2024-01"
-    FieldSchema(name="sensor_data", dtype=DataType.FLOAT_VECTOR, dim=128)
+    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),  # 主键字段
+    FieldSchema(name="time_bucket", dtype=DataType.VARCHAR, max_length=16, is_partition_key=True),  # 时间分片作为分区密钥，如"2024-01"
+    FieldSchema(name="sensor_data", dtype=DataType.FLOAT_VECTOR, dim=128)  # 传感器数据向量字段
 ]
 
 # 查询特定时间段的数据
 res = client.search(
-    collection_name="sensor_data",
-    data=[query_vector],
-    filter='time_bucket in ["2024-01", "2024-02"]',
-    limit=10
+    collection_name="sensor_data",  # 传感器数据集合
+    data=[query_vector],  # 查询向量
+    filter='time_bucket in ["2024-01", "2024-02"]',  # 时间范围过滤条件
+    limit=10  # 返回结果数量
 )
 ```
 
@@ -1014,19 +1029,19 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
    - **基础快照**：Object Storage中存储的Segment文件是某个时间点的完整数据快照
    - **增量日志**：Log Broker中记录所有后续的Insert/Delete操作
    - **实时合并**：Query Node在查询时动态合并基础数据+增量变更，呈现最新视图
-    ```
-        # 时间轴
-        t0: 插入向量 [A]
-        t1: 插入向量 [B] 
-        t2: 发起查询Q1
-        t3: 删除向量 [A]
-        t4: 发起查询Q2
+```
+    # 时间轴
+    t0: 插入向量 [A]
+    t1: 插入向量 [B] 
+    t2: 发起查询Q1
+    t3: 删除向量 [A]
+    t4: 发起查询Q2
 
-        # 快照隔离效果
-        Q1(在t2执行) 看到数据: [A, B]  // 包含t2前的所有写入
-        Q2(在t4执行) 看到数据: [B]    // 包含t4前的所有写入
+    # 快照隔离效果
+    Q1(在t2执行) 看到数据: [A, B]  // 包含t2前的所有写入
+    Q2(在t4执行) 看到数据: [B]    // 包含t4前的所有写入
 
-    ```
+```
 
 ### 核心组件详解
 
@@ -1036,59 +1051,59 @@ Milvus 采用存储计算分离的分布式架构，核心组件如下：
 如果你学习过分布式系统，那么你应该知道水印watermark这个概念，想象一下你有一个不断流动的水流（数据流），**水印就是标记，到目前为止这些水已经到达水库的那个位置**
 
 在milvus中，**水印就是TSO（时间戳）**，它表示在这个时间点之前的所有数据，已经完成持久化存储（已经被存入到Object Storage）,这个时间戳TSO由根协调器Root Coordinator分配，由Data Coordinator维护（当根协调器分配TSO给数据协调器后，数据协调器分发给下面的数据节点Data Node，当data node完成数据的Flush后更新TSO）。我们用一段伪代码来理解TSO的分配以及使用流程：
-```python 
+```python
 def handle_data_update(request):
-    # 1. 客户端发起请求 
-    client_request = {"operation": "insert", "data": [...]}
-    
-    # 2. Proxy转发给Root Coord 
-    root_coord = RootCoordinator()
-    tso = root_coord.alloc_timestamp()  # 分配全局TSO
-    
-    # 3. 写入Log Broker 
+    # 1. 客户端发起请求
+    client_request = {"operation": "insert", "data": [...]}  # 客户端请求数据
+
+    # 2. Proxy转发给Root Coord
+    root_coord = RootCoordinator()  # 根协调器实例
+    tso = root_coord.alloc_timestamp()  # 分配全局唯一时间戳
+
+    # 3. 写入Log Broker
     log_broker.publish(
-        channel="collection-01", 
-        message={"data": request["data"], "ts": tso}
+        channel="collection-01",  # 集合对应的消息通道
+        message={"data": request["data"], "ts": tso}  # 消息内容包含数据和时间戳
     )
-    
+
     # 4. Data Coord 的职责开始
-    data_coord = DataCoordinator()
-    
+    data_coord = DataCoordinator()  # 数据协调器实例
+
     # 5. Data Coord 分配Segment给Data Node
-    if not has_assigned_segment("collection-01"):
+    if not has_assigned_segment("collection-01"):  # 检查是否已分配Segment
         # 选择Data Node (负载均衡)
-        data_node = select_data_node_by_load()
-        
+        data_node = select_data_node_by_load()  # 根据负载选择数据节点
+
         # 分配Segment ID并记录元数据
-        segment_id = generate_segment_id()
+        segment_id = generate_segment_id()  # 生成唯一Segment ID
         metadata_store.save(
-            collection="collection-01",
-            segment_id=segment_id,
-            assigned_node=data_node.id
+            collection="collection-01",  # 集合名称
+            segment_id=segment_id,  # Segment标识
+            assigned_node=data_node.id  # 分配的节点ID
         )
-        
+
         # 通知Data Node开始消费日志
         data_node.watch_channel(
-            channel="collection-01",
-            segment_id=segment_id
+            channel="collection-01",  # 要监听的通道
+            segment_id=segment_id  # 负责的Segment ID
         )
-    
-    # 6. Data Node 持续消费日志 
+
+    # 6. Data Node 持续消费日志
     data_node.consume_logs(
-        channel="collection-01",
-        segment_id=segment_id,
-        callback=process_data
+        channel="collection-01",  # 消费的消息通道
+        segment_id=segment_id,  # 处理的Segment
+        callback=process_data  # 数据处理回调函数
     )
 
 def process_data(data, segment_id):
     # 7. Data Node处理数据
-    buffer = get_buffer(segment_id)
-    buffer.append(data)
-    
+    buffer = get_buffer(segment_id)  # 获取Segment对应的缓冲区
+    buffer.append(data)  # 将数据添加到缓冲区
+
     # 达到阈值时触发Flush
-    if buffer.size() > FLUSH_THRESHOLD:
-        flush_to_storage(segment_id, buffer)
-        update_watermark(segment_id, data["ts"])  # 更新水印
+    if buffer.size() > FLUSH_THRESHOLD:  # 检查缓冲区大小是否达到阈值
+        flush_to_storage(segment_id, buffer)  # 将数据刷写到对象存储
+        update_watermark(segment_id, data["ts"])  # 更新水印时间戳
 ```
 补充一点说明，你可以在代码中看到有一个地方写了**负载均衡**，这个负载均衡是由谁来完成的呢，是Data Coordinator还是k8s呢？
 其实，**此处**的Data Node的负载均衡是由上层的Data Coordinator完成的，具体实现算法等到之后另外的章节再详细介绍，Data Coord负责向Data Node发放Segment，处于应用层，k8s负责milvus的整体，也就是基础设施层，当Data Node Pod的CPU使用率持续>70%，k8s会自动扩容，比如从3 Pod -> 5 Pod，**新的Pod启动后会自动向Data Coordinator注册**，所以总结来说，k8s控制的是上层数据流量的均衡（因为它只知道CPU/内存使用情况，不知道Segment大小），Data Coord负责Milvus中数据节点的负载均衡（因为Segment是有状态的，需要持久化到Metadata Storage中，k8s做不到这一点），最重要的一点，为什么不能用k8s做数据协调器向下面的Data Node的负载均衡，当我们的一个request进来后，你不可能等待好几秒甚至数分钟才得到相应吧，受不了的，k8s的HPA要完成节点的segment的负载均衡，往往需要数分钟（**假设**可以管理segment），而协调器则可以在ms级别做出响应，决定Segmen应该发放到哪个Node。
@@ -1275,66 +1290,66 @@ Storage组件中包含Log Broker，用于持久化数据变更日志，数据协
 
 在此之前，所有的插入和删除操作都是先写入Log Broker中，每条操作分配一个全局递增的TSO。
 1. **日志订阅机制**：当每个Query Node启动时，会向Data Coordinator数据协调器注册并订阅所负责的segment的Delta Channel日志通道(比如delta-collection-01)，这个channel是Log Broker（比如Kafka）中存储**增量变更**的特殊Topic。
-    ```go
-    func stratQueryNode(){
-        channels := DataCoord.GetDmlChannels(colletcionId)//获取订阅topic
-        for _,ch := range channels{
-            //Query Node会持续的从Log Broker拉取日志（gRPC）。并且写入内存缓冲区（还没有被Flush到Object Storage）
-            go SubscirbeToDeltaChannel(ch)
-        }
+```go
+func stratQueryNode(){
+    channels := DataCoord.GetDmlChannels(colletcionId)  // 从数据协调器获取DML通道列表
+    for _,ch := range channels{  // 遍历每个通道
+        //Query Node会持续的从Log Broker拉取日志（gRPC）。并且写入内存缓冲区（还没有被Flush到Object Storage）
+        go SubscirbeToDeltaChannel(ch)  // 启动协程订阅增量数据通道
     }
-    ```
-    在这个订阅下，消费的内容格式将为：
-    ```json
-    {
-        op_type: Insert,
-        data:[vector1,id:100],
-        tso:4500
-    }
-    {
-        op_type: Delete, 
-        ids: [200,201],
-        tso: 4502
-    }
-    ```
+}
+```
+在这个订阅下，消费的内容格式将为：
+```json
+{
+    op_type: Insert,  // 操作类型：插入
+    data:[vector1,id:100],  // 插入的数据：向量和ID
+    tso:4500  // 全局时间戳
+}
+{
+    op_type: Delete,  // 操作类型：删除
+    ids: [200,201],  // 要删除的ID列表
+    tso: 4502  // 全局时间戳
+}
+```
 2. **TSO全局一致性**：当用户通过SDK发起请求后，进入Proxy网关代理，Proxy从Root Cooordinator中获取一个全局TSO，假如这次请求是用户查询请求，那可以设置ts_query = 5000，这个5000就作为整个流程下的时钟。
 ![](/images/mermaid_1.png)
 
 3. **增量数据管理**：首先你需要知道这些增量数据从哪里来，一是从Object Storage中存储的Segment文件（就是数据协调器创建的），二是由Query Node内存中增量生成的。我们消费这些数据是根据分配的TSO来消费的，对于来源一的数据，他的数据的范围即数据中tso <= Flush时间点，即这个数据的创建时间要比他入库Object Storage中的时间要小。对于来源二的数据，他的数据范围是 Flush时间点 < tso <= 当前tso
-    ```python 
-    def execute_local_search(segment, ts_query):
-        # 1. 加载持久化数据（历史快照）
-        base_data = load_segment_from_storage(segment)  # ts ≤ flush_ts
-        
-        # 2. 应用增量变更
-        delta_ops = delta_buffer.get_ops_range(flush_ts+1, ts_query)
-        for op in delta_ops:
-            if op.is_insert:
-                base_data.insert(op.data)
-            elif op.is_delete:
-                base_data.delete(op.ids)
-        
-        # 3. 在合并后数据上执行搜索
-        return search_on_dataset(base_data)
-    ```
+```python
+def execute_local_search(segment, ts_query):
+    # 1. 加载持久化数据（历史快照）
+    base_data = load_segment_from_storage(segment)  # 从对象存储加载基础数据，ts ≤ flush_ts
+
+    # 2. 应用增量变更
+    delta_ops = delta_buffer.get_ops_range(flush_ts+1, ts_query)  # 获取指定时间范围内的增量操作
+    for op in delta_ops:  # 遍历每个增量操作
+        if op.is_insert:  # 如果是插入操作
+            base_data.insert(op.data)  # 将数据插入到基础数据集
+        elif op.is_delete:  # 如果是删除操作
+            base_data.delete(op.ids)  # 从基础数据集中删除指定ID的数据
+
+    # 3. 在合并后数据上执行搜索
+    return search_on_dataset(base_data)  # 在合并后的完整数据集上执行搜索
+```
 
 ### 关键问题/挑战
 
 1. 看到这里，细心的小伙伴可以注意到，我们的数据都是存储到日志里面的，那我们查询的时候，**万一查到过期的增量数据了怎么办**，毕竟这些数据都在Log Broker里面，我们又没有执行删除。对于这个问题，Milvus的Delta Channel有一种叫做**Checkpoit机制**，该机制下，Data Coordinator会标记每一个Segment的seal time停止写入时间，当我们有一个Query Node订阅了该topic的时候，Query Node只需要消费`tso > checkpoint_ts`的日志即可，避免了全量重放。
 
-2. 上文go代码里面注释里面写道：我们Query Node会持续的从Log Broker拉取日志，并且写入内存缓冲区，注意此处还没有Flush到Object Storage中。那此时我们就有了一个问题：**Flush到Object Storage的时候如何保证数据一致性呢？**对于这个问题，Milvus采用两段式切换策略，在该策略下，Data Node完成Flush后先通知Data Coordinator数据协调器，由数据协调器更新元数据
-    ```json
-    // etcd 元数据变更
-    {
-        "segment_id": 1001,
-        "state": "Flushed",
-        "flush_ts": 4500 // 新时间戳分水岭
-    }
-    ```
-    下面的Query Coordinator收到数据变更的通知后：要求Query Node停止使用旧的增量，比如这里的flush_ts=4500，那表示ts<=4500的数据以及被持久化存储到Object Storage中了，然后就可以加载新的Segment文件了。
+2. 上文go代码里面注释里面写道：我们Query Node会持续的从Log Broker拉取日志，并且写入内存缓冲区，注意此处还没有Flush到Object Storage中。那此时我们就有了一个问题：**Flush到Object Storage的时候如何保证数据一致性呢？** 对于这个问题，Milvus采用两段式切换策略，在该策略下，Data Node完成Flush后先通知Data Coordinator数据协调器，由数据协调器更新元数据
+```json
+// etcd 元数据变更
+{
+    "segment_id": 1001,
+    "state": "Flushed",
+    "flush_ts": 4500 // 新时间戳分水岭
+}
+```
+下面的Query Coordinator收到数据变更的通知后：要求Query Node停止使用旧的增量，比如这里的flush_ts=4500，那表示ts<=4500的数据以及被持久化存储到Object Storage中了，然后就可以加载新的Segment文件了。
 
-    ![](/images/mermain_2.png)
+![](/images/mermain_2.png)
 
-    上图中，根协调器异步的将请求发送到查询协调器和数据协调器，或者说，这种发布-订阅的模式，使得查询节点和数据节点无需直接通信即可获取相同的数据变更，并且根据tso判断待处理的segment，这就保证了数据的实时性获取。但数据协调器和查询协调器又不是完全的互不关联的，两者通过etcd共享segment的状态（回过头想一想，那一步用到了segment状态？）确保存储层和查询层对数据可见性达成共识。
+上图中，根协调器异步的将请求发送到查询协调器和数据协调器，或者说，这种发布-订阅的模式，使得查询节点和数据节点无需直接通信即可获取相同的数据变更，并且根据tso判断待处理的segment，这就保证了数据的实时性获取。但数据协调器和查询协调器又不是完全的互不关联的，两者通过etcd共享segment的状态（回过头想一想，哪一步用到了segment状态？）确保存储层和查询层对数据可见性达成共识。
 
 最后，附带上基于Java实现的[类Milvus架构](https://github.com/Halukisan/MNode_coordinator)的分布式向量数据库系统，包含TSO分发、Kafka日志消费、负载均衡等核心功能。
