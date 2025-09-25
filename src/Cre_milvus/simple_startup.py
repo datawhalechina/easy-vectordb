@@ -1,8 +1,3 @@
-"""
-简化的系统启动脚本
-替换复杂的SystemManager，提供简单直接的服务启动和管理功能
-"""
-
 import subprocess
 import sys
 import time
@@ -29,7 +24,7 @@ logger = logging.getLogger(__name__)
 class SimpleServiceManager:
     """简化的服务管理器"""
     
-    def __init__(self, backend_port: int = 8509, frontend_port: int = 8500):
+    def __init__(self, backend_port: int = 12089, frontend_port: int = 12088):
         self.backend_port = backend_port
         self.frontend_port = frontend_port
         self.backend_process: Optional[subprocess.Popen] = None
@@ -292,7 +287,7 @@ def initialize_connections() -> bool:
         
         # 导入配置和连接模块
         from config_loader import load_config
-        from simple_milvus import initialize_milvus_from_config
+        from start_simple import connect_milvus, get_milvus_status
         from milvus_lock_fix import cleanup_old_connections
         
         # 清理可能存在的旧连接
@@ -304,12 +299,18 @@ def initialize_connections() -> bool:
         
         # 初始化Milvus连接（优先级最高）
         logger.info("🔗 开始初始化Milvus连接（优先级最高）...")
-        milvus_success = initialize_milvus_from_config(config)
+        milvus_config = config.get("milvus", {})
+        host = milvus_config.get("host", "localhost")
+        port = int(milvus_config.get("port", 19530))
+        milvus_success = connect_milvus(host, port)
         
         if milvus_success:
             logger.info("✅ Milvus连接初始化成功，数据插入功能已就绪")
         else:
             logger.warning("⚠️ Milvus连接初始化失败，数据插入功能可能受影响")
+            status = get_milvus_status()
+            if status.get("error_message"):
+                logger.error(f"❌ 连接错误: {status['error_message']}")
             logger.info("💡 系统将在需要时尝试重新连接")
         
         # 可以在这里添加其他连接的初始化
@@ -327,7 +328,7 @@ def initialize_connections() -> bool:
 def get_connection_status() -> Dict[str, Any]:
     """获取连接状态"""
     try:
-        from simple_milvus import get_milvus_status
+        from start_simple import get_milvus_status
         
         milvus_status = get_milvus_status()
         
@@ -345,7 +346,7 @@ def get_connection_status() -> Dict[str, Any]:
             "timestamp": datetime.now().isoformat()
         }
 
-def start_system(backend_port: int = 8509, frontend_port: int = 8500) -> bool:
+def start_system(backend_port: int = 12089, frontend_port: int = 12088) -> bool:
     """启动整个系统"""
     manager = SimpleServiceManager(backend_port, frontend_port)
     

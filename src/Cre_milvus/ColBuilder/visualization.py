@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 from umap import UMAP
+import logging as logger
+from pymilvus import utility
 
 def get_cluster_visualization_data(embeddings, labels, texts):
     """
@@ -79,8 +81,29 @@ def get_all_embeddings_and_texts(collection_name, host="127.0.0.1", port="19530"
         
         # 使用延迟连接的上下文管理器
         with lazy_connection.get_connection(host, port) as connection_alias:
+            logger.info(f"创建Collection对象: name={collection_name}, using={connection_alias}")
+            print(f"创建Collection对象: name={collection_name}, using={connection_alias}")
+            
+            # 验证连接别名是否有效
+            try:
+                utility.list_collections(using=connection_alias)
+                logger.info(f"✅ 连接别名验证通过: {connection_alias}")
+                print(f"✅ 连接别名验证通过: {connection_alias}")
+            except Exception as e:
+                logger.error(f"❌ 连接别名验证失败: {connection_alias}, 错误: {e}")
+                print(f"❌ 连接别名验证失败: {connection_alias}, 错误: {e}")
+            
             collection = Collection(collection_name, using=connection_alias)
             collection.load()
+            
+            # 关键修复：等待集合加载完成
+            from pymilvus import utility
+            utility.wait_for_loading_complete(collection_name, using=connection_alias, timeout=300)
+            
+            # 验证集合状态
+            load_state = utility.load_state(collection_name, using=connection_alias)
+            if load_state != "Loaded":
+                raise Exception(f"集合加载失败，当前状态: {load_state}")
             
             # 使用query方法获取所有数据
             # 注意：query_iterator在某些版本中可能不可用，使用query替代

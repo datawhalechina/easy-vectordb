@@ -1,8 +1,3 @@
-"""
-Milvus连接管理器
-解决连接冲突、线程阻塞和资源泄漏问题
-"""
-
 import threading
 import time
 import logging
