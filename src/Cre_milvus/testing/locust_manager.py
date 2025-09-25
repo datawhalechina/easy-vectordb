@@ -197,7 +197,7 @@ def init_shared_connection():
             connections.connect(
                 alias=_shared_connection,
                 host="{config.host}",
-                port="{config.port}",
+                port=int("{config.port}"),
                 timeout=10
             )
             
@@ -328,7 +328,7 @@ def on_test_stop(environment, **kwargs):
         """启动Locust进程（支持Web界面）"""
         try:
             # 动态分配端口
-            web_port = self._find_available_port(8089)
+            web_port = self._find_available_port(12089)
             
             # 构建Locust命令（启用Web界面）
             cmd = [
@@ -367,7 +367,7 @@ def on_test_stop(environment, **kwargs):
             logger.error(f"启动Locust进程失败: {e}")
             return None
     
-    def _find_available_port(self, start_port: int = 8089) -> int:
+    def _find_available_port(self, start_port: int = 12089) -> int:
         """查找可用端口"""
         import socket
         
@@ -413,6 +413,9 @@ def on_test_stop(environment, **kwargs):
                 if stderr:
                     test_result.errors.append(f"进程错误: {stderr}")
             
+            # 保存测试结果到文件
+            self._save_test_results(test_id)
+            
             # 清理
             if test_id in self.test_processes:
                 del self.test_processes[test_id]
@@ -453,6 +456,28 @@ def on_test_stop(environment, **kwargs):
         except Exception as e:
             logger.error(f"收集测试结果失败: {e}")
             test_result.errors.append(f"结果收集失败: {str(e)}")
+    
+    def _save_test_results(self, test_id: str):
+        """保存测试结果到JSON文件"""
+        try:
+            test_result = self.active_tests.get(test_id)
+            if not test_result:
+                return
+            
+            # 确保结果目录存在
+            os.makedirs(self.results_dir, exist_ok=True)
+            
+            # 保存测试结果
+            result_file = os.path.join(self.results_dir, f"test_{test_id}.json")
+            with open(result_file, 'w', encoding='utf-8') as f:
+                json.dump(test_result.to_dict(), f, ensure_ascii=False, indent=2, default=str)
+            
+            logger.info(f"测试结果已保存: {result_file}")
+            
+        except Exception as e:
+            logger.error(f"保存测试结果失败: {e}")
+            if test_id in self.active_tests:
+                self.active_tests[test_id].errors.append(f"结果保存失败: {str(e)}")
     
     def get_test_status(self, test_id: str) -> Optional[Dict[str, Any]]:
         """获取测试状态"""

@@ -53,6 +53,18 @@ def init_shared_connection(host: str = "localhost", port: str = "19530",
                 raise Exception(f"集合 '{collection_name}' 不存在，请先创建测试数据")
             
             # 获取集合对象
+            logger.info(f"创建Collection对象: name={collection_name}, using={_shared_connection}")
+            print(f"创建Collection对象: name={collection_name}, using={_shared_connection}")
+            
+            # 验证连接别名是否有效
+            try:
+                utility.list_collections(using=_shared_connection)
+                logger.info(f"✅ 连接别名验证通过: {_shared_connection}")
+                print(f"✅ 连接别名验证通过: {_shared_connection}")
+            except Exception as e:
+                logger.error(f"❌ 连接别名验证失败: {_shared_connection}, 错误: {e}")
+                print(f"❌ 连接别名验证失败: {_shared_connection}, 错误: {e}")
+            
             _shared_collection = Collection(collection_name, using=_shared_connection)
             
             # 获取向量维度

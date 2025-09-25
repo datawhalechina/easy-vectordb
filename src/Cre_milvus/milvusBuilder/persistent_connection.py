@@ -13,15 +13,19 @@ def get_milvus_connection() -> Optional[str]:
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from simple_milvus import get_milvus_alias
-    return get_milvus_alias()
+    from start_simple import get_milvus_status
+    # 检查连接状态，如果已连接则返回默认标识
+    status = get_milvus_status()
+    if status.get("connected", False):
+        return "default"
+    return None
 
 def get_persistent_connection():
     """获取持久化连接实例（兼容性函数，直接返回简化连接）"""
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from simple_milvus import get_milvus_connection
+    from start_simple import get_milvus_connection
     return get_milvus_connection()
 
 def initialize_milvus_connection(host: str, port: int) -> bool:
@@ -31,9 +35,8 @@ def initialize_milvus_connection(host: str, port: int) -> bool:
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from simple_milvus import connect_milvus
-    use_lite = host.endswith('.db')
-    success = connect_milvus(host, port, use_lite)
+    from start_simple import connect_milvus
+    success = connect_milvus(host, port)
     
     if success:
         logger.info("🎉 Milvus连接初始化成功!")
@@ -47,5 +50,5 @@ def check_milvus_connection_status() -> Dict[str, Any]:
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-    from simple_milvus import get_milvus_status
+    from start_simple import get_milvus_status
     return get_milvus_status()

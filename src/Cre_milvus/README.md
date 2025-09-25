@@ -35,7 +35,7 @@ pip install -r requirements.txt
 使用Docker启动Milvus服务器：
 
 ```bash
-docker run -p 19530:19530 milvusdb/milvus:latest
+docker run -p 19530:19530 milvusdb/milvus:v2.4.17
 ```
 
 或者参考[Milvus官方文档](https://milvus.io/docs/install_standalone-docker.md)进行安装。
@@ -51,15 +51,15 @@ python simple_startup.py
 - 初始化Milvus连接
 - 初始化向量模型
 - 初始化Qwen模型（用于PPL分块）
-- 启动后端API服务 (端口8509)
-- 启动前端界面 (端口8500)
+- 启动后端API服务 (端口12089)
+- 启动前端界面 (端口12088)
 - 测试前后端连接
 
 ### 4. 访问系统
 
-- **前端界面**: http://localhost:8500
-- **后端API**: http://localhost:8509
-- **API文档**: http://localhost:8509/docs
+- **前端界面**: http://localhost:12088
+- **后端API**: http://localhost:12089
+- **API文档**: http://localhost:12089/docs
 
 ## 配置说明
 
@@ -72,8 +72,8 @@ milvus:
   collection_name: "Test_one"  # 集合名称
 
 system:
-  backend_port: 8509       # 后端API端口
-  frontend_port: 8500      # 前端界面端口
+  backend_port: 12089       # 后端API端口
+  frontend_port: 12088      # 前端界面端口
 
 chunking:
   strategy: "traditional"  # 分块策略
@@ -129,11 +129,10 @@ chunking:
 
 ```
 Cre_milvus/
-├── start_simple.py         # 统一启动入口
+├── start_simple.py         # 统一启动入口和Milvus连接管理
 ├── backend_api.py          # FastAPI后端服务
 ├── frontend.py             # Streamlit前端界面
 ├── config.yaml             # 主配置文件
-├── simple_milvus.py        # Milvus连接管理
 ├── simple_startup.py       # 服务启动管理
 ├── config_loader.py        # 配置加载器
 ├── dataBuilder/            # 数据处理模块

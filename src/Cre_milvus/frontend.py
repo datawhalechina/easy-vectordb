@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-BACKEND_URL = "http://localhost:8509"
+BACKEND_URL = "http://localhost:12089"
 DEFAULT_TIMEOUT = 60
 
 st.set_page_config(
@@ -696,8 +696,10 @@ with st.sidebar:
             chunking_ok = status.get("chunking_system", {}).get("available", False)
             st.write(f"✂️ 分块系统: {'✅' if chunking_ok else '❌'}")
             
-            clustering_ok = status.get("clustering_service", {}).get("available", False)
-            st.write(f"📊 聚类服务: {'✅' if clustering_ok else '❌'}")
+            clustering_status = status.get("clustering_service", {})
+            clustering_ok = clustering_status.get("available", False)
+            model_name = clustering_status.get("model", "未加载")
+            st.write(f"📊 聚类服务: {'✅' if clustering_ok else '❌'} ({model_name})")
             
             # GLM状态显示
             # if hasattr(st.session_state, 'glm_config_manager'):
@@ -1208,7 +1210,7 @@ with st.container():
     with col_viz:
         enable_visualization = st.checkbox("启用聚类可视化", value=True, help="生成聚类散点图、饼图等可视化分析")
     
-    if st.button("🚀 开始检索与可视", key="search_btn", type="primary"):
+    if st.button("🚀 开始检索与可视化", key="search_btn", type="primary"):
         if not question:
             st.warning("⚠️ 请输入检索问题！")
         else:
@@ -2253,9 +2255,9 @@ with st.expander("📊 性能监控与压测", expanded=False):
         
         if st.button("🔄 刷新测试历史", key="refresh_test_history"):
             try:
-                response = requests.get(f"{BACKEND_URL}/testing/list_tests")
+                response = requests.get(f"{BACKEND_URL}/load-test/history")
                 if response.status_code == 200:
-                    tests = response.json().get("tests", [])
+                    tests = response.json()
                     
                     if tests:
                         # 按状态分组显
@@ -2334,7 +2336,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         col_core1, col_core2 = st.columns(2)
                         
                         with col_core1:
-                            # 嵌入模型状
+                            # 嵌入模型状态
                             embedding = status.get("embedding_model", {})
                             embedding_status = "✅正常" if embedding.get("available") else "✅异常"
                             st.write(f"🧠 嵌入模型: {embedding_status}")
@@ -2342,7 +2344,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                                 st.write(f"  - 模型: {embedding.get('model_name', 'N/A')}")
                                 st.write(f"  - 设备: {embedding.get('device', 'N/A')}")
                             
-                            # Milvus状
+                            # Milvus状态
                             milvus = status.get("milvus", {})
                             milvus_status = "✅已连接" if milvus.get("connected") else "❌未连接"
                             st.write(f"🗄️ Milvus: {milvus_status}")
@@ -2351,7 +2353,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                                 st.write(f"  - 集合✅ {milvus.get('collections_count', 0)}")
                         
                         with col_core2:
-                            # 聚类服务状
+                            # 聚类服务状态
                             clustering = status.get("clustering_service", {})
                             clustering_status = "✅可用" if clustering.get("available") else "✅不可"
                             st.write(f"📊 聚类服务: {clustering_status}")
@@ -2359,7 +2361,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                                 st.write(f"  - HDBSCAN: {'✅' if clustering.get('hdbscan_available') else '❌'}")
                                 st.write(f"  - Sklearn: {'✅' if clustering.get('sklearn_available') else '❌'}")
                             
-                            # 分块系统状
+                            # 分块系统状态
                             chunking = status.get("chunking_system", {})
                             chunking_status = "✅可用" if chunking.get("available") else "✅不可"
                             st.write(f"✂️ 分块系统: {chunking_status}")
@@ -2373,7 +2375,7 @@ with st.expander("🔧 系统状态与诊断", expanded=False):
                         col_ext1, col_ext2 = st.columns(2)
                         
                         with col_ext1:
-                            # # LLM配置状
+                            # # LLM配置状态
                             # llm_config = status.get("llm_config", {})
                             # llm_config_status = "✅ 可用" if llm_config.get("available") else "❌ 不可用"
                             # st.write(f"🤖 LLM配置: {llm_config_status}")

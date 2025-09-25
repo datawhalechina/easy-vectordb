@@ -1,6 +1,6 @@
 # from System.init import  init_es, init_redis
 from dataBuilder.data import data_process
-from milvusBuilder.milvus import milvus_connect_insert
+from milvusBuilder.fast_insert import fast_milvus_insert
 from IndexParamBuilder.indexparam import indexParamBuilder
 from reorder.reo_clu import reorder_clusters
 
@@ -17,9 +17,6 @@ import os
 def load_config(config_path="config.yaml"):
     with open(config_path, "r", encoding="utf-8") as f:
         return yaml.safe_load(f)
-
-# 移除模块级别的配置加载，改为按需加载
-# config = load_config()  # 注释掉这行
 
 def Cre_VectorDataBaseStart_from_config(config):
     try:
@@ -98,7 +95,7 @@ def Cre_VectorDataBaseStart(
         if not dataList:
             raise ValueError("数据处理结果为空，请检查数据目录和文件格式")
         
-        log_event(f"数据处理完成，数据量：{len(dataList)}")
+        # log_event(f"数据处理完成，数据量：{len(dataList)}")
         
         # 验证数据质量
         valid_data = []
@@ -122,19 +119,23 @@ def Cre_VectorDataBaseStart(
         # 构建索引参数
         log_event(f"构建索引参数: {IndexName}")
         indexParam = indexParamBuilder(C_G_Choic, IndexName)
-        log_event(f"索引参数详细: {indexParam}")
+        # log_event(f"索引参数详细: {indexParam}")
         log_event(f"第一条数据embedding长度: {len(valid_data[0]['embedding']) if valid_data else 0}")
         # 连接Milvus并插入数据
-        log_event(f"开始连接Milvus并插入数据,IP:{IP},Port:{Port},CollectionName:{CollectionName}")
+        # log_event(f"开始连接Milvus并插入数据,IP:{IP},Port:{Port},CollectionName:{CollectionName}")
         log_event(f"数据量: {len(valid_data)}, 插入模式: {insert_mode}")
         
-        # 添加重试保护
-        def insert_with_timeout():
-            return milvus_connect_insert(
-                CollectionName, indexParam, ReplicaNum, valid_data, url_split, IP, Port, insert_mode
-            )
-        
-        status = retry_function(insert_with_timeout, max_attempts=2, wait_seconds=3)()
+        log_event(f"开始插入数据")
+        status = fast_milvus_insert(
+                collection_name=CollectionName,
+                index_param=indexParam,
+                replica_num=ReplicaNum,
+                data_list=valid_data,
+                url_split=url_split,
+                insert_mode=insert_mode,
+                milvus_host=IP,
+                milvus_port=Port
+        )
         log_event(f"Milvus连接状态:{status}")
         
         return {
