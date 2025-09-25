@@ -1,14 +1,11 @@
-"""
-统一系统启动脚本 - Cre_milvus项目的唯一启动入口
-集成后端、前端启动，以及Milvus连接、向量模型、Qwen模型初始化和连接测试
-"""
-
 import logging
 import time
 import threading
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from simple_startup import SimpleServiceManager
 from config_loader import load_config
+import socket
+from pymilvus import connections, utility
 
 # 配置日志
 logging.basicConfig(
@@ -20,6 +17,106 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger(__name__)
+
+class SimpleMilvusConnection:
+    """极简Milvus连接类，只用默认连接，不用别名"""
+    def __init__(self):
+        self.host: Optional[str] = None
+        self.port: Optional[int] = None
+        self.connected: bool = False
+        self.error_message: Optional[str] = None
+
+    def connect(self, host: str, port: int, timeout: int = 10) -> bool:
+        """建立Milvus连接（默认连接）"""
+        try:
+            logger.info(f"开始连接Milvus: host={host}, port={port}")
+            self.disconnect()
+            # 先测试网络
+            if not self._test_network_connection(host, port, timeout):
+                logger.error(f"无法连接到 {host}:{port}")
+                self.error_message = f"无法连接到 {host}:{port}"
+                return False
+            connections.connect(host=host, port=port, timeout=timeout)
+            # 验证连接
+            utility.list_collections()
+            self.host = host
+            self.port = port
+            self.connected = True
+            self.error_message = None
+            logger.info(f"Milvus连接成功: {host}:{port}")
+            return True
+        except Exception as e:
+            logger.error(f"Milvus连接失败: {e}")
+            self.error_message = str(e)
+            self.connected = False
+            return False
+
+    def _test_network_connection(self, host: str, port: int, timeout: int = 3) -> bool:
+        """测试网络连通性"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            return result == 0
+        except Exception as e:
+            logger.warning(f"网络连通性测试失败: {e}")
+            return False
+
+    def disconnect(self) -> None:
+        """断开默认连接"""
+        try:
+            connections.disconnect(alias="default")
+            logger.info("已断开Milvus连接")
+        except Exception as e:
+            logger.warning(f"断开连接失败: {e}")
+        self.connected = False
+        self.host = None
+        self.port = None
+
+    def is_connected(self) -> bool:
+        """检查是否已连接"""
+        if not self.connected:
+            return False
+        try:
+            utility.list_collections()
+            return True
+        except Exception:
+            return False
+
+    def get_status(self) -> Dict[str, Any]:
+        """获取连接状态"""
+        return {
+            "connected": self.is_connected(),
+            "host": self.host,
+            "port": self.port,
+            "error_message": self.error_message
+        }
+
+# 全局连接实例
+_milvus_connection: Optional[SimpleMilvusConnection] = None
+
+def get_milvus_connection() -> SimpleMilvusConnection:
+    global _milvus_connection
+    if _milvus_connection is None:
+        _milvus_connection = SimpleMilvusConnection()
+    return _milvus_connection
+
+def connect_milvus(host: str, port: int, timeout: int = 10) -> bool:
+    conn = get_milvus_connection()
+    return conn.connect(host, port, timeout)
+
+def is_milvus_connected() -> bool:
+    conn = get_milvus_connection()
+    return conn.is_connected()
+
+def get_milvus_status() -> Dict[str, Any]:
+    conn = get_milvus_connection()
+    return conn.get_status()
+
+def disconnect_milvus() -> None:
+    conn = get_milvus_connection()
+    conn.disconnect()
 
 class UnifiedSystemManager:
     """统一系统管理器 - 负责所有组件的初始化和启动"""
@@ -57,15 +154,25 @@ class UnifiedSystemManager:
         """初始化Milvus连接"""
         try:
             logger.info("🔗 初始化Milvus连接...")
-            from simple_milvus import initialize_milvus_from_config
             
-            success = initialize_milvus_from_config(self.config)
+            # 从配置获取Milvus设置
+            milvus_config = self.config.get("milvus", {})
+            host = milvus_config.get("host", "localhost")
+            port = int(milvus_config.get("port", 19530))
+            
+            # 使用新的简化连接方法
+            success = connect_milvus(host, port)
             if success:
                 logger.info("✅ Milvus连接初始化成功")
+                logger.info("开始断开Milvus连接")
+                disconnect_milvus()
                 self.initialization_status["milvus_connected"] = True
                 return True
             else:
                 logger.warning("⚠️ Milvus连接初始化失败")
+                status = get_milvus_status()
+                if status.get("error_message"):
+                    logger.error(f"❌ 连接错误: {status['error_message']}")
                 logger.info("💡 请确保Milvus服务器正在运行 (端口19530)")
                 logger.info("💡 可以使用Docker启动: docker run -p 19530:19530 milvusdb/milvus:latest")
                 return False
@@ -124,8 +231,8 @@ class UnifiedSystemManager:
         """启动后端和前端服务"""
         try:
             # 从配置获取端口
-            backend_port = self.config.get("system", {}).get("backend_port", 8509)
-            frontend_port = self.config.get("system", {}).get("frontend_port", 8500)
+            backend_port = self.config.get("system", {}).get("backend_port", 12089)
+            frontend_port = self.config.get("system", {}).get("frontend_port", 12088)
             
             logger.info(f"🚀 启动服务 (后端: {backend_port}, 前端: {frontend_port})")
             

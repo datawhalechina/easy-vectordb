@@ -20,8 +20,27 @@ def insert_with_quality_check(collection, dataList):
 
     status1 = collection.insert(high_quality)
     # 低质量数据插入到另一个集合中
-    low_quality_collection = Collection("low_quality_data")
-    status2 = low_quality_collection.insert(low_quality)
+    # 由于我们使用默认连接，这里直接使用 "default" 作为连接标识
+    connection_alias = "default"
+    
+    if connection_alias:
+        logger.info(f"创建Collection对象: name=low_quality_data, using={connection_alias}")
+        print(f"创建Collection对象: name=low_quality_data, using={connection_alias}")
+        
+        # 验证连接是否有效
+        try:
+            utility.list_collections(using=connection_alias)
+            logger.info(f"✅ 连接验证通过: {connection_alias}")
+            print(f"✅ 连接验证通过: {connection_alias}")
+        except Exception as e:
+            logger.error(f"❌ 连接验证失败: {connection_alias}, 错误: {e}")
+            print(f"❌ 连接验证失败: {connection_alias}, 错误: {e}")
+        
+        low_quality_collection = Collection("low_quality_data", using=connection_alias)
+        status2 = low_quality_collection.insert(low_quality)
+    else:
+        logger.error("无法获取Milvus连接")
+        status2 = None
     return status1, status2
 
 
@@ -49,4 +68,4 @@ def score_redis_recall(query_embedding, recall_results, score_key="embedding"):
             item = dict(item) 
             item["score"] = score
             scored.append(item)
-    return scored    
+    return scored

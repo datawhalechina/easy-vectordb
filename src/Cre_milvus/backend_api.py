@@ -26,11 +26,18 @@ _processing_lock = {}
 import threading
 _lock_mutex = threading.Lock()
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 #全局状态
 _progress_tracker = None
 _collection_manager = None
+logging.basicConfig(
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler('back.log', encoding='utf-8')
+    ]
+)
 def initialize_chunking_services():
     """初始化分块服务"""
     global chunking_manager, dependency_checker
@@ -86,7 +93,7 @@ async def lifespan(app: FastAPI):
         
         # 在后台异步初始化连接（不阻塞API启动）
         import asyncio
-        asyncio.create_task(background_initialize())
+        # asyncio.create_task(background_initialize())
         
         logger.info("=" * 50)
         logger.info("✅ 系统快速启动完成！连接初始化在后台进行")
@@ -104,7 +111,7 @@ async def background_initialize():
         
         # 使用简化的连接初始化
         from config_loader import load_config
-        from simple_milvus import initialize_milvus_from_config
+        from start_simple import connect_milvus
         
         # 加载配置
         config_data = load_config()
@@ -112,7 +119,10 @@ async def background_initialize():
         
         # 初始化Milvus连接（优先级最高）
         logger.info("🔗 开始初始化Milvus连接（优先级最高）...")
-        success = initialize_milvus_from_config(config_data)
+        milvus_config = config_data.get("milvus", {})
+        host = milvus_config.get("host", "localhost")
+        port = int(milvus_config.get("port", 19530))
+        success = connect_milvus(host, port)
         
         if success:
             logger.info("✅ Milvus连接初始化成功，数据插入功能已就绪")
@@ -164,19 +174,126 @@ def save_config():
         logger.error(f"配置文件保存失败: {e}")
         return False
 class CollectionStateManager:
-    """集合状态管理器"""
+    """集合状态管理器 - 使用现有milvusBuilder组件"""
     
     def __init__(self):
         self._collection_states = {}
         self._state_lock = {}
-    
+        
+    def _get_connection_alias(self) -> Optional[str]:
+        """获取当前Milvus连接别名"""
+        try:
+            # 由于我们使用的是默认连接而不是别名，这里返回默认连接标识
+            from start_simple import is_milvus_connected
+            if is_milvus_connected():
+                return "default"  # 使用默认连接
+            return None
+        except Exception as e:
+            logger.error(f"检查连接状态失败: {e}")
+            print(f"检查连接状态失败: {e}")
+            return None
+
+    def _collection_exists(self, collection_name: str) -> bool:
+        """检查集合是否存在"""
+        try:
+            from pymilvus import utility
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                return False
+                
+            return utility.has_collection(collection_name, using=connection_alias)
+        except Exception as e:
+            logger.error(f"检查集合 '{collection_name}' 是否存在时出错: {e}")
+            return False
+
+    def _is_collection_loaded(self, collection_name: str) -> bool:
+        """检查集合是否已加载"""
+        try:
+            from pymilvus import utility
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                return False
+                
+            load_state = utility.load_state(collection_name, using=connection_alias)
+            return load_state.name == "Loaded"
+        except Exception as e:
+            logger.error(f"检查集合 '{collection_name}' 加载状态时出错: {e}")
+            return False
+
+    def _create_collection_if_needed(self, collection_name: str) -> bool:
+        """按需创建集合（占位方法，实际创建在数据插入时处理）"""
+        logger.info(f"集合 {collection_name} 不存在，将在数据插入时创建")
+        return True
+
+    def load_collection_with_retry(self, collection_name: str, max_retries: int = 3) -> bool:
+        """重试加载集合"""
+        try:
+            from pymilvus import Collection
+            connection_alias = self._get_connection_alias()
+            logger.info(f"load_collection_with_retry使用的连接别名: {connection_alias}")
+            print(f"load_collection_with_retry使用的连接别名: {connection_alias}")
+            if not connection_alias:
+                logger.error("load_collection_with_retry无法获取连接别名")
+                print("load_collection_with_retry无法获取连接别名")
+                return False
+                
+            logger.info(f"创建Collection对象: name={collection_name}, using={connection_alias}")
+            print(f"创建Collection对象: name={collection_name}, using={connection_alias}")
+            
+            # 验证连接别名是否有效
+            try:
+                utility.list_collections(using=connection_alias)
+                logger.info(f"✅ 连接别名验证通过: {connection_alias}")
+                print(f"✅ 连接别名验证通过: {connection_alias}")
+            except Exception as e:
+                logger.error(f"❌ 连接别名验证失败: {connection_alias}, 错误: {e}")
+                print(f"❌ 连接别名验证失败: {connection_alias}, 错误: {e}")
+            
+            collection = Collection(name=collection_name, using=connection_alias)
+            
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"尝试加载集合 {collection_name} (第{attempt + 1}次)")
+                    collection.load()
+                    
+                    # 关键修复：等待集合加载完成
+                    utility.wait_for_loading_complete(collection_name, using=connection_alias, timeout=300)
+                    logger.info(f"集合 {collection_name} 加载完成确认")
+                    
+                    # 验证集合状态
+                    load_state = utility.load_state(collection_name, using=connection_alias)
+                    if load_state != "Loaded":
+                        raise Exception(f"集合加载失败，当前状态: {load_state}")
+                    
+                    logger.info(f"集合状态确认: {load_state}")
+                    logger.info(f"集合 {collection_name} 加载成功")
+                    return True
+                except Exception as e:
+                    if attempt < max_retries - 1:
+                        wait_time = min((attempt + 1) * 2, 5)
+                        logger.warning(f"加载失败，等待{wait_time}秒后重试: {e}")
+                        time.sleep(wait_time)
+                    else:
+                        logger.error(f"加载集合 {collection_name} 失败: {e}")
+                        return False
+                        
+        except Exception as e:
+            logger.error(f"加载集合 {collection_name} 时出错: {e}")
+            return False
+
     def ensure_collection_loaded(self, collection_name: str) -> bool:
         """确保集合已加载"""
         try:
+            # 检查连接
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                logger.error("无有效Milvus连接")
+                return False
+            
             # 检查集合是否存在
             if not self._collection_exists(collection_name):
-                logger.info(f"集合 {collection_name} 不存在，尝试创建")
-                return self._create_collection_if_needed(collection_name)
+                logger.info(f"集合 {collection_name} 不存在，无需加载")
+                return True  # 不存在的集合不需要加载
             
             # 检查集合是否已加载
             if not self._is_collection_loaded(collection_name):
@@ -188,6 +305,85 @@ class CollectionStateManager:
             
         except Exception as e:
             logger.error(f"确保集合加载失败: {e}")
+            return False
+
+    def get_collection_status(self, collection_name: str) -> Dict[str, Any]:
+        """获取集合状态信息"""
+        try:
+            from pymilvus import Collection, utility
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                return {"status": "error", "msg": "无有效连接"}
+            
+            if not utility.has_collection(collection_name, using=connection_alias):
+                return {
+                    "status": "success",
+                    "exists": False,
+                    "loaded": False
+                }
+            
+            collection = Collection(name=collection_name, using=connection_alias)
+            is_loaded = self._is_collection_loaded(collection_name)
+            
+            return {
+                "status": "success",
+                "exists": True,
+                "loaded": is_loaded,
+                "num_entities": collection.num_entities
+            }
+            
+        except Exception as e:
+            logger.error(f"获取集合状态失败: {e}")
+            return {"status": "error", "msg": str(e)}
+
+    def list_all_collections(self) -> List[str]:
+        """列出所有集合"""
+        try:
+            from pymilvus import utility
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                return []
+                
+            return utility.list_collections(using=connection_alias)
+        except Exception as e:
+            logger.error(f"列出集合失败: {e}")
+            return []
+
+    def release_collection(self, collection_name: str) -> bool:
+        """释放集合"""
+        try:
+            from pymilvus import Collection
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                return False
+                
+            collection = Collection(name=collection_name, using=connection_alias)
+            collection.release()
+            logger.info(f"集合 {collection_name} 已释放")
+            return True
+            
+        except Exception as e:
+            logger.error(f"释放集合 {collection_name} 失败: {e}")
+            return False
+
+    def drop_collection(self, collection_name: str) -> bool:
+        """删除集合"""
+        try:
+            from pymilvus import utility
+            connection_alias = self._get_connection_alias()
+            if not connection_alias:
+                return False
+                
+            if utility.has_collection(collection_name, using=connection_alias):
+                utility.drop_collection(collection_name, using=connection_alias)
+                logger.info(f"集合 {collection_name} 已删除")
+                return True
+            else:
+                logger.warning(f"集合 {collection_name} 不存在")
+                return True
+                
+        except Exception as e:
+            logger.error(f"删除集合 {collection_name} 失败: {e}")
             return False
 # 请求模型
 class MilvusConfig(BaseModel):
@@ -945,6 +1141,89 @@ async def get_load_test_web_url(test_id: str):
         logger.error(f"获取Web界面URL失败: {e}")
         raise HTTPException(status_code=500, detail=f"获取Web界面URL失败: {str(e)}")
 
+
+@app.get("/load-test/history")
+async def get_load_test_history():
+    """获取测试历史记录（包括已完成的测试）"""
+    try:
+        import os
+        import json
+        from datetime import datetime
+        
+        history_tests = []
+        results_dir = "test_results"
+        
+        if os.path.exists(results_dir):
+            # 读取所有测试结果文件
+            for file in os.listdir(results_dir):
+                if file.startswith("test_") and file.endswith(".json"):
+                    try:
+                        file_path = os.path.join(results_dir, file)
+                        if os.path.getsize(file_path) > 0:  # 确保文件不为空
+                            with open(file_path, 'r', encoding='utf-8') as f:
+                                test_data = json.load(f)
+                                # 添加文件信息
+                                test_data['file_name'] = file
+                                test_data['file_path'] = file_path
+                                history_tests.append(test_data)
+                    except Exception as e:
+                        logger.warning(f"读取测试历史文件失败 {file}: {e}")
+                        continue
+        
+        # 按时间排序（最新的在前）
+        history_tests.sort(
+            key=lambda x: x.get('start_time', ''), 
+            reverse=True
+        )
+        
+        return {
+            "status": "success",
+            "tests": history_tests,
+            "count": len(history_tests)
+        }
+        
+    except Exception as e:
+        logger.error(f"获取测试历史失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取测试历史失败: {str(e)}")
+
+
+@app.delete("/load-test/history/{test_id}")
+async def delete_test_history(test_id: str):
+    """删除指定的测试历史记录"""
+    try:
+        import os
+        import glob
+        
+        deleted_files = []
+        results_dir = "test_results"
+        
+        if os.path.exists(results_dir):
+            # 查找与该测试相关的所有文件
+            patterns = [
+                f"test_{test_id}*.json",
+                f"test_{test_id}*.csv",
+                f"test_{test_id}*.html"
+            ]
+            
+            for pattern in patterns:
+                for file_path in glob.glob(os.path.join(results_dir, pattern)):
+                    try:
+                        os.remove(file_path)
+                        deleted_files.append(file_path)
+                    except Exception as e:
+                        logger.warning(f"删除文件失败 {file_path}: {e}")
+        
+        return {
+            "status": "success",
+            "message": f"已删除测试 {test_id} 的相关文件",
+            "deleted_files": deleted_files,
+            "count": len(deleted_files)
+        }
+        
+    except Exception as e:
+        logger.error(f"删除测试历史失败: {e}")
+        raise HTTPException(status_code=500, detail=f"删除测试历史失败: {str(e)}")
+
 @app.post("/visualization")
 async def get_visualization_data(request: Request):
     """
@@ -968,7 +1247,13 @@ async def get_visualization_data(request: Request):
             import numpy as np
             
             # 获取数据
-            embeddings, texts, ids = get_all_embeddings_and_texts(collection_name)
+            from Search.milvusSer import search_vectors
+            search_results = search_vectors(collection_name, query_vector=None, limit=1000)
+            embeddings = [result['embedding'] for result in search_results]
+            texts = [result['content'] for result in search_results]
+            ids = [result['id'] for result in search_results]
+            distances = [result['distance'] for result in search_results]
+            urls = [result.get('metadata', {}).get('url') for result in search_results]
             
             if not embeddings:
                 return []
@@ -977,19 +1262,41 @@ async def get_visualization_data(request: Request):
             umap_model = UMAP(n_components=2, random_state=42)
             embeddings_2d = umap_model.fit_transform(np.array(embeddings))
             
-            # HDBSCAN聚类
-            clusterer = hdbscan.HDBSCAN(min_samples=3, min_cluster_size=2)
-            cluster_labels = clusterer.fit_predict(embeddings_2d)
+            # 使用ClusteringService进行聚类
+            from Search.clustering import ClusteringService,SearchResult
+            service = ClusteringService()
             
-            # 构建结果
+            search_results = [
+                SearchResult(
+                    id = str(ids[i]),
+                    content = texts[i],
+                    url = urls[i],
+                    distance = distances[i],
+                    embedding = embeddings[i],
+                    metadata = None
+                ) for i in range(len(embeddings))
+            ]
+            
+            # 执行聚类
+            clusters = service.cluster_search_results(search_results)
+            
+            # 构建可视化数据结构
             result = []
             for i, (x, y) in enumerate(embeddings_2d):
+                doc_id = ids[i] if i < len(ids) else i
+                cluster_info = next(
+                    (c for c in clusters if any(doc.id == doc_id for doc in c.documents)),
+                    None
+                )
+                
                 result.append({
                     "x": float(x),
                     "y": float(y),
-                    "cluster": int(cluster_labels[i]),
+                    "cluster": cluster_info.cluster_id if cluster_info else -1,
                     "text": texts[i][:100] if i < len(texts) else "",
-                    "id": ids[i] if i < len(ids) else i
+                    "id": doc_id,
+                    "keywords": cluster_info.keywords if cluster_info else [],
+                    "representative": cluster_info.representative_doc.id if cluster_info else None
                 })
             
             return result
@@ -1385,6 +1692,21 @@ async def system_status():
     # except Exception:
     #     pass
     
+    # 检查聚类服务状态
+    clustering_status = {
+        "available": False,
+        "model_loaded": False
+    }
+    try:
+        from Search.clustering import ClusteringService
+        service = ClusteringService()
+        clustering_status["available"] = service.hdbscan_available or service.sklearn_available
+        clustering_status["model_loaded"] = True
+    except ImportError:
+        logger.warning("聚类服务依赖未安装")
+    except Exception as e:
+        logger.error(f"聚类服务初始化失败: {e}")
+
     # 检查分块系统状态
     chunking_system_status = {
         "available": True,
@@ -1432,6 +1754,12 @@ async def system_status():
     # else:
     #     health_issues.append("GLM未配置")
     
+    # 更新健康评分
+    if clustering_status.get("available"):
+        health_score += 10
+    else:
+        health_issues.append("聚类服务不可用")
+
     # 确定整体状态
     if health_score >= 80:
         overall_status = "healthy"
@@ -1460,12 +1788,12 @@ async def system_status():
             "embedding_model": {
                 "available": milvus_configured
             },
-            "chunking_system": chunking_system_status
-            # "glm": {
-            #     "configured": glm_configured,
-            #     "model_name": glm_model_name,
-            #     "advanced_strategies_enabled": glm_configured
-            # }
+            "chunking_system": chunking_system_status,
+            "clustering_service": {
+                "available": clustering_status.get("available"),
+                "model": clustering_status.get("model_name", "未加载"),
+                "version": clustering_status.get("model_version", "未知")
+            }
         }
     }
 
@@ -1785,4 +2113,4 @@ async def integration_test():
 if __name__ == "__main__":
     import uvicorn
     logger.info("启动简化版API服务...")
-    uvicorn.run(app, host="0.0.0.0", port=8509)
+    uvicorn.run(app, host="0.0.0.0", port=12089)

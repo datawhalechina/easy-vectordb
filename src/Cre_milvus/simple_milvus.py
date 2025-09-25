@@ -1,8 +1,3 @@
-"""
-简化的Milvus连接管理
-替换复杂的PersistentMilvusConnection，提供简单直接的连接管理功能
-"""
-
 import logging
 import time
 import socket
@@ -27,11 +22,24 @@ class SimpleMilvusConnection:
     def connect(self, host: str, port: int, use_lite: bool = False, timeout: int = 10) -> bool:
         """建立Milvus连接"""
         try:
+            print(f"🔧 开始连接Milvus: host={host}, port={port}, use_lite={use_lite}")
+            logger.info(f"🔧 开始连接Milvus: host={host}, port={port}, use_lite={use_lite}")
+            
             # 清理现有连接
             self._cleanup_connection()
             
-            # 生成唯一的连接别名
-            alias = f"default_{int(time.time())}"
+            # 生成基于日期的连接别名（同一天内复用）
+            from datetime import datetime
+            date_str = datetime.now().strftime("%Y%m%d")
+            alias = f"milvus_{date_str}"
+            print(f"🔧 生成的连接别名: {alias}")
+            print(f"🔧 连接参数: host={host}, port={port}, use_lite={use_lite}")
+            logger.info(f"🔧 生成的连接别名: {alias}")
+            logger.info(f"🔧 连接参数: host={host}, port={port}, use_lite={use_lite}")
+            
+            # 记录别名生成的详细信息
+            logger.info(f"🔧 别名生成详情: date_str={date_str}, host={host}, port={port}")
+            print(f"🔧 别名生成详情: date_str={date_str}, host={host}, port={port}")
             
             if use_lite and host.endswith('.db'):
                 # 如果配置为使用lite但没有安装milvus-lite，则跳过
@@ -45,15 +53,69 @@ class SimpleMilvusConnection:
                     self.error_message = f"无法连接到 {host}:{port}"
                     return False
                 
-                connections.connect(
-                    alias=alias,
-                    host=host,
-                    port=port,
-                    timeout=timeout
-                )
+                # 方案1：检查连接是否已存在
+                connection_exists = False
+                # try:
+                #     print(f"🔍 检查连接 {alias} 是否已存在...")
+                #     utility.list_collections(using=alias)
+                #     connection_exists = True
+                #     print(f"✅ 连接 {alias} 已存在，直接使用")
+                #     logger.info(f"连接 {alias} 已存在，直接复用")
+                # except Exception as e:
+                #     print(f"🔧 连接 {alias} 不存在，需要创建新连接: {e}")
+                #     logger.debug(f"连接检查失败: {e}")
+                
+                # 如果连接不存在，创建新连接
+                if not connection_exists:
+                    print(f"🔧 开始建立Milvus连接，使用别名: {alias}")
+                    logger.info(f"🔧 开始建立Milvus连接，使用别名: {alias}")
+                    import threading
+                    from queue import Queue
+                    
+                    # 创建线程安全的结果队列
+                    result_queue = Queue()
+                    
+                    def connect_task():
+                        try:
+                            conn = connections.connect(
+                                alias=alias,
+                                host=host,
+                                port=port,
+                                timeout=timeout
+                            )
+                            result_queue.put(('success', alias))
+                        except Exception as e:
+                            result_queue.put(('error', str(e)))
+                    
+                    # 使用官方建议的连接管理方式
+                    if not connections.has_connection(alias="default"):
+                        connections.add_connection(
+                            default={"host": host, "port": port}
+                        )
+                    connections.connect(alias="default")
+                    alias = "default"
+                    
+                    # 等待连接结果(最大等待5秒)
+                    conn_thread.join(5)
+                    if result_queue.empty():
+                        raise TimeoutError(f"Milvus连接超时: {host}:{port}")
+                    
+                    status, msg = result_queue.get()
+                    if status == 'error':
+                        raise ConnectionError(msg)
+                    print(f"🔧 新连接创建完成: {alias}")
+                    logger.info(f"🔧 新连接创建完成: {alias}")
+                else:
+                    print(f"🔧 复用现有连接: {alias}")
+                    logger.info(f"🔧 复用现有连接: {alias}")
             
-            # 验证连接
-            utility.list_collections(using=alias)
+            # 增强连接验证
+            try:
+                utility.list_collections(using=alias)
+                logger.info(f"✅ 连接验证成功: {alias}")
+            except Exception as e:
+                logger.error(f"❌ 连接验证失败: {e}")
+                raise ConnectionError(f"Milvus连接失败: {str(e)}")
             
             # 更新连接信息
             self.connection_alias = alias
@@ -65,6 +127,7 @@ class SimpleMilvusConnection:
             self.error_message = None
             
             logger.info(f"✅ Milvus连接成功: {host}:{port}")
+            print(f"✅ Milvus连接成功，当前别名: {alias}")
             return True
             
         except Exception as e:
@@ -101,14 +164,29 @@ class SimpleMilvusConnection:
     
     def get_connection_alias(self) -> Optional[str]:
         """获取连接别名"""
+        print(f"🔍 获取连接别名 - 当前状态: connected={self.connected}, alias={self.connection_alias}")
+        logger.info(f"🔍 获取连接别名 - 当前状态: connected={self.connected}, alias={self.connection_alias}")
+        
         if self.connected and self.connection_alias:
             # 简单的连接有效性检查
-            if self._is_connection_valid():
+            print(f"🔍 检查连接有效性: {self.connection_alias}")
+            logger.info(f"🔍 检查连接有效性: {self.connection_alias}")
+            is_valid = self._is_connection_valid()
+            print(f"🔍 连接有效性检查结果: {is_valid}")
+            logger.info(f"🔍 连接有效性检查结果: {is_valid}")
+            if is_valid:
+                print(f"✅ 连接有效，返回别名: {self.connection_alias}")
+                logger.info(f"✅ 连接有效，返回别名: {self.connection_alias}")
                 return self.connection_alias
             else:
                 logger.warning("连接已失效")
+                print(f"❌ 连接已失效，别名: {self.connection_alias}")
+                logger.warning(f"❌ 连接已失效，别名: {self.connection_alias}")
                 self.connected = False
                 return None
+        
+        print(f"❌ 无有效连接，返回None")
+        logger.info(f"❌ 无有效连接，返回None")
         return None
     
     def _is_connection_valid(self) -> bool:
