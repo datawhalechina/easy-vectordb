@@ -32,18 +32,24 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: 'Milvus 教程', link: '/Milvus/' },
+      { text: '项目介绍', link: '/项目介绍' },
+      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy介绍' },
+      { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
 
     sidebar: {
-      '/Milvus/': [
+      '/Annoy/': [
         {
-          text: 'Chapter 0 · 开始学习',
+          text: 'Chapter 1 · 基础概念',
           items: [
-            { text: '为什么需要向量数据库', link: '/Milvus/chapter0/前言' }
+            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy介绍' },
+            { text: '基础API使用', link: '/Annoy/chapter1/基础API使用' }
           ]
-        },
+        }
+      ],
+
+      '/Milvus/': [
         {
           text: 'Chapter 1 · 基础概念',
           items: [
