@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: 开始学习
-      link: /Milvus/chapter0/前言
+      link: /项目介绍
     - theme: alt
       text: 实战项目
       link: /projects/
