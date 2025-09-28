@@ -32,13 +32,23 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: '项目介绍', link: '/项目介绍' },
+      { text: '向量基础', link: '/base/项目介绍' },
       { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy介绍' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
 
     sidebar: {
+      '/base/': [
+        {
+          text: 'Chapter 1 · 基础概念',
+          items: [
+            { text: '1.为何需要向量数据库', link: '/base/项目介绍' },
+            { text: '2.向量嵌入基础', link: '/base/向量嵌入' }
+          ]
+        }
+      ],
+
       '/Annoy/': [
         {
           text: 'Chapter 1 · 基础概念',
