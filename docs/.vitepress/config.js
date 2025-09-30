@@ -45,7 +45,7 @@ export default defineConfig({
           items: [
             { text: '1.项目介绍', link: '/base/项目介绍' },
             { text: '2.为什么需要向量数据库', link: '/base/为什么需要向量数据库' },
-            { text: '3.向量嵌入算法基础', link: '/base/向量嵌入算法基础' }
+            { text: '3.向量嵌入算法基础', link: '/base/向量嵌入算法基础' },
             { text: '4.向量搜索算法基础', link: '/base/向量搜索算法基础' }
           ]
         }
