@@ -16,6 +16,7 @@ export default defineConfig({
   markdown: {
     lineNumbers: true,
     mermaid: true,
+    math: true,
     image: {
       lazyLoading: false
     }
