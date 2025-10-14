@@ -16,6 +16,7 @@ export default defineConfig({
   markdown: {
     lineNumbers: true,
     mermaid: true,
+    math: true,
     image: {
       lazyLoading: false
     }
@@ -32,18 +33,36 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: 'Milvus 教程', link: '/Milvus/' },
+      { text: '向量基础', link: '/base/项目介绍' },
+      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy介绍' },
+      { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
 
     sidebar: {
-      '/Milvus/': [
+      '/base/': [
         {
-          text: 'Chapter 0 · 开始学习',
+          text: 'Chapter 1 · 基础概念',
           items: [
-            { text: '为什么需要向量数据库', link: '/Milvus/chapter0/前言' }
+            { text: '1.项目介绍', link: '/base/项目介绍' },
+            { text: '2.为什么需要向量数据库', link: '/base/为什么需要向量数据库' },
+            { text: '3.向量嵌入算法基础', link: '/base/向量嵌入算法基础' },
+            { text: '4.向量搜索算法基础', link: '/base/向量搜索算法基础' }
           ]
-        },
+        }
+      ],
+
+      '/Annoy/': [
+        {
+          text: 'Chapter 1 · 基础概念',
+          items: [
+            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy介绍' },
+            { text: '基础API使用', link: '/Annoy/chapter1/基础API使用' }
+          ]
+        }
+      ],
+
+      '/Milvus/': [
         {
           text: 'Chapter 1 · 基础概念',
           items: [
