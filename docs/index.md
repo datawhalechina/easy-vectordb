@@ -11,7 +11,7 @@ hero:
   actions:
     - theme: brand
       text: 开始学习
-      link: /base/项目介绍.html
+      link: /base/
     - theme: alt
       text: 实战项目
       link: /projects/
