@@ -46,7 +46,8 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 | **Chapter 4** | [向量搜索算法基础](./doc/base/chapter4/向量搜索算法基础.md) | 暴力检索 / 向量相似度 |
 | **Chapter 5** | [ANN 搜索算法](./doc/base/chapter5/ANN搜索算法.md) | 近似最近邻 / IVF / PQ / HNSW |
 |               | [IVF 算法](./doc/base/chapter5/IVF算法.md) | 算法原理/代码实战 |
-| ⏳ **持续更新中...** |  |  |
+|               | [HNSW 算法](./doc/base/chapter5/HNSW算法.md) | 算法原理/代码实战 |
+|               | PQ 算法](./doc/base/chapter5/PQ算法.md) | 算法原理/代码实战 |
 
 ---
 
@@ -134,5 +135,6 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
 </picture>
+
 
 </div>
