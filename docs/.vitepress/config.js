@@ -76,6 +76,8 @@ export default defineConfig({
           items: [
             { text: 'ANN搜索算法', link: '/base/chapter5/ANN搜索算法' },
             { text: 'IVF算法', link: '/base/chapter5/IVF算法' },
+            { text: 'HNSW算法', link: '/base/chapter5/HNSW算法' },
+            { text: 'PQ算法', link: '/base/chapter5/PQ算法' },
           ]
         },
       ],
