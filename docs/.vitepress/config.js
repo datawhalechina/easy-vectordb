@@ -31,6 +31,11 @@ export default defineConfig({
 
     returnToTopLabel: '返回顶部',
 
+    // 控制右侧目录显示的标题层级
+    outline: {
+      level: [1, 4] // 显示从 # (h1) 到 #### (h4) 的标题
+    },
+
     nav: [
       { text: '首页', link: '/' },
       { text: '向量基础', link: '/base/chapter1/项目介绍' },
