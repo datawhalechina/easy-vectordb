@@ -33,7 +33,7 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: '向量基础', link: '/base/项目介绍' },
+      { text: '向量基础', link: '/base/chapter1/项目介绍' },
       { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy介绍' },
       { text: 'Faiss 教程', link: '/Faiss/chapter1/引言.md' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
@@ -43,14 +43,36 @@ export default defineConfig({
     sidebar: {
       '/base/': [
         {
-          text: 'Chapter 1 · 基础概念',
+          text: 'Chapter 1 · 项目介绍',
           items: [
-            { text: '1.项目介绍', link: '/base/项目介绍' },
-            { text: '2.为什么需要向量数据库', link: '/base/为什么需要向量数据库' },
-            { text: '3.向量嵌入算法基础', link: '/base/向量嵌入算法基础' },
-            { text: '4.向量搜索算法基础', link: '/base/向量搜索算法基础' }
+            { text: '项目介绍', link: '/base/chapter1/项目介绍' }
           ]
-        }
+        },
+        {
+          text: 'Chapter 2 · 向量数据库概念',
+          items: [
+            { text: '为什么需要向量数据库', link: '/base/chapter2/为什么需要向量数据库' },
+          ]
+        },
+        {
+          text: 'Chapter 3 · 向量嵌入算法基础',
+          items: [
+            { text: '向量嵌入算法基础', link: '/base/chapter3/向量嵌入算法基础' },
+          ]
+        },
+        {
+          text: 'Chapter 4 · 向量搜索算法基础',
+          items: [
+            { text: '向量搜索算法基础', link: '/base/chapter4/向量搜索算法基础' },
+          ]
+        },
+        {
+          text: 'Chapter 5 · 向量ANN搜索算法',
+          items: [
+            { text: 'ANN搜索算法', link: '/base/chapter5/ANN搜索算法' },
+            { text: 'IVF算法', link: '/base/chapter5/IVF算法' },
+          ]
+        },
       ],
 
       '/Annoy/': [
@@ -121,14 +143,6 @@ export default defineConfig({
           ]
         }
       ],
-      // '/Faiss/': [
-      //   {
-      //     text: 'Faiss 教程',
-      //     items: [
-      //       { text: 'Faiss 核心原理与架构', link: '/Faiss/1.1Faiss核心原理与架构' }
-      //     ]
-      //   }
-      // ],
       '/projects/': [
         {
           text: '实战项目',
