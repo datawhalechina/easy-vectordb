@@ -82,15 +82,16 @@ export default defineConfig({
         },
       ],
 
-      '/Annoy/': [
-        {
-          text: 'Chapter 1 · 基础概念',
-          items: [
-            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy介绍' },
-            { text: '基础API使用', link: '/Annoy/chapter1/基础API使用' }
-          ]
-        }
-      ],
+      // '/Annoy/': [
+      //   {
+      //     text: 'Chapter 1 · 基础概念',
+      //     items: [
+      //       { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy介绍' },
+      //       { text: '基础API使用', link: '/Annoy/chapter1/基础API使用' }
+      //     ]
+      //   }
+      // ],  内容太少了，先不展示
+      
       '/Faiss/': [
         {
           text: 'Chapter 1 · 基础概念',
