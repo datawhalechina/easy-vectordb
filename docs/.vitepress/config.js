@@ -35,6 +35,7 @@ export default defineConfig({
       { text: '首页', link: '/' },
       { text: '向量基础', link: '/base/项目介绍' },
       { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy介绍' },
+      { text: 'Faiss 教程', link: '/Faiss/chapter1/引言.md' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
@@ -61,7 +62,29 @@ export default defineConfig({
           ]
         }
       ],
-
+      '/Faiss/': [
+        {
+          text: 'Chapter 1 · 基础概念',
+          items: [
+            { text: 'Faiss介绍', link: '/Faiss/chapter1/引言' },
+            { text: '基础使用', link: '/Faiss/chapter1/基础使用' }
+          ]
+        },
+        {
+          text: 'Chapter 2 · 索引与GPU加速',
+          items: [
+            { text: '基础索引原理', link: '/Faiss/chapter2/索引' },
+            { text: 'GPU 加速', link: '/Faiss/chapter2/GPU加速' },
+          ]
+        },
+        {
+          text: 'Chapter 3 · 问答实战',
+          items: [
+            { text: '问答实战', link: '/Faiss/chapter3/问答实战' },
+            { text: '总结', link: '/Faiss/chapter3/总结' },
+          ]
+        },
+      ],
       '/Milvus/': [
         {
           text: 'Chapter 1 · 基础概念',
