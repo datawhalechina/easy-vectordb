@@ -49,6 +49,10 @@ Milvus性能测试工具和基准测试。
 
 **源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/locustProj
 
+### 🚀 [Faiss](./faissSear)
+基于Faiss的问答系统实战。
+
+**源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/faissSear
 ## 学习路径
 
 1. **入门**: 从URL处理实践开始

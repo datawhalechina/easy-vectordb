@@ -31,10 +31,15 @@ export default defineConfig({
 
     returnToTopLabel: '返回顶部',
 
+    // 控制右侧目录显示的标题层级
+    outline: {
+      level: [1, 4] // 显示从 # (h1) 到 #### (h4) 的标题
+    },
+
     nav: [
       { text: '首页', link: '/' },
-      { text: '向量基础', link: '/base/项目介绍' },
-      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy介绍' },
+      { text: '向量基础', link: '/base/chapter1/项目介绍' },
+      { text: 'Faiss 教程', link: '/Faiss/chapter1/引言.md' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
@@ -42,26 +47,63 @@ export default defineConfig({
     sidebar: {
       '/base/': [
         {
-          text: 'Chapter 1 · 基础概念',
+          text: 'Chapter 1 · 项目介绍',
           items: [
-            { text: '1.项目介绍', link: '/base/项目介绍' },
-            { text: '2.为什么需要向量数据库', link: '/base/为什么需要向量数据库' },
-            { text: '3.向量嵌入算法基础', link: '/base/向量嵌入算法基础' },
-            { text: '4.向量搜索算法基础', link: '/base/向量搜索算法基础' }
+            { text: '项目介绍', link: '/base/chapter1/项目介绍' }
           ]
-        }
+        },
+        {
+          text: 'Chapter 2 · 向量数据库概念',
+          items: [
+            { text: '为什么需要向量数据库', link: '/base/chapter2/为什么需要向量数据库' },
+          ]
+        },
+        {
+          text: 'Chapter 3 · 向量嵌入算法基础',
+          items: [
+            { text: '向量嵌入算法基础', link: '/base/chapter3/向量嵌入算法基础' },
+          ]
+        },
+        {
+          text: 'Chapter 4 · 向量搜索算法基础',
+          items: [
+            { text: '向量搜索算法基础', link: '/base/chapter4/向量搜索算法基础' },
+          ]
+        },
+        {
+          text: 'Chapter 5 · 向量ANN搜索算法',
+          items: [
+            { text: 'ANN搜索算法', link: '/base/chapter5/ANN搜索算法' },
+            { text: 'IVF算法', link: '/base/chapter5/IVF算法' },
+            { text: 'HNSW算法', link: '/base/chapter5/HNSW算法' },
+            { text: 'PQ算法', link: '/base/chapter5/PQ算法' },
+          ]
+        },
       ],
-
-      '/Annoy/': [
+      
+      '/Faiss/': [
         {
           text: 'Chapter 1 · 基础概念',
           items: [
-            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy介绍' },
-            { text: '基础API使用', link: '/Annoy/chapter1/基础API使用' }
+            { text: 'Faiss介绍', link: '/Faiss/chapter1/引言' },
+            { text: '基础使用', link: '/Faiss/chapter1/基础使用' }
           ]
-        }
+        },
+        {
+          text: 'Chapter 2 · 索引与GPU加速',
+          items: [
+            { text: '基础索引原理', link: '/Faiss/chapter2/索引' },
+            { text: 'GPU 加速', link: '/Faiss/chapter2/GPU加速' },
+          ]
+        },
+        {
+          text: 'Chapter 3 · 问答实战',
+          items: [
+            { text: '问答实战', link: '/Faiss/chapter3/问答实战' },
+            { text: '总结', link: '/Faiss/chapter3/总结' },
+          ]
+        },
       ],
-
       '/Milvus/': [
         {
           text: 'Chapter 1 · 基础概念',
@@ -98,14 +140,6 @@ export default defineConfig({
           ]
         }
       ],
-      // '/Faiss/': [
-      //   {
-      //     text: 'Faiss 教程',
-      //     items: [
-      //       { text: 'Faiss 核心原理与架构', link: '/Faiss/1.1Faiss核心原理与架构' }
-      //     ]
-      //   }
-      // ],
       '/projects/': [
         {
           text: '实战项目',

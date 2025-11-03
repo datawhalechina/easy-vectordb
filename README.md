@@ -14,51 +14,60 @@
 
 ## 🌟 项目简介
 
-EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了从基础概念到生产部署的完整知识体系。本项目专注于 **Milvus** 和 **Faiss** 两大主流向量数据库，提供理论学习、实践教程和项目案例。
+EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了从基础概念到生产部署的完整知识体系。🚀 从入门到生产部署，系统掌握 Milvus、Faiss、Annoy 三大向量数据库的理论与实战。
+
+## 🧭 项目简介
+
+**EasyVectorDB** 是一个面向开发者与研究者的 **向量数据库系统性学习项目**。  
+项目内容覆盖从基础概念、算法原理到生产级应用部署的全流程，聚焦以下三个方向：
+
+- 🧩 **理论入门**：理解向量数据库的原理、架构与索引机制  
+- ⚙️ **实战教程**：掌握 Milvus / Faiss / Annoy 的使用与优化技巧  
+- 💡 **项目案例**：从零构建 RAG、嵌入检索、聚类可视化等完整项目  
+
+---
 
 
 ## 📖 内容导航
 
-### 🎯 Milvus 教程
-
-| 章节   | 内容                                       | 关键知识点                                    | 状态   |
-| ---- | ---------------------------------------- | ---------------------------------------- | ---- |
-| 前言   | [前言](./docs/Milvus/chapter0/前言.md)       | 项目目标与大纲                                  | ✅    |
-| 第一章  | [向量数据库介绍](./docs/Milvus/chapter1/Milvus%20介绍.md) | 核心概念/发展历程/应用场景/深入理解架构设计                  | ✅    |
-|      | [ 索引介绍](./docs/Milvus/chapter1/milvus%20索引介绍.md) | 索引原理/类型选择/优化策略                           | ✅    |
-|      | [ 聚类介绍](./docs/Milvus/chapter1/聚类算法介绍.md) | 聚类原理/算法选择/优化策略                           | ✅    |
-| 第二章  | [Milvus Lite部署与应用](./docs/Milvus/chapter2/Milvus%20Lite部署与应用.md) | Lite部署方案                                 | ✅    |
-|      | [Milvus Standalone部署](./docs/Milvus/chapter2/Milvus%20Standalone部署.md) | Standalone部署方案                           | ✅    |
-|      | [ MinerU部署](./docs/Milvus/chapter2/MinerU部署教程.md) | MinerU部署方案                               | ✅    |
-| 第三章  | [ Milvus 文本嵌入实战](./docs/Milvus/chapter3/milvus%20文本嵌入实战.md) | 文本嵌入实战案例                                 | ✅    |
-|      | [Milvus pdf嵌入实战](./docs/Milvus/chapter3/milvus%20pdf%20嵌入实战.md) | pdf嵌入实战案例                                | ✅    |
-|      | [Milvus pdf多模型嵌入实战](./docs/Milvus/chapter3/milvus%20pdf%20多模型嵌入实战.md) | pdf多模型嵌入实战案例                             | ✅    |
-|      | [Milvus 数据切分总结](./docs/Milvus/chapter3/milvus%20数据切分总结.md) | 数据切分场景和应用总结                              | ✅    |
-| 第四章  | [ Milvus 存储优化](./docs/Milvus/chapter4/milvus%20存储优化.md) | mmp理论与实践，数据切分策略                          | ✅    |
-|      | [ FunsionAnns](./docs/Milvus/chapter4/GPU加速检索-基于FusionANNS.md) | FusionANNS论文解读                           | ✅    |
-|      | [向量](./docs/Milvus/chapter4/向量/向量.md)    | 稀疏向量 TF-IDF BM25 ColBERT 嵌入向量的局限性        | ✅    |
-|      | [Meta-Chunking：一种新的文本切分策略](./docs//Milvus/chapter4/Meta-Chunking：一种新的文本切分策略.md) | Learning Text Segmentation and Semantic Completion via Logical Perception论文解读 | ✅    |
-| 第五章  | [url分割处理](./docs/Milvus/project/url_process/README.md) | 视频数据存储过程中url分割与存放                        | ✅    |
-|      | [Cre_milvus](./docs/Milvus/project/Cre_milvus/README.md) | 综合实践（暂定）                                      | ⌛    |
-|      | [HDBSCAN聚类可视化](./docs/Milvus/project/HDBSCAN/README.md) | 使用HDBSCAN聚类算法进行数据可视化                                      | ✅    |
-|      | [Text_search_pic](./docs/Milvus/project/1_build_text_image_search_engine.ipynb) | 文搜图                                      | ✅    |
-|      | [Meta-chunking](./docs/Milvus/project/Meta_chunking/README.md) | Meta-chunking论文实现demo                    | ✅    |
-|      | [Limit](./docs/Milvus/chapter4/向量/code/Meta_limit/code/startup.md) | Meta-limit论文实践                           | ✅    |
-|      | [Locust](./docs/Milvus/project/locustProj/README.md) | 基于Locust的Milvus性能测试工具                    | ✅    |
-| 第六章  | [k8s部署Milvus监控](./docs/Milvus/project/k8s+loki/README.md) | 基于loki与Grafana的Milvus监控系统                | ✅    |
-
-### 🔧 Faiss 教程
-
-| 章节   | 内容                                       | 关键知识点        | 状态   |
-| ---- | ---------------------------------------- | ------------ | ---- |
-|      | [Faiss核心原理与架构](./docs/Faiss/1.1Faiss核心原理与架构.md) | Faiss核心原理与架构 | ⌛    |
-|      | *待补充*                                    | 索引构建与参数调优    | ⌛    |
-|      | *待补充*                                    | GPU加速方案      | ⌛    |
-|      | *待补充*                                    | 大规模向量检索实践    | ⌛    |
-|      | *待补充*                                    | 文本嵌入实战       | ⌛    |
-|      | *待补充*                                    | 不同数据库比较      | ⌛    |
+项目共分为 **基础学习篇** 与 **实践篇** 两个部分，对应导航栏配置如下：
 
 ---
+
+### 🏁 一、基础学习篇（Base）
+
+> 💡 了解向量数据库的设计哲学、嵌入算法与搜索原理，为后续实践打下坚实基础。
+
+| 章节 | 内容 | 关键词 |
+|------|------|--------|
+| **Chapter 1** | [项目介绍](./doc/base/chapter1/项目介绍.md) | 项目目标 / 学习路径 |
+| **Chapter 2** | [为什么需要向量数据库](./doc/base/chapter2/为什么需要向量数据库.md) | 检索瓶颈 / 相似度搜索原理 |
+| **Chapter 3** | [向量嵌入算法基础](./doc/base/chapter3/向量嵌入算法基础.md) | Word2Vec / Transformer Embedding |
+| **Chapter 4** | [向量搜索算法基础](./doc/base/chapter4/向量搜索算法基础.md) | 暴力检索 / 向量相似度 |
+| **Chapter 5** | [ANN 搜索算法](./doc/base/chapter5/ANN搜索算法.md) | 近似最近邻 / IVF / PQ / HNSW |
+|               | [IVF 算法](./doc/base/chapter5/IVF算法.md) | 算法原理/代码实战 |
+|               | [HNSW 算法](./doc/base/chapter5/HNSW算法.md) | 算法原理/代码实战 |
+|               | [PQ 算法](./doc/base/chapter5/PQ算法.md) | 算法原理/代码实战 |
+
+---
+
+### 🔧 二、Faiss 教程（Faiss）
+
+> ⚙️ 从零构建高性能向量检索系统，掌握 Faiss 的索引机制与加速策略。
+
+| 章节 | 内容 | 关键词 |
+|------|------|--------|
+| **Chapter 1** | [Faiss 引言](./docs/Faiss/引言.md) | 向量检索基础 / Faiss 概览 |
+|                | [基础使用](./docs/Faiss/基础使用.md) | 索引构建 / 向量检索流程 |
+| **Chapter 2** | [索引](./docs/Faiss/索引.md) | CPU 索引结构 / IVF / Flat |
+|                | [GPU 加速](./docs/Faiss/GPU加速.md) | GPU 索引 / 性能对比 / 批量检索 |
+| **Chapter 3** | [问答实战](./docs/Faiss/问答实战.md) | 基于 Faiss 的问答检索系统构建 |
+|                | [总结](./docs/Faiss/总结.md) | 经验总结 / 性能优化技巧 |
+| ⏳ **持续更新中...** |  |  |
+
+---
+
+> 📘 本项目旨在让你从 **原理 → 实践 → 部署** 全流程掌握向量数据库核心知识与实战能力。
 
 ## 📄 补充资源
 
@@ -127,4 +136,6 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
 </picture>
 
+
 </div>
+

@@ -1,0 +1,7 @@
+# Faiss CPU版本依赖
+faiss-cpu==1.7.4
+numpy>=1.20.0
+scipy>=1.7.0
+# 示例中用到的其他依赖
+sentence-transformers>=2.2.0
+flask>=2.0.0
