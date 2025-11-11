@@ -48,6 +48,8 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 |               | [IVF 算法](./doc/base/chapter5/IVF算法.md) | 算法原理/代码实战 |
 |               | [HNSW 算法](./doc/base/chapter5/HNSW算法.md) | 算法原理/代码实战 |
 |               | [PQ 算法](./doc/base/chapter5/PQ算法.md) | 算法原理/代码实战 |
+|               | [LSH 算法](./doc/base/chapter5/LSH算法.md) | 算法原理/代码实战 |
+| **Chapter 6** | 构建你的向量数据库| 进行中...|
 
 ---
 
@@ -138,4 +140,5 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 
 
 </div>
+
 
