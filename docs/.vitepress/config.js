@@ -41,6 +41,7 @@ export default defineConfig({
       { text: '向量基础', link: '/base/chapter1/项目介绍' },
       { text: 'Faiss 教程', link: '/Faiss/chapter1/引言.md' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
+      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
 
@@ -81,7 +82,7 @@ export default defineConfig({
           ]
         },
       ],
-      
+
       '/Faiss/': [
         {
           text: 'Chapter 1 · 基础概念',
@@ -140,6 +141,20 @@ export default defineConfig({
             { text: 'Meta-Chunking：一种新的文本切分策略', link: '/Milvus/chapter4/Meta-Chunking：一种新的文本切分策略' }
           ]
         }
+      ],
+      '/Annoy/': [
+        {
+          text: 'Chapter 1 · 基础概念',
+          items: [
+            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy 介绍' },
+          ]
+        },
+        {
+          text: 'Chapter 2 · 部署与基础使用',
+          items: [
+            { text: 'Annoy 部署与基础使用', link: '/Annoy/chapter2/Annoy 部署与基础使用' },
+          ]
+        },
       ],
       '/projects/': [
         {
