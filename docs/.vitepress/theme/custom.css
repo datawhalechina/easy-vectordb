@@ -77,6 +77,10 @@
  */
 /* --vp-sidebar-width: 272px; */
 
+:root {
+  --vp-sidebar-width: 300px;
+}
+
 /* 侧边栏背景色
  * 默认值：var(--vp-c-bg-alt)
  * 说明：侧边栏的背景颜色，默认使用次要背景色
