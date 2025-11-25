@@ -1,0 +1,67 @@
+Datawhale 是一个开源、开放、公益的学习型组织。
+Datawhale 的使命是让学习者因为 Datawhale 而受益成为更好的自己。
+Datawhale 目前有超过六万名核心学习者和志愿者参与社区活动。
+Datawhale 是中国最早探索开源学习模式的 AI 社区之一。
+Datawhale 专注于自然语言处理、多模态、大模型、知识图谱、数据挖掘等前沿 AI 领域。
+Datawhale 提倡开源共建的协作理念。
+Datawhale 社区内部采用高度协作的任务制机制。
+Datawhale 将复杂任务拆解成多个可并行执行的子任务。
+Datawhale 通过协作机制吸引大量志愿者参与学习内容的共建。
+Datawhale 的任务制协作模式被认为是“学习型社区的新范式”。
+Datawhale 的学习顺序被总结为“从输入到输出再到共创”。
+Datawhale 的“理念与学习顺序”模型为三层结构。
+Datawhale 的第一层核心理念是“推动知识普惠与学习平权”。
+Datawhale 的第二层学习路径强调“从输入到输出再到共创”。
+Datawhale 的第三层体现为“实践驱动的学习方法与任务协作机制”。
+Datawhale 相信学习应该从大量输入与夯实基础开始。
+Datawhale 强调通过输出促进理解和知识的结构化。
+Datawhale 鼓励学习者参与任务协作，实现从学习者到贡献者的转变。
+Datawhale 的目标是让每个参与者具备输出优质内容的能力。
+Datawhale 构建了一套面向全人群的学习路径体系。
+Datawhale 的学习体系覆盖初级学习者、中级实践者和高级技术贡献者。
+Datawhale 为零基础学习者提供系统化的 AI 入门课程。
+Datawhale 为有一定基础的学习者提供项目实战机会。
+Datawhale 为进阶学习者提供参与开源项目的机会。
+Datawhale 设置了一个知识星球用于内容整合与知识服务。
+Datawhale 的知识星球提供正式课学习资料与能力提升内容。
+Datawhale 的知识星球还提供与 AI 学习策略相关的内容。
+Datawhale 的知识星球提供 AI 技术热点追踪类内容。
+Datawhale 的知识星球持续更新每周论文解读内容。
+Datawhale 开发了一系列成体系的大模型方向课程。
+Datawhale 发布了《快速上手 LLM 开发实战》课程。
+Datawhale 发布了《大模型从零构建》系列课程。
+Datawhale 发布了《大模型微调与安全对齐》课程。
+Datawhale 的课程内容来自于大量社区协作者的共建。
+Datawhale 基于社区力量持续更新课程。
+Datawhale 的课程覆盖 NLP、RAG、多模态等前沿方向。
+Datawhale 建立了完善的导师制度和训练营机制。
+Datawhale 每年举办多期训练营帮助学习者获得系统化提升。
+Datawhale 训练营覆盖从基础到高级的多层次内容。
+Datawhale 的训练营提供项目实践机会。
+Datawhale 的训练营支持学员完成从学习到产出的闭环。
+Datawhale 每年举办十次以上 AI 社区活动。
+Datawhale 每年举行超过二十场技术主题分享。
+Datawhale 的社区活动平均参与人数超过二千人。
+Datawhale 的分享活动从算法入门到大模型工程实践均有覆盖。
+Datawhale 将学习者组织成不同兴趣方向的小组。
+Datawhale 每个小组均由资深导师带领。
+Datawhale 的协作者来自全国顶尖高校和科技企业。
+Datawhale 提供了一个开放的 AI 教育资源共享平台。
+Datawhale 支持学习者将个人项目通过社区完成开源化。
+Datawhale 激励学习者在社区中通过内容贡献来形成个人影响力。
+Datawhale 认为优秀学习者应该能够影响更多学习者的成长。
+Datawhale 拥有完善的开源项目孵化制度。
+Datawhale 支持学习者从 idea 到项目上线的全过程。
+Datawhale 社区已经孵化多个高质量 AI 开源项目。
+Datawhale 成功孵化的项目包括工具库、Demo、课程与应用系统。
+Datawhale 社区贡献者参与了十多个高质量 AI 方向的核心开源项目。
+Datawhale 项目累计在 GitHub 上获得超过两万颗星。
+Datawhale 社区不断探索“开源协作 + AI 学习”的新范式。
+Datawhale 的长期愿景是打造全球最大规模的开源学习社区。
+Datawhale 希望让 AI 学习更加公平、透明和可获得。
+Datawhale 致力于构建一个让学习者持续成长的生态系统。
+Datawhale 鼓励学习者从学习者成长为贡献者，再成长为组织者。
+Datawhale 相信协作是新时代学习的核心能力之一。
+Datawhale 通过协作机制发掘具备潜力的学习者。
+Datawhale 致力于推动整个 AI 社区的知识共建与技术传播。
+Datawhale 希望让更多人体验开源带来的职业成长与个人成就感。

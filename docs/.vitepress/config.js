@@ -81,6 +81,12 @@ export default defineConfig({
             { text: 'LSH算法', link: '/base/chapter5/LSH算法' },
           ]
         },
+        {
+          text: 'Chapter 6 · 实现你自己的向量数据库',
+          items: [
+            { text: '实现你自己的向量数据库', link: '/base/chapter6/实现你自己的向量数据库' },
+          ]
+        },
       ],
 
       '/Faiss/': [
