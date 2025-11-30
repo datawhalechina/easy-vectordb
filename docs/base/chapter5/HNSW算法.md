@@ -633,7 +633,9 @@ def demonstrate_hnsw_performance():
 hnsw, data, query, hnsw_results, bf_results, search_path = demonstrate_hnsw_performance()
 
 # 2. 调用可视化
-visualize_hnsw(hnsw, query, hnsw_results, search_path)```
+visualize_hnsw(hnsw, query, hnsw_results, search_path)
+
+```
 
 输出结果
 
@@ -750,4 +752,5 @@ param_results = analyze_hnsw_parameters()
 2. **组合2 (`M=10, ef_construction=50`)：性能的“甜蜜点”**
    - 此组合在**构建时间、搜索速度和召回率**之间取得了极佳的平衡。它将 `M`和 `ef_construction`提升到合理水平，成功构建出一个高质量的图结构，实现了100%的召回率。其搜索速度依然非常快，仅比组合1慢约0.00045秒，这个时间差对于大多数应用来说微不足道，却换来了结果准确性的质的飞跃。
 3. **组合3 (`M=15, ef_construction=100`)：精度优先，资源消耗增大**
+
    - 进一步增大参数带来了**边际效益递减**。召回率维持在100%，但构建时间和搜索时间都有显著增加。这是因为算法需要处理更多的连接和候选点。这个组合适用于对**召回率有极致要求**且可以接受稍长延迟的场景
