@@ -1,12 +1,14 @@
 <div align="center">
 
-# EasyVectorDB
-
-**向量数据库学习与实战指南**
+# Easy-vectorDB
 
 [![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
 
-[📖 在线阅读](https://datawhalechina.github.io/easy-vectordb/)
+[中文](./README.md) | [English](./README_en.md)
+
+[📚 在线阅读地址](https://datawhalechina.github.io/easy-vectordb/)
+
+📚 从零开始的向量数据库原理与实践教程
 
 </div>
 
@@ -32,7 +34,6 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 
 项目共分为 **基础学习篇** 与 **实践篇** 两个部分，对应导航栏配置如下：
 
----
 
 ### 🏁 一、基础学习篇（Base）
 
@@ -51,7 +52,6 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 |               | [LSH 算法](./doc/base/chapter5/LSH算法.md) | 算法原理/代码实战 |
 | **Chapter 6** | [实现你自己的向量数据库](./doc/base/chapter6/实现你自己的向量数据库.md) | 代码实战|
 
----
 
 ### 🔧 二、Faiss 教程（Faiss）
 
@@ -67,9 +67,10 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 |                | [总结](./docs/Faiss/总结.md) | 经验总结 / 性能优化技巧 |
 | ⏳ **持续更新中...** |  |  |
 
+> 📘 本项目旨在让你从 **原理 → 实践 → 部署** 全流程掌握向量数据库核心知识与实战能力。
+
 ---
 
-> 📘 本项目旨在让你从 **原理 → 实践 → 部署** 全流程掌握向量数据库核心知识与实战能力。
 
 ## 📄 补充资源
 
@@ -87,11 +88,12 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 - [牧小熊-项目负责人](https://github.com/muxiaoxiong) (Datawhale成员-武汉社区负责人)
 - [刘晓-项目贡献者](https://github.com/Halukisan)(Datawhale鲸英助教)
 
-### 所有贡献者
+### 特别感谢
 
-感谢所有为本项目做出贡献的开发者们！
+- 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
+- 感谢所有为本项目做出贡献的开发者们 ❤️
 
-<div align="center">
+<div align="left">
 
 <a href="https://github.com/datawhalechina/easy-vectordb/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vectordb" />
@@ -99,9 +101,6 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 
 </div>
 
-### 特别感谢
-- 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
-- 感谢所有为本项目做出贡献的开发者们 ❤️
 
 ## 关注我们
 
@@ -110,23 +109,6 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 <img src="https://raw.githubusercontent.com/datawhalechina/pumpkin-book/master/res/qrcode.jpeg" width = "180" height = "180">
 </div>
 
----
-
-## 📜 开源协议
-
-<div align="center">
-
-<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">
-  <img alt="知识共享许可协议" style="border-width:0" src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey" />
-</a>
-
-本作品采用 [知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议](http://creativecommons.org/licenses/by-nc-sa/4.0/) 进行许可。
-
-**Made with ❤️ by Datawhale**
-
-</div>
-
----
 
 ## 📊 Star History
 
@@ -138,7 +120,20 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
 </picture>
 
-
+---
 </div>
 
+## 📜 开源协议
+
+<div align="left">
+
+<a rel="license" href="http://creativecommons.org/licenses/by-nc-sa/4.0/">
+  <img alt="知识共享许可协议" style="border-width:0" src="https://img.shields.io/badge/license-CC%20BY--NC--SA%204.0-lightgrey" />
+</a>
+
+本作品采用 [知识共享署名-非商业性使用-相同方式共享 4.0 国际许可协议](http://creativecommons.org/licenses/by-nc-sa/4.0/) 进行许可。
+
+**Made with ❤️ by Datawhale**
+
+</div>
 
