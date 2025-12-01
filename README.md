@@ -3,6 +3,7 @@
     <h1>Easy-vectorDB</h1>
 </div>
 <div align="center">
+
 [![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
 
 [中文](./README.md) | [English](./README_en.md)
@@ -133,6 +134,7 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
