@@ -1,3 +1,7 @@
+<div align='center'>
+    <img src="./logo.jpeg" alt="alt text" width="100%">
+    <h1>Easy-vectorDB</h1>
+</div>
 <div align="center">
 
 # Easy-vectorDB
@@ -132,4 +136,5 @@ EasyVectorDB 是一个全面的向量数据库学习与实战指南，涵盖了�
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
