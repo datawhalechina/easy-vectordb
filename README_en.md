@@ -43,11 +43,7 @@ The project is divided into **Fundamentals** and **Practice**, aligned with the 
 | **Chapter 2** | [Why Vector Databases](./doc/base/chapter2/为什么需要向量数据库.md) | Bottlenecks / Similarity Search |
 | **Chapter 3** | [Embedding Basics](./doc/base/chapter3/向量嵌入算法基础.md) | Word2Vec / Transformer Embeddings |
 | **Chapter 4** | [Vector Search Basics](./doc/base/chapter4/向量搜索算法基础.md) | Brute-force / Similarity Metrics |
-| **Chapter 5** | [ANN Algorithms](./doc/base/chapter5/ANN搜索算法.md) | ANN / IVF / PQ / HNSW |
-|                | [IVF Algorithm](./doc/base/chapter5/IVF算法.md) | Principle / Code |
-|                | [HNSW Algorithm](./doc/base/chapter5/HNSW算法.md) | Principle / Code |
-|                | [PQ Algorithm](./doc/base/chapter5/PQ算法.md) | Principle / Code |
-|                | [LSH Algorithm](./doc/base/chapter5/LSH算法.md) | Principle / Code |
+| **Chapter 5** | [ANN Algorithms](./doc/base/chapter5/ANN搜索算法.md) | ANN -> IVF / PQ / HNSW / LSH  |
 | **Chapter 6** | [Build Your Own Vector DB](./doc/base/chapter6/实现你自己的向量数据库.md) | Code Implementation |
 
 ---
