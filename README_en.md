@@ -124,9 +124,12 @@ If you’d like to launch a new Datawhale project, please refer to the
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date&theme=dark" />
-  <source media="(prefers-color-scheme: light)" srcset="https://api/star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
-  <img alt="Star History Chart" src="https://api/star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
 </picture>
+
+---
+</div>
 
 ---
 
