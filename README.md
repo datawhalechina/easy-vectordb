@@ -1,5 +1,5 @@
 <div align='center'>
-    <img src="./logo.jpeg" alt="alt text" width="100%">
+    <img src="./logo.png" alt="alt text" width="100%">
     <h1>Easy-vectorDB</h1>
 </div>
 <div align="center">
@@ -128,6 +128,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
