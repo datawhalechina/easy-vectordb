@@ -49,15 +49,20 @@
 
 > ⚙️ 从零构建高性能向量检索系统，掌握 Faiss 的索引机制与加速策略。
 
-| 章节 | 内容 | 关键词 |
+| 章节 | 内容 | 完成状态 |
 |------|------|--------|
-| **Chapter 1** | [Faiss 引言](./docs/Faiss/引言.md) | 向量检索基础 / Faiss 概览 |
-|                | [基础使用](./docs/Faiss/基础使用.md) | 索引构建 / 向量检索流程 |
-| **Chapter 2** | [索引](./docs/Faiss/索引.md) | CPU 索引结构 / IVF / Flat |
-|                | [GPU 加速](./docs/Faiss/GPU加速.md) | GPU 索引 / 性能对比 / 批量检索 |
-| **Chapter 3** | [问答实战](./docs/Faiss/问答实战.md) | 基于 Faiss 的问答检索系统构建 |
-|                | [总结](./docs/Faiss/总结.md) | 经验总结 / 性能优化技巧 |
-| ⏳ **持续更新中...** |  |  |
+| **Chapter 1** | [FAISS 入门与环境搭建](./doc/faiss/chapter1/FAISS入门与环境搭建.md)| ✅|
+| **Chapter 2** | FAISS 核心索引实战| 🚧|
+| **Chapter 3** | FAISS 核心功能进阶| 🚧|
+| **Chapter 4** | FAISS 性能调优与评估| 🚧|
+| **Chapter 5** | FAISS 工程化落地实战| 🚧|
+
+⏳ **持续更新中...** 
+
+### 🔧 三、Milvus 教程（Milvus）
+
+**内容待系统化完善...**
+
 
 > 📘 本项目旨在让你从 **原理 → 实践 → 部署** 全流程掌握向量数据库核心知识与实战能力。
 

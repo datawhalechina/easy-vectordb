@@ -93,8 +93,7 @@ export default defineConfig({
         {
           text: 'Chapter 1 · 基础概念',
           items: [
-            { text: 'Faiss介绍', link: '/Faiss/chapter1/引言' },
-            { text: '基础使用', link: '/Faiss/chapter1/基础使用' }
+            { text: 'FAISS 入门与环境搭建', link: '/Faiss/chapter1/FAISS入门与环境搭建' }
           ]
         },
         {
