@@ -91,16 +91,15 @@ export default defineConfig({
 
       '/Faiss/': [
         {
-          text: 'Chapter 1 · 基础概念',
+          text: 'Chapter 1 · FAISS入门与环境搭建',
           items: [
             { text: 'FAISS 入门与环境搭建', link: '/Faiss/chapter1/FAISS入门与环境搭建' }
           ]
         },
         {
-          text: 'Chapter 2 · 索引与GPU加速',
+          text: 'Chapter 2 · FAISS 数据结构与索引类型',
           items: [
-            { text: '基础索引原理', link: '/Faiss/chapter2/索引' },
-            { text: 'GPU 加速', link: '/Faiss/chapter2/GPU加速' },
+            { text: 'IndexFlat', link: '/Faiss/chapter2/IndexFlat' }
           ]
         },
         {
