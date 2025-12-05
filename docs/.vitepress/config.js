@@ -99,7 +99,7 @@ export default defineConfig({
         {
           text: 'Chapter 2 · FAISS数据结构与索引类型',
           items: [
-            { text: 'FAISS数据结构与索引类型', link: '/Faiss/chapter2/FAISS数据结构与索引类型' }
+            { text: 'FAISS数据结构与索引类型', link: '/Faiss/chapter2/FAISS数据结构与索引' }
           ]
         },
         {
