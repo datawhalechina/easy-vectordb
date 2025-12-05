@@ -97,7 +97,7 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Chapter 2 · FAISS 数据结构与索引类型',
+          text: 'Chapter 2 · FAISS数据结构与索引类型',
           items: [
             { text: 'IndexFlat', link: '/Faiss/chapter2/IndexFlat' }
           ]
