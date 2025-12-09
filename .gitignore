@@ -165,4 +165,6 @@ out/
 # yarn.lock
 # pnpm-lock.yaml
 
+# other files
 /model/
+/data/sift/
