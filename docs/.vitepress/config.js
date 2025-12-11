@@ -103,10 +103,9 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Chapter 3 · 问答实战',
+          text: 'Chapter 3 · FAISS核心功能进阶',
           items: [
-            { text: '问答实战', link: '/Faiss/chapter3/问答实战' },
-            { text: '总结', link: '/Faiss/chapter3/总结' },
+            { text: 'FAISS核心功能进阶', link: '/Faiss/chapter3/FAISS核心功能进阶' }
           ]
         },
       ],
