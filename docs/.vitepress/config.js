@@ -108,6 +108,12 @@ export default defineConfig({
             { text: 'FAISS核心功能进阶', link: '/Faiss/chapter3/FAISS核心功能进阶' }
           ]
         },
+        {
+          text: 'Chapter 4 · FAISS性能调优与评估',
+          items: [
+            { text: 'FAISS性能调优与评估', link: '/Faiss/chapter4/FAISS性能调优与评估' }
+          ]
+        },
       ],
       '/Milvus/': [
         {

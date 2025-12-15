@@ -54,7 +54,7 @@
 | **Chapter 1** | [FAISS 入门与环境搭建](./docs/faiss/chapter1/FAISS入门与环境搭建.md)| ✅|
 | **Chapter 2** | [FAISS 核心索引实战](./docs/faiss/chapter2/FAISS数据结构与索引.md)| ✅|
 | **Chapter 3** | [FAISS 核心功能进阶](./docs/faiss/chapter3/FAISS核心功能进阶.md)| ✅|
-| **Chapter 4** | FAISS 性能调优与评估| 🚧|
+| **Chapter 4** | [FAISS 性能调优与评估](./docs/faiss/chapter4/FAISS性能调优与评估.md)| ✅|
 | **Chapter 5** | FAISS 工程化落地实战| 🚧|
 
 ⏳ **持续更新中...** 
