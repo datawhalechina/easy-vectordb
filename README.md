@@ -81,6 +81,7 @@
 - 📚 [Datawhale社区介绍](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
 - 🌐 [在线文档站点](https://datawhalechina.github.io/easy-vectordb/)
 - 💻 [项目源码](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+- 🚩[2025 全国大学生计算机系统能力大赛——第2届PolarDB数据库创新设计赛](https://tianchi.aliyun.com/competition/entrance/532409)
 
 ## 🤝 参与贡献
 
@@ -140,6 +141,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
