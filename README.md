@@ -55,9 +55,7 @@
 | **Chapter 2** | [FAISS 核心索引实战](./docs/faiss/chapter2/FAISS数据结构与索引.md)| ✅|
 | **Chapter 3** | [FAISS 核心功能进阶](./docs/faiss/chapter3/FAISS核心功能进阶.md)| ✅|
 | **Chapter 4** | [FAISS 性能调优与评估](./docs/faiss/chapter4/FAISS性能调优与评估.md)| ✅|
-| **Chapter 5** | FAISS 工程化落地实战| 🚧|
-
-⏳ **持续更新中...** 
+| **Chapter 5** | [FAISS 工程化落地实战](./docs/faiss/chapter5/FAISS工程化落地实战.md)| ✅|
 
 ### 🔧 三、Milvus 教程（Milvus）
 

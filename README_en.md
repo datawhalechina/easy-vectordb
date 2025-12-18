@@ -1,99 +1,110 @@
+<div align='center'>
+    <img src="./logo.png" alt="alt text" width="100%">
+    <h1>Easy-vectorDB</h1>
+</div>
 <div align="center">
 
-# Easy-vectorDB
+[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues)
+[![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
 
-[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
+[中文](./README.md) | [English](./README_en.md)
 
 [📚 Online Documentation](https://datawhalechina.github.io/easy-vectordb/)
 
-📚 A full-stack tutorial on vector database principles and hands-on practice.
+📚 A From-Scratch Tutorial on Vector Database Principles and Practice
 
 </div>
 
 ---
 
-## 🌟 Project Overview
+## 🧭 Project Overview
 
-**EasyVectorDB** is a comprehensive learning and practical guide for vector databases.  
-It covers the entire knowledge system—from fundamental concepts to production-level deployment.  
-🚀 Master Milvus, Faiss, and Annoy through both theory and hands-on examples.
+**EasyVectorDB** is a **systematic learning project on vector databases** designed for developers and researchers.  
+The project covers the entire workflow from fundamental concepts and algorithmic principles to production-level deployment, with a focus on the following three aspects:
 
-## 🧭 Introduction
-
-EasyVectorDB is designed for developers and researchers who want to systematically understand vector databases.  
-The project includes:
-
-- 🧩 **Theoretical foundations**: Vector DB architecture, embeddings, and search mechanisms  
-- ⚙️ **Hands-on tutorials**: Milvus / Faiss / Annoy usage, optimization, and deployment  
-- 💡 **Practical projects**: RAG systems, embedding search, clustering visualization, etc.  
+- 🧩 **Theory Fundamentals**: Understand the principles, architectures, and indexing mechanisms of vector databases  
+- ⚙️ **Hands-on Practice**: Master the usage and optimization of Milvus / Faiss / Annoy  
+- 💡 **Project Cases**: Build complete projects from scratch, such as RAG systems, embedding-based retrieval, and clustering visualization  
 
 ---
 
 ## 📖 Content Navigation
 
-The project is divided into **Fundamentals** and **Practice**, aligned with the documentation structure.
+The project is divided into **Base (Fundamentals)** and **Practice** sections, corresponding to the navigation structure below:
+
+---
 
 ### 🏁 Part I: Fundamentals (Base)
 
-> 💡 Understand the principles, architecture, and search algorithms that power vector databases.
+> 💡 Learn the design philosophy, embedding algorithms, and search principles of vector databases to build a solid foundation for practice.
 
-| Chapter | Content | Keywords |
-|--------|---------|----------|
-| **Chapter 1** | [Project Introduction](./doc/base/chapter1/项目介绍.md) | Goals / Learning Path |
-| **Chapter 2** | [Why Vector Databases](./doc/base/chapter2/为什么需要向量数据库.md) | Bottlenecks / Similarity Search |
-| **Chapter 3** | [Embedding Basics](./doc/base/chapter3/向量嵌入算法基础.md) | Word2Vec / Transformer Embeddings |
-| **Chapter 4** | [Vector Search Basics](./doc/base/chapter4/向量搜索算法基础.md) | Brute-force / Similarity Metrics |
-| **Chapter 5** | [ANN Algorithms](./doc/base/chapter5/ANN搜索算法.md) | ANN -> IVF / PQ / HNSW / LSH  |
-| **Chapter 6** | [Build Your Own Vector DB](./doc/base/chapter6/实现你自己的向量数据库.md) | Code Implementation |
+| Chapter | Content | Keywords | Status |
+|------|------|--------|--------|
+| **Chapter 1** | [Project Introduction](./docs/base/chapter1/项目介绍.md) | Project goals / Learning path | ✅ |
+| **Chapter 2** | [Why Vector Databases Are Needed](./docs/base/chapter2/为什么需要向量数据库.md) | Retrieval bottlenecks / Similarity search | ✅ |
+| **Chapter 3** | [Vector Embedding Fundamentals](./docs/base/chapter3/向量嵌入算法基础.md) | Word2Vec / Transformer Embeddings | ✅ |
+| **Chapter 4** | [Vector Search Fundamentals](./docs/base/chapter4/向量搜索算法基础.md) | Brute-force search / Similarity metrics | ✅ |
+| **Chapter 5** | [ANN Search Algorithms](./docs/base/chapter5/ANN搜索算法.md) | IVF / PQ / HNSW / LSH (Theory & Code) | ✅ |
+| **Chapter 6** | [Build Your Own Vector Database](./docs/base/chapter6/实现你自己的向量数据库.md) | Hands-on coding | ✅ |
 
 ---
 
 ### 🔧 Part II: Faiss Tutorial (Faiss)
 
-> ⚙️ Build high-performance vector retrieval systems with Faiss.
+> ⚙️ Build high-performance vector retrieval systems from scratch and master Faiss indexing mechanisms and acceleration strategies.
 
-| Chapter | Content | Keywords |
-|--------|---------|----------|
-| **Chapter 1** | [Faiss Overview](./docs/Faiss/引言.md) | Search Basics / Faiss Intro |
-|                | [Basic Usage](./docs/Faiss/基础使用.md) | Index / Retrieval Flow |
-| **Chapter 2** | [Faiss Index](./docs/Faiss/索引.md) | CPU Indexes / IVF / Flat |
-|                | [GPU Acceleration](./docs/Faiss/GPU加速.md) | GPU Index / Benchmarking |
-| **Chapter 3** | [Q&A Demo](./docs/Faiss/问答实战.md) | QA System with Faiss |
-|                | [Summary](./docs/Faiss/总结.md) | Best Practices |
-| ⏳ **More Coming Soon...** |  |  |
+| Chapter | Content | Status |
+|------|------|--------|
+| **Chapter 1** | [FAISS Introduction & Environment Setup](./docs/faiss/chapter1/FAISS入门与环境搭建.md) | ✅ |
+| **Chapter 2** | [FAISS Core Indexing in Practice](./docs/faiss/chapter2/FAISS数据结构与索引.md) | ✅ |
+| **Chapter 3** | [Advanced FAISS Features](./docs/faiss/chapter3/FAISS核心功能进阶.md) | ✅ |
+| **Chapter 4** | [FAISS Performance Tuning & Evaluation](./docs/faiss/chapter4/FAISS性能调优与评估.md) | ✅ |
+| **Chapter 5** | [FAISS Engineering & Production Practice](./docs/faiss/chapter5/FAISS工程化落地实战.md) | ✅ |
 
-> 📘 This project helps you learn vector DB technology from **principles → practice → deployment**.
+---
+
+### 🔧 Part III: Milvus Tutorial (Milvus)
+
+| Chapter | Content | Status |
+|------|------|--------|
+| **Chapter 1** | Introduction to Milvus: Concepts & Architecture | 🚧 |
+| **Chapter 2** | Milvus Core Concepts: Data Model & Index System | 🚧 |
+| **Chapter 3** | Milvus Basic Operations: PyMilvus Core API Practice | 🚧 |
+| **Chapter 4** | Comprehensive Practice: AI Application Development with Milvus | 🚧 |
+| **Chapter 5** | Milvus Ecosystem & Advanced Learning | 🚧 |
+
+⏳ **Continuously updating...**
+
+> 📘 This project aims to help you master vector databases end-to-end — from **principles → practice → deployment**.
 
 ---
 
 ## 📄 Additional Resources
 
-- 📚 [Datawhale Community Intro](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
-- 🌐 [Documentation Website](https://datawhalechina.github.io/easy-vectordb/)
-- 💻 [Source Code](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+- 📚 [Introduction to the Datawhale Community](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
+- 🌐 [Online Documentation Site](https://datawhalechina.github.io/easy-vectordb/)
+- 💻 [Project Source Code](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+- 🚩 [2025 National College Student Computer System Capability Competition – 2nd PolarDB Database Innovation Design Contest](https://tianchi.aliyun.com/competition/entrance/532409)
 
 ---
 
 ## 🤝 Contributing
 
-- Found a bug? Submit an Issue.  
-- Want to contribute? Open a Pull Request.  
-- No response? Contact the [Operations Team](https://github.com/datawhalechina/DOPMC/blob/main/OP.md).
+- If you find any issues, feel free to open an Issue. If there is no response, you can contact the [Maintainer Team](https://github.com/datawhalechina/DOPMC/blob/main/OP.md) for follow-up.
+- If you would like to contribute to this project, please submit a Pull Request. If there is no response, you can also contact the [Maintainer Team](https://github.com/datawhalechina/DOPMC/blob/main/OP.md).
+- If you are interested in Datawhale and want to initiate a new open-source project, please follow the [Datawhale Open Source Project Guide](https://github.com/datawhalechina/DOPMC/blob/main/GUIDE.md).
 
-If you’d like to launch a new Datawhale project, please refer to the  
-👉 [Datawhale Open Source Project Guide](https://github.com/datawhalechina/DOPMC/blob/main/GUIDE.md)
+### Core Contributors
 
----
-
-## ✨ Core Contributors
-
-- [Muxiaoxiong — Project Lead](https://github.com/muxiaoxiong) (Datawhale Member, Wuhan City Leader)  
-- [Liu Xiao — Contributor](https://github.com/Halukisan) (Datawhale Teaching Assistant)
+- [Muxiaoxiong – Project Lead](https://github.com/muxiaoxiong) (Datawhale Member, Wuhan Community Lead)
+- [Liu Xiao – Project Contributor](https://github.com/Halukisan) (Datawhale Teaching Assistant)
 
 ### Special Thanks
 
-- Thanks to [@Sm1les](https://github.com/Sm1les) for support & contributions  
-- Thanks to all developers contributing to this project ❤️
+- Thanks to [@Sm1les](https://github.com/Sm1les) for their support and help on this project
+- Thanks to all contributors who have supported this project ❤️
 
 <div align="left">
 
@@ -107,8 +118,8 @@ If you’d like to launch a new Datawhale project, please refer to the
 
 ## Follow Us
 
-<div align="center">
-<p>Scan to follow our official WeChat account: Datawhale</p>
+<div align=center>
+<p>Scan the QR code below to follow the Datawhale official account</p>
 <img src="https://raw.githubusercontent.com/datawhalechina/pumpkin-book/master/res/qrcode.jpeg" width="180" height="180">
 </div>
 
@@ -124,12 +135,9 @@ If you’d like to launch a new Datawhale project, please refer to the
   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
 </picture>
 
----
 </div>
 
 ---
-
-</div>
 
 ## 📜 License
 
@@ -140,7 +148,7 @@ If you’d like to launch a new Datawhale project, please refer to the
 </a>
 
 This work is licensed under the  
-[Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-nc-sa/4.0/).
+[Creative Commons Attribution–NonCommercial–ShareAlike 4.0 International License](http://creativecommons.org/licenses/by-nc-sa/4.0/).
 
 **Made with ❤️ by Datawhale**
 

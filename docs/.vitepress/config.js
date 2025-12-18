@@ -114,6 +114,12 @@ export default defineConfig({
             { text: 'FAISS性能调优与评估', link: '/Faiss/chapter4/FAISS性能调优与评估' }
           ]
         },
+        {
+          text: 'Chapter 5 · FAISS工程化落地实战',
+          items: [
+            { text: 'FAISS工程化落地实战', link: '/Faiss/chapter5/FAISS工程化落地实战' }
+          ]
+        },
       ],
       '/Milvus/': [
         {
