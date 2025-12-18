@@ -39,8 +39,9 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '向量基础', link: '/base/chapter1/项目介绍' },
-      { text: 'Faiss 教程', link: '/Faiss/chapter1/引言.md' },
+      { text: 'Faiss 教程', link: '/Faiss/chapter1/FAISS入门与环境搭建' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
+      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy 介绍' },
       { text: '实战项目', link: '/projects/' }
     ],
 
@@ -77,30 +78,40 @@ export default defineConfig({
             { text: 'IVF算法', link: '/base/chapter5/IVF算法' },
             { text: 'HNSW算法', link: '/base/chapter5/HNSW算法' },
             { text: 'PQ算法', link: '/base/chapter5/PQ算法' },
+            { text: 'LSH算法', link: '/base/chapter5/LSH算法' },
+          ]
+        },
+        {
+          text: 'Chapter 6 · 实现你自己的向量数据库',
+          items: [
+            { text: '实现你自己的向量数据库', link: '/base/chapter6/实现你自己的向量数据库' },
           ]
         },
       ],
-      
+
       '/Faiss/': [
         {
-          text: 'Chapter 1 · 基础概念',
+          text: 'Chapter 1 · FAISS入门与环境搭建',
           items: [
-            { text: 'Faiss介绍', link: '/Faiss/chapter1/引言' },
-            { text: '基础使用', link: '/Faiss/chapter1/基础使用' }
+            { text: 'FAISS 入门与环境搭建', link: '/Faiss/chapter1/FAISS入门与环境搭建' }
           ]
         },
         {
-          text: 'Chapter 2 · 索引与GPU加速',
+          text: 'Chapter 2 · FAISS数据结构与索引类型',
           items: [
-            { text: '基础索引原理', link: '/Faiss/chapter2/索引' },
-            { text: 'GPU 加速', link: '/Faiss/chapter2/GPU加速' },
+            { text: 'FAISS数据结构与索引类型', link: '/Faiss/chapter2/FAISS数据结构与索引' }
           ]
         },
         {
-          text: 'Chapter 3 · 问答实战',
+          text: 'Chapter 3 · FAISS核心功能进阶',
           items: [
-            { text: '问答实战', link: '/Faiss/chapter3/问答实战' },
-            { text: '总结', link: '/Faiss/chapter3/总结' },
+            { text: 'FAISS核心功能进阶', link: '/Faiss/chapter3/FAISS核心功能进阶' }
+          ]
+        },
+        {
+          text: 'Chapter 4 · FAISS性能调优与评估',
+          items: [
+            { text: 'FAISS性能调优与评估', link: '/Faiss/chapter4/FAISS性能调优与评估' }
           ]
         },
       ],
@@ -139,6 +150,20 @@ export default defineConfig({
             { text: 'Meta-Chunking：一种新的文本切分策略', link: '/Milvus/chapter4/Meta-Chunking：一种新的文本切分策略' }
           ]
         }
+      ],
+      '/Annoy/': [
+        {
+          text: 'Chapter 1 · 基础概念',
+          items: [
+            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy 介绍' },
+          ]
+        },
+        {
+          text: 'Chapter 2 · 部署与基础使用',
+          items: [
+            { text: 'Annoy 部署与基础使用', link: '/Annoy/chapter2/Annoy 部署与基础使用' },
+          ]
+        },
       ],
       '/projects/': [
         {

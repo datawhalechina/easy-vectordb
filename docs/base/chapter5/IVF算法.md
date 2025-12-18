@@ -46,7 +46,7 @@ from sklearn.metrics.pairwise import cosine_similarity, euclidean_distances
 import matplotlib.pyplot as plt
 import time
 from collections import defaultdict
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
+plt.rcParams['font.sans-serif'] = ['Hiragino Sans GB', 'STHeiti', 'PingFang SC', 'Microsoft YaHei', 'Arial Unicode MS', 'DejaVu Sans']
 plt.rcParams['axes.unicode_minus'] = False
 
 # 设置随机种子以保证结果可重现
@@ -257,29 +257,37 @@ ivf, data, query, ivf_results, bf_results = demonstrate_ivf()
 ```
 
 结果输出：
-```
+```text
 ============================================================
 IVF算法演示
 ============================================================
-生成300个二维数据点
-开始训练IVF索引...
-训练完成，得到3个簇
-倒排索引构建完成:
-  簇2: 100个向量
-  簇0: 100个向量
-  簇1: 100个向量
+生成: 50,000个二维数据点
 
-查询点: [5. 5.]
+IVF参数配置:
+聚类数量 (n_clusters): 111
+搜索簇数 (n_probe): 13
+开始训练IVF索引...
+训练完成，得到111个簇
+倒排索引构建完成「展示前5个簇」:
+  簇23: 314个向量
+  簇43: 348个向量
+  簇59: 166个向量
+  簇6: 687个向量
+  簇32: 682个向量
+
+查询点: [5 5]
 
 搜索结果对比:
-IVF搜索  - 找到5个最近邻, 耗时: 0.002092秒
-暴力搜索 - 找到5个最近邻, 耗时: 0.000437秒
+IVF搜索  - 找到10个最近邻, 耗时: 0.001200秒
+暴力搜索 - 找到10个最近邻, 耗时: 0.004839秒
 
-速度提升: 0.21倍
+速度提升: 4.03倍
+搜索比例: 10.0% (5,011/50,000)
 
-最近邻索引 (IVF): [258, 297, 172, 244, 116]
-最近邻索引 (暴力): [258 297 172 244 116]
-召回率: 100.00% (5/5)
+最近邻索引 (IVF): [26738, 18695, 49731, 35576, 47988, 31669, 44706, 41498, 35176, 44646]
+最近邻索引 (暴力): [26738 18695 49731 35576 47988 31669 44706 41498 35176 44646]
+召回率: 100.0% (10/10)
+
 ```
 
 **📈 第五步：可视化结果**
@@ -287,84 +295,181 @@ IVF搜索  - 找到5个最近邻, 耗时: 0.002092秒
 
 ```python 
 def visualize_ivf(ivf, data, query, ivf_results, bf_results):
-    """可视化IVF算法过程"""
-    plt.figure(figsize=(15, 5))
+    """IVF算法可视化"""
+    plt.figure(figsize=(15, 10))
+    colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD']
     
-    # 子图1: 显示聚类结果
-    plt.subplot(1, 3, 1)
-    colors = ['red', 'blue', 'green', 'purple', 'orange']
-    
-    # 绘制每个簇的数据点
-    for cluster_id, indices in ivf.inverted_lists.items():
-        cluster_data = data[indices]
-        plt.scatter(cluster_data[:, 0], cluster_data[:, 1], 
-                   c=colors[cluster_id % len(colors)], alpha=0.6, 
-                   label=f'簇 {cluster_id}')
-    
-    # 绘制质心
-    plt.scatter(ivf.centroids[:, 0], ivf.centroids[:, 1], 
-               c='black', marker='x', s=200, linewidths=3, label='质心')
-    
-    # 绘制查询点
-    plt.scatter(query[0], query[1], c='yellow', marker='*', 
-               s=300, edgecolors='black', linewidth=2, label='查询点')
-    
-    plt.title('IVF聚类结果')
-    plt.xlabel('特征 1')
-    plt.ylabel('特征 2')
-    plt.legend()
-    plt.grid(True, alpha=0.3)
-    
-    # 子图2: 显示IVF搜索结果
-    plt.subplot(1, 3, 2)
-    
-    # 绘制所有数据点
-    plt.scatter(data[:, 0], data[:, 1], c='lightgray', alpha=0.4, label='所有数据')
-    
-    # 高亮被搜索的簇
+    # 计算查询相关信息
     distances_to_centroids = euclidean_distances([query], ivf.centroids)[0]
     nearest_cluster_indices = np.argsort(distances_to_centroids)[:ivf.n_probe]
     
-    for i, cluster_idx in enumerate(nearest_cluster_indices):
-        cluster_data = data[ivf.inverted_lists[cluster_idx]]
-        plt.scatter(cluster_data[:, 0], cluster_data[:, 1], 
-                   c=colors[cluster_idx % len(colors)], alpha=0.8, 
-                   label=f'搜索簇 {cluster_idx}')
-    
-    # 绘制IVF搜索结果
-    plt.scatter(data[ivf_results, 0], data[ivf_results, 1], 
-               c='red', marker='o', s=100, edgecolors='darkred', 
-               linewidth=2, label='IVF结果')
-    
-    plt.scatter(query[0], query[1], c='yellow', marker='*', 
-               s=300, edgecolors='black', linewidth=2, label='查询点')
-    
-    plt.title(f'IVF搜索 (n_probe={ivf.n_probe})')
-    plt.xlabel('特征 1')
-    plt.legend()
+    # 1. 原始数据分布
+    plt.subplot(2, 3, 1)
+    plt.scatter(data[:, 0], data[:, 1], c='lightblue', alpha=0.6, s=20, label='数据点')
+    plt.title('1. 原始数据分布', fontweight='bold')
+    plt.legend(fontsize=8)
     plt.grid(True, alpha=0.3)
     
-    # 子图3: 显示暴力搜索结果的对比
-    plt.subplot(1, 3, 3)
-    plt.scatter(data[:, 0], data[:, 1], c='lightgray', alpha=0.4, label='所有数据')
-    plt.scatter(data[bf_results, 0], data[bf_results, 1], 
-               c='green', marker='s', s=100, edgecolors='darkgreen', 
-               linewidth=2, label='真实最近邻')
-    plt.scatter(data[ivf_results, 0], data[ivf_results, 1], 
-               c='red', marker='o', s=80, alpha=0.8, label='IVF结果')
-    plt.scatter(query[0], query[1], c='yellow', marker='*', 
-               s=300, edgecolors='black', linewidth=2, label='查询点')
+    # 2. K-means聚类
+    plt.subplot(2, 3, 2)
+    for cluster_id, indices in ivf.inverted_lists.items():
+        cluster_data = data[indices]
+        plt.scatter(cluster_data[:, 0], cluster_data[:, 1], 
+                   c=colors[cluster_id % len(colors)], alpha=0.7, s=25,
+                   label=f'簇{cluster_id}')
     
-    plt.title('搜索结果对比')
-    plt.xlabel('特征 1')
-    plt.legend()
+    plt.scatter(ivf.centroids[:, 0], ivf.centroids[:, 1], 
+               c='black', marker='X', s=100, linewidths=2, label='质心')
+    plt.title('2. K-means聚类', fontweight='bold')
+    plt.legend(fontsize=8)
+    plt.grid(True, alpha=0.3)
+    
+    # 3. 粗略搜索
+    plt.subplot(2, 3, 3)
+    
+    # 背景：显示所有数据点（淡化）
+    plt.scatter(data[:, 0], data[:, 1], c='lightgray', alpha=0.2, s=10)
+    
+    # 显示所有质心，用不同透明度区分选中和未选中
+    selected_centroids = set(nearest_cluster_indices)
+    
+    for i, centroid in enumerate(ivf.centroids):
+        if i in selected_centroids:
+            # 选中的质心：高亮显示
+            plt.scatter(centroid[0], centroid[1], c='red', marker='X', 
+                       s=120, linewidths=2, edgecolors='darkred', alpha=0.9)
+            # 显示到查询点的距离线
+            plt.plot([query[0], centroid[0]], [query[1], centroid[1]], 
+                    'r-', alpha=0.8, linewidth=2)
+            # 标注距离值
+            dist = np.linalg.norm(query - centroid)
+            mid_x, mid_y = (query[0] + centroid[0])/2, (query[1] + centroid[1])/2
+            plt.annotate(f'{dist:.1f}', (mid_x, mid_y), 
+                        xytext=(0, 10), textcoords='offset points',
+                        fontsize=8, ha='center', color='red', fontweight='bold',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8))
+        else:
+            # 未选中的质心：淡化显示
+            plt.scatter(centroid[0], centroid[1], c='gray', marker='X', 
+                       s=80, alpha=0.4, linewidths=1)
+            # 显示到查询点的距离线（虚线）
+            plt.plot([query[0], centroid[0]], [query[1], centroid[1]], 
+                    'gray', linestyle=':', alpha=0.3, linewidth=1)
+    
+    # 查询点
+    plt.scatter(query[0], query[1], c='#FFD93D', marker='*', s=200, 
+               edgecolors='black', linewidth=2, label='查询点', zorder=10)
+    
+    # 添加选择说明
+    plt.title(f'3. 粗略搜索：选择最近的{ivf.n_probe}个质心', fontweight='bold')
+    
+    # 创建图例
+    from matplotlib.lines import Line2D
+    legend_elements = [
+        Line2D([0], [0], marker='*', color='w', markerfacecolor='#FFD93D', 
+               markersize=12, markeredgecolor='black', label='查询点'),
+        Line2D([0], [0], marker='X', color='w', markerfacecolor='red', 
+               markersize=10, markeredgecolor='darkred', label='选中质心'),
+        Line2D([0], [0], marker='X', color='w', markerfacecolor='gray', 
+               markersize=8, alpha=0.6, label='未选中质心'),
+        Line2D([0], [0], color='red', linewidth=2, label='选中距离'),
+        Line2D([0], [0], color='gray', linestyle=':', alpha=0.5, label='未选中距离')
+    ]
+    plt.legend(handles=legend_elements, fontsize=7, loc='upper right')
+    plt.grid(True, alpha=0.3)
+    
+    # 4. 精细搜索
+    plt.subplot(2, 3, 4)
+    
+    # 背景：显示所有数据点（淡化）
+    plt.scatter(data[:, 0], data[:, 1], c='lightgray', alpha=0.2, s=10)
+    
+    # 显示选中的质心
+    for cluster_idx in nearest_cluster_indices:
+        plt.scatter(ivf.centroids[cluster_idx, 0], ivf.centroids[cluster_idx, 1], 
+                   c='red', marker='X', s=100, linewidths=2, edgecolors='darkred', alpha=0.8)
+    
+    # 收集并按簇显示候选向量
+    candidate_indices = []
+    cluster_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7']
+    
+    for i, cluster_idx in enumerate(nearest_cluster_indices):
+        cluster_candidates = ivf.inverted_lists[cluster_idx]
+        candidate_indices.extend(cluster_candidates)
+        
+        # 用不同颜色显示不同簇的候选向量
+        cluster_data = data[cluster_candidates]
+        plt.scatter(cluster_data[:, 0], cluster_data[:, 1], 
+                   c=cluster_colors[i % len(cluster_colors)], alpha=0.7, s=30,
+                   label=f'簇{cluster_idx}候选({len(cluster_candidates)}个)', 
+                   edgecolors='black', linewidths=0.5)
+    
+    # 查询点
+    plt.scatter(query[0], query[1], c='#FFD93D', marker='*', s=200, 
+               edgecolors='black', linewidth=2, label='查询点', zorder=10)
+    
+    plt.title(f'4. 精细搜索：收集{len(candidate_indices)}个候选向量', fontweight='bold')
+    plt.legend(fontsize=7, loc='upper right')
+    plt.grid(True, alpha=0.3)
+    
+    # 5. IVF结果
+    plt.subplot(2, 3, 5)
+    plt.scatter(data[:, 0], data[:, 1], c='lightgray', alpha=0.4, s=20)
+    plt.scatter(data[ivf_results, 0], data[ivf_results, 1], 
+               c='red', marker='o', s=60, edgecolors='darkred', 
+               linewidth=2, label='IVF结果')
+    
+    for i, idx in enumerate(ivf_results[:5]):
+        plt.annotate(f'{i+1}', (data[idx, 0], data[idx, 1]), 
+                    xytext=(3, 3), textcoords='offset points', 
+                    fontsize=8, color='white', fontweight='bold')
+    
+    plt.scatter(query[0], query[1], c='#FFD93D', marker='*', s=150, 
+               edgecolors='black', linewidth=2, label='查询点')
+    plt.title('5. IVF结果', fontweight='bold')
+    plt.legend(fontsize=8)
+    plt.grid(True, alpha=0.3)
+    
+    # 6. 结果对比
+    plt.subplot(2, 3, 6)
+    plt.scatter(data[:, 0], data[:, 1], c='lightgray', alpha=0.3, s=15)
+    plt.scatter(data[bf_results, 0], data[bf_results, 1], 
+               c='green', marker='s', s=60, edgecolors='darkgreen', 
+               linewidth=2, label='暴力搜索', alpha=0.7)
+    plt.scatter(data[ivf_results, 0], data[ivf_results, 1], 
+               c='red', marker='o', s=50, alpha=0.8, label='IVF结果')
+    plt.scatter(query[0], query[1], c='#FFD93D', marker='*', s=150, 
+               edgecolors='black', linewidth=2, label='查询点')
+    
+    # 计算召回率
+    intersection = set(ivf_results) & set(bf_results)
+    recall = len(intersection) / len(bf_results)
+    
+    plt.title(f'6. 结果对比 (召回率: {recall:.1%})', fontweight='bold')
+    plt.legend(fontsize=8)
     plt.grid(True, alpha=0.3)
     
     plt.tight_layout()
     plt.show()
+    
+    # 简化的统计信息
+    total_candidates = sum(len(ivf.inverted_lists[i]) for i in nearest_cluster_indices)
+    search_ratio = total_candidates / len(data)
+    
+    print(f"
+IVF算法统计:")
+    print(f"数据量: {len(data)} 个向量")
+    print(f"聚类数: {ivf.n_clusters} 个簇")
+    print(f"搜索簇: {ivf.n_probe} 个簇")
+    print(f"候选向量: {total_candidates} 个 ({search_ratio:.1%})")
+    print(f"召回率: {recall:.1%}")
+    
+    return recall
 
-# 运行可视化
-visualize_ivf(ivf, data, query, ivf_results, bf_results)
+
+#用少量样本进行可视化
+ivf_tiny, data_tiny, query_tiny, ivf_results_tiny, bf_results_tiny = demonstrate_ivf(data_size=100)
+recall = visualize_ivf(ivf_tiny, data_tiny, query_tiny, ivf_results_tiny, bf_results_tiny)
 ```
 结果输出：
 ![alt text](/images/IVF算法结果.png)
@@ -424,10 +529,10 @@ parameter_results = analyze_parameters()
 ```
 
 结果输出：
-```
-始训练IVF索引...
+```text
+开始训练IVF索引...
 训练完成，得到5个簇
-倒排索引构建完成:
+倒排索引构建完成「展示前5个簇」:
   簇4: 333个向量
   簇1: 100个向量
   簇2: 110个向量
@@ -435,7 +540,7 @@ parameter_results = analyze_parameters()
   簇0: 334个向量
 开始训练IVF索引...
 训练完成，得到5个簇
-倒排索引构建完成:
+倒排索引构建完成「展示前5个簇」:
   簇0: 170个向量
   簇1: 163个向量
   簇3: 333个向量
@@ -443,7 +548,7 @@ parameter_results = analyze_parameters()
   簇2: 184个向量
 开始训练IVF索引...
 训练完成，得到5个簇
-倒排索引构建完成:
+倒排索引构建完成「展示前5个簇」:
   簇0: 333个向量
   簇2: 153个向量
   簇1: 180个向量
@@ -456,6 +561,7 @@ n_probe参数影响分析
 n_probe=1: 召回率=80.0%, 耗时=0.001708秒, 搜索向量数=334
 n_probe=2: 召回率=80.0%, 耗时=0.000682秒, 搜索向量数=333
 n_probe=3: 召回率=100.0%, 耗时=0.000797秒, 搜索向量数=666
+
 ```
 
 从结论我们可以发现​速度与精度的基本权衡关系​​
