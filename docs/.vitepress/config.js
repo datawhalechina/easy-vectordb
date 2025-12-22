@@ -123,11 +123,9 @@ export default defineConfig({
       ],
       '/Milvus/': [
         {
-          text: 'Chapter 1 · 基础概念',
+          text: 'Chapter 1 · Milvus向量数据库入门',
           items: [
-            { text: 'Milvus 介绍', link: '/Milvus/chapter1/Milvus 介绍' },
-            { text: 'milvus 索引介绍', link: '/Milvus/chapter1/milvus 索引介绍' },
-            { text: '聚类算法介绍', link: '/Milvus/chapter1/聚类算法介绍' }
+            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' }
           ]
         },
         {
@@ -154,6 +152,13 @@ export default defineConfig({
             { text: 'GPU 加速检索 - 基于 FusionANNS', link: '/Milvus/chapter4/GPU加速检索-基于FusionANNS' },
             { text: '向量', link: '/Milvus/chapter4/向量/向量.md' },
             { text: 'Meta-Chunking：一种新的文本切分策略', link: '/Milvus/chapter4/Meta-Chunking：一种新的文本切分策略' }
+          ]
+        }
+        ,
+        {
+          text: 'Chapter 5 · Milvus生态与进阶学习',
+          items: [
+            { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' },
           ]
         }
       ],
