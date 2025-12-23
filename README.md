@@ -51,6 +51,9 @@
 | Chapter 3 Milvus 基础操作：PyMilvus 核心 API 实战 | 数据写入、查询、索引管理 | 🚧 |
 | Chapter 4 综合实战：基于 Milvus 的 AI 应用开发 | RAG、向量检索应用 | 🚧 |
 | Chapter 5 Milvus 生态与进阶学习 | 分布式部署、性能优化 | 🚧 |
+|  |  |  |
+| <strong>补充内容</strong> | 与向量数据库有关的内容 |  |
+|[MinerU部署教程](./docs/milvus/chapter5/MinerU部署教程.md)| pdf/扫描件 转markdown 格式 |✅  |
 
 ⏳ **持续更新中...** 
 
