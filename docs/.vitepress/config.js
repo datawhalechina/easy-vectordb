@@ -129,11 +129,9 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Chapter 2 · 基础部署',
+          text: 'Chapter 2 · Milvus核心概念',
           items: [
-            { text: 'Milvus Lite 部署与应用', link: '/Milvus/chapter2/Milvus Lite部署与应用' },
-            { text: 'Milvus Standalone 部署', link: '/Milvus/chapter2/Milvus Standalone部署' },
-            { text: 'MinerU 部署教程', link: '/Milvus/chapter2/MinerU部署教程' }
+            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念' }
           ]
         },
         {

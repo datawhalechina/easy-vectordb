@@ -61,8 +61,8 @@
 
 | 章节 | 内容 | 完成状态 |
 |------|------|--------|
-| **Chapter 1** | [Milvus向量数据库入门](./docs/milvus/chapter1/Milvus向量数据库入门.md)| ✅|
-| **Chapter 2** | Milvus核心概念：数据模型与索引体系| 🚧|
+| **Chapter 1** | [Milvus向量数据库入门：认知与架构](./docs/milvus/chapter1/Milvus向量数据库入门.md)| ✅|
+| **Chapter 2** | [Milvus核心概念：数据模型与索引体系](./docs/milvus/chapter2/Milvus核心概念.md)| ✅|
 | **Chapter 3** | Milvus基础操作：PyMilvus核心API实战| 🚧|
 | **Chapter 4** | 综合实战：基于Milvus的AI应用开发| 🚧|
 | **Chapter 5** | Milvus生态与进阶学习| 🚧|
@@ -79,6 +79,8 @@
 - 📚 [Datawhale社区介绍](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
 - 🌐 [在线文档站点](https://datawhalechina.github.io/easy-vectordb/)
 - 💻 [项目源码](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+
+【相关竞赛】
 - 🚩[2025 全国大学生计算机系统能力大赛——第2届PolarDB数据库创新设计赛](https://tianchi.aliyun.com/competition/entrance/532409)
 
 ## 🤝 参与贡献
