@@ -16,7 +16,7 @@
 5. 基于 Kubernetes 部署 Grafana + Loki 监控 Milvus 日志[k8s+loki](./k8s+loki/README.md)
 6. Meta-chunking论文代码demo[Meta-chunking](./Meta_chunking/README.md)
 7. locust测试本地Milvus性能[locust](./locustProj/README.md)
-
+8. 基于neo4j的图rag，可以通过三种向量数据库“annoy,faiss,milvus”[graph_rag](./graph_rag/README.md)
 任务流程安排：
 1. 关闭PIC
 2. 数据的向量化与插入
