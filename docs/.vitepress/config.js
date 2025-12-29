@@ -152,8 +152,8 @@ export default defineConfig({
           text: 'Chapter 5 · Milvus生态与进阶学习',
           items: [
             { text: 'Milvus 生态与进阶', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
-            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
-            { text: 'Milvus Standalone部署教程', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
+            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter5/Milvus Lite部署与应用' },
+            { text: 'Milvus Standalone部署教程', link: '/Milvus/chapter5/Milvus Standalone部署' },
             { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
           ]
         }
