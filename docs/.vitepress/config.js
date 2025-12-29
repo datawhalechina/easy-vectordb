@@ -42,6 +42,7 @@ export default defineConfig({
       { text: 'Faiss 教程', link: '/Faiss/chapter1/FAISS入门与环境搭建' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy 介绍' },
+      { text: '补充内容', link: '/more/chapter1/向量' },
       { text: '实战项目', link: '/projects/' }
     ],
 
@@ -135,28 +136,25 @@ export default defineConfig({
           ]
         },
         {
-          text: 'Chapter 3 · 实战进阶',
+          text: 'Chapter 3 · Milvus基础操作',
           items: [
-            { text: 'milvus 文本嵌入实战', link: '/Milvus/chapter3/milvus 文本嵌入实战' },
-            { text: 'milvus pdf 嵌入实战', link: '/Milvus/chapter3/milvus pdf 嵌入实战' },
-            { text: 'milvus pdf 多模型嵌入实战', link: '/Milvus/chapter3/milvus pdf 多模型嵌入实战' },
-            { text: 'milvus 数据切分总结', link: '/Milvus/chapter3/milvus 数据切分总结' }
+            { text: 'Milvus基础操作', link: '/Milvus/chapter3/PyMilvus核心API实战' }
           ]
         },
         {
-          text: 'Chapter 4 · 优化与实践',
+          text: 'Chapter 4 · 综合实战',
           items: [
-            { text: 'milvus 存储优化', link: '/Milvus/chapter4/milvus 存储优化' },
-            { text: 'GPU 加速检索 - 基于 FusionANNS', link: '/Milvus/chapter4/GPU加速检索-基于FusionANNS' },
-            { text: '向量', link: '/Milvus/chapter4/向量/向量.md' },
-            { text: 'Meta-Chunking：一种新的文本切分策略', link: '/Milvus/chapter4/Meta-Chunking：一种新的文本切分策略' }
+            { text: '综合实战', link: '/Milvus/chapter4/综合实战.md' }
           ]
         }
         ,
         {
           text: 'Chapter 5 · Milvus生态与进阶学习',
           items: [
-            { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' },
+            { text: 'Milvus 生态与进阶', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
+            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
+            { text: 'Milvus Standalone部署教程', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
+            { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
           ]
         }
       ],
@@ -171,6 +169,58 @@ export default defineConfig({
           text: 'Chapter 2 · 部署与基础使用',
           items: [
             { text: 'Annoy 部署与基础使用', link: '/Annoy/chapter2/Annoy 部署与基础使用' },
+          ]
+        },
+      ],
+      '/补充内容/': [
+        {
+          text: 'Chapter 1 · FusionANNS',
+          items: [
+            { text: 'FusionANNS架构设计', link: '/more/chapter1/GPU加速检索-基于FusionANNS' }
+          ]
+        },
+        {
+          text: 'Chapter 2 · Meta-Chunking',
+          items: [
+            { text: '全新的文本切分策略', link: '/more/chapter2/Meta-Chunking：一种新的文本切分策略' }
+          ]
+        },
+        {
+          text: 'Chapter 3 · Limit',
+          items: [
+            { text: '基于嵌入检索的理论极限', link: '/more/chapter3/Limit基于嵌入检索的理论极限' },
+            { text: '实践操作', link: '/more/chapter3/Meta_limit/code/startup' }
+          ]
+        },
+        {
+          text: 'Chapter 4 · RabitQ',
+          items: [
+            { text: 'RabitQ索引', link: '/more/chapter4/RabitQ：用于近似最近邻搜索的带理论误差界的高维向量量化' }
+          ]
+        },
+        {
+          text: 'Chapter 5 · 稀疏、稠密向量',
+          items: [
+            { text: '向量基础知识', link: '/more/chapter5/向量' }
+          ]
+        },
+        {
+          text: 'Chapter 6 · 聚类算法',
+          items: [
+            { text: '两种聚类算法', link: '/more/chapter6/聚类算法介绍' },
+            { text: 'K-means聚类详解', link: '/more/chapter6/K-mean算法详解' }
+          ]
+        },
+        {
+          text: 'Chapter 7 · Milvus 架构',
+          items: [
+            { text: 'Milvus底层架构设计详解', link: '/more/chapter7/Milvus底层架构详解' }
+          ]
+        },
+        {
+          text: 'Chapter 8 · Milvus 索引',
+          items: [
+            { text: 'Milvus 索引详解', link: '/more/chapter8/Milvus索引详解' }
           ]
         },
       ],

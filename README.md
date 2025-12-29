@@ -53,8 +53,18 @@
 | Chapter 5 Milvus 生态与进阶学习 | 分布式部署、性能优化 | 🚧 |
 |  |  |  |
 | <strong>补充内容</strong> | 与向量数据库有关的内容 |  |
-|[MinerU部署教程](./docs/milvus/chapter5/MinerU部署教程.md)| pdf/扫描件 转markdown 格式 |✅  |
+| [MinerU部署教程](./docs/milvus/chapter5/MinerU部署教程.md)| pdf/扫描件 转markdown 格式 |✅  |
+| [向量基础知识](./docs/more/chapter5/向量.md) | 向量基础概念与数学原理 | ✅ |
+| [FusionANNS架构设计](./docs/more/chapter1/GPU加速检索-基于FusionANNS.md) | GPU加速检索系统架构 | ✅ |
+| [Meta-Chunking策略](./docs/more/chapter2/Meta-Chunking：一种新的文本切分策略.md) | 智能文本切分算法 | ✅ |
+| [检索理论极限](./docs/more/chapter3/Limit基于嵌入检索的理论极限.md) | 向量检索性能边界分析 | ✅ |
+| [RabitQ索引技术](./docs/more/chapter4/RabitQ：用于近似最近邻搜索的带理论误差界的高维向量量化.md) | 高维向量量化方法 | ✅ |
+| [聚类算法](./docs/more/chapter6/聚类算法介绍.md) | 聚类算法介绍 | ✅ |
+| [Milvus底层架构设计](./docs/more/chapter7/Milvus底层架构详解.md) | Milvus底层架构详解 | ✅ |
+| [Milvus索引详解](./docs/more/chapter8/Milvus索引详解.md) | Milvus索引详解 | ✅ |
+或者你想要添加更多具体的文档项？可以告诉我具体要补充哪些内容。
 
+如果你是想在原来的JSON导航结构中添加，也可以告诉我具体要加在哪个位置。
 ⏳ **持续更新中...** 
 
 > 📘 本项目旨在让你从 **原理 → 实践 → 部署** 全流程掌握向量数据库核心知识与实战能力。
