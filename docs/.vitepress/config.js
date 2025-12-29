@@ -38,11 +38,11 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: '向量基础', link: '/base/chapter1/项目介绍' },
+      { text: '向量基础', link: '/base/chapter1/Milvus向量数据库入门' },
       { text: 'Faiss 教程', link: '/Faiss/chapter1/FAISS入门与环境搭建' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus 介绍' },
       { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy 介绍' },
-      { text: '补充内容', link: '/more/chapter1/向量' },
+      { text: '补充内容', link: '/more/chapter5/向量' },
       { text: '实战项目', link: '/projects/' }
     ],
 
