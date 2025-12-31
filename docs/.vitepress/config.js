@@ -126,13 +126,15 @@ export default defineConfig({
         {
           text: 'Chapter 1 · Milvus向量数据库入门',
           items: [
-            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' }
+            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' },
+            { text: 'Milvus底层架构设计详解', link: '/Milvus/chapter1/Milvus底层架构详解' }
           ]
         },
         {
           text: 'Chapter 2 · Milvus核心概念',
           items: [
-            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念' }
+            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念' },
+            { text: 'Milvus索引详解', link: '/Milvus/chapter2/Milvus索引详解' }
           ]
         },
         {
@@ -210,19 +212,7 @@ export default defineConfig({
             { text: '两种聚类算法', link: '/more/chapter6/聚类算法介绍' },
             { text: 'K-means聚类详解', link: '/more/chapter6/K-mean算法详解' }
           ]
-        },
-        {
-          text: 'Chapter 7 · Milvus 架构',
-          items: [
-            { text: 'Milvus底层架构设计详解', link: '/more/chapter7/Milvus底层架构详解' }
-          ]
-        },
-        {
-          text: 'Chapter 8 · Milvus 索引',
-          items: [
-            { text: 'Milvus 索引详解', link: '/more/chapter8/Milvus索引详解' }
-          ]
-        },
+        }
       ],
       '/projects/': [
         {
