@@ -38,7 +38,7 @@ export default defineConfig({
 
     nav: [
       { text: '首页', link: '/' },
-      { text: '向量基础', link: '/base/chapter1/Milvus向量数据库入门' },
+      { text: '向量基础', link: '/base/chapter1/项目介绍' },
       { text: 'Faiss 教程', link: '/Faiss/chapter1/FAISS入门与环境搭建' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus向量数据库入门' },
       { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy 介绍' },
@@ -126,15 +126,13 @@ export default defineConfig({
         {
           text: 'Chapter 1 · Milvus向量数据库入门',
           items: [
-            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' },
-            { text: 'Milvus底层架构设计详解', link: '/Milvus/chapter1/Milvus底层架构详解' }
+            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' }
           ]
         },
         {
           text: 'Chapter 2 · Milvus核心概念',
           items: [
-            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念' },
-            { text: 'Milvus索引详解', link: '/Milvus/chapter2/Milvus索引详解' }
+            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念' }
           ]
         },
         {
