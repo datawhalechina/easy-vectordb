@@ -1,975 +1,1323 @@
-## Milvus基础操作
+# Chapter 3: Milvus 基础操作 - PyMilvus 核心API实战
 
-Milvus 是一款开源向量数据库，适配各种规模的 AI 应用，在本指南中，将引领你在数分钟内完成 Milvus 的本地设置，并借助 Python 客户端库实现向量的生成、存储与搜索。这里运用的 Milvus Lite，是pymilvus中包含的 Python 库，可嵌入客户端应用程序。
+在向量数据库的实际应用中，掌握基础操作是构建任何应用系统的前提。本章将详细介绍 PyMilvus 的核心 API，包括数据库连接、Collection 管理、Schema 设计、数据写入、查询搜索、索引管理等关键内容。通过这些知识，你能够熟练地使用 Milvus 构建自己的向量检索应用。
 
-1. 设置向量数据库
+## 3.1 环境准备与数据库连接
 
-要创建本地的 Milvus 向量数据库，仅需实例化一个`MilvusClient`，并指定用于存储所有数据的文件名，如`"milvus_demo.db"`。
+Milvus 提供了两种部署模式：Milvus Standalone（单机版）和 Milvus Cluster（集群版）。对于开发测试和小规模应用，可以直接使用 Milvus Lite，这是一个轻量级的 Python 库，可以将数据存储在本地文件中。
 
-在 Milvus 里，需要借助 `Collections` 来存储向量及其相关元数据，可将其类比为传统 SQL 数据库中的表格。创建 `Collections` 时，能定义 `Schema` 和索引参数，以此配置向量规格，包括维度、索引类型和远距离度量等。此外，还有一些复杂概念用于优化索引，提升向量搜索性能。但就目前而言，重点关注基础知识，并尽量采用默认设置。至少，需设定 Collections 的名称和向量场的维度。例如：
+### 3.1.1 安装 PyMilvus
+
+首先需要安装 PyMilvus 客户端库：
+
+```bash
+pip install pymilvus
+```
+
+如果你的网络环境无法访问 PyPI，可以考虑使用国内镜像源：
+
+```bash
+pip install pymilvus -i https://pypi.tuna.tsinghua.edu.cn/simple
+```
+
+### 3.1.2 连接到 Milvus 服务
+
+PyMilvus 提供了 `MilvusClient` 类作为与 Milvus 交互的主要接口。根据部署方式的不同，连接方式也有所区别。
+
+**本地文件模式（Milvus Lite）**
+
+这种方式适用于快速原型开发和小规模数据场景，所有数据存储在本地文件中：
+
+```python
+from pymilvus import MilvusClient
+
+# 连接到本地数据库文件，如果文件不存在会自动创建
+client = MilvusClient("./milvus_demo.db")
+```
+
+**服务器模式**
+
+连接到运行在本地的 Milvus 服务器：
+
+```python
+client = MilvusClient(uri="http://localhost:19530")
+```
+
+如果 Milvus 服务器启用了认证功能，需要提供用户名和密码：
+
+```python
+client = MilvusClient(
+    uri="https://localhost:19530",
+    token="root:Milvus"
+)
+```
+
+连接成功后，可以通过以下命令检查服务器状态：
+
+```python
+from pymilvus import utility
+
+# 检查服务器连接状态
+print(utility.get_server_version(client))
+```
+
+## 3.2 Collection 与 Schema 设计
+
+Collection 是 Milvus 中存储和管理数据的基本容器,可以将其类比为关系数据库中的表。每个 Collection 都需要一个 Schema 来定义其结构,包括字段名称、数据类型、主键等。
+
+### 3.2.1 理解 Schema
+
+Schema 定义了 Collection 的数据结构,包括:
+
+- **字段(Field)**: 每个字段有名称、数据类型和可选的属性
+- **主键(Primary Key)**: 唯一标识每条记录的字段,支持 INT64 或 VARCHAR 类型
+- **向量字段**: 用于存储向量数据的特殊字段,需要指定维度
+- **标量字段**: 存储元数据的字段,如字符串、整数、浮点数等
+
+### 3.2.2 支持的数据类型
+
+Milvus 支持多种数据类型:
+
+#### 数值类型
+
+| 数据类型 | 说明 | 示例用途 |
+|---------|------|---------|
+| INT8 | 8位整数 | 小范围计数 |
+| INT16 | 16位整数 | 中等范围计数 |
+| INT32 | 32位整数 | 标准整数 |
+| INT64 | 64位整数 | 主键ID、大范围计数器 |
+| FLOAT | 单精度浮点数 | 价格、分数 |
+| DOUBLE | 双精度浮点数 | 高精度数值 |
+
+#### 字符串和布尔类型
+
+| 数据类型 | 说明 | 注意事项 |
+|---------|------|---------|
+| VARCHAR | 变长字符串 | 需要指定 `max_length` 参数|
+| BOOL | 布尔值 | 是/否标记 |
+
+#### 向量类型
+
+| 数据类型 | 说明 | 适用场景 |
+|---------|------|---------|
+| FLOAT_VECTOR | 32位浮点向量 | 标准嵌入向量,科学计算和机器学习 |
+| FLOAT16_VECTOR | 16位半精度浮点向量 | 深度学习和GPU计算 |
+| BFLOAT16_VECTOR | 16位Brain Floating Point向量 | 提供与Float32相同的指数范围但精度降低 |
+| INT8_VECTOR | 8位整数向量 | 量化深度学习模型(仅支持HNSW索引) |
+| BINARY_VECTOR | 二进制向量 | 高效的二进制表示 |
+| SPARSE_FLOAT_VECTOR | 稀疏浮点向量 | 稀疏数据表示 |
+
+#### 复合类型
+
+| 数据类型 | 说明 | 配置要求 |
+|---------|------|---------|
+| JSON | JSON对象 | 存储半结构化数据 |
+| ARRAY | 数组 | 需要指定 `element_type` 和 `max_capacity`|
+
+### 3.2.3 创建 Schema 示例
+
+#### Python SDK 示例
+
 ```python
 from pymilvus import MilvusClient, DataType
 
-client = MilvusClient("milvus_demo.db")  # 数据库文件路径
+client = MilvusClient(uri="http://localhost:19530")
 
-# 创建schema
+# 创建 schema
+schema = MilvusClient.create_schema(
+    auto_id=False,
+    enable_dynamic_field=True,
+)
+
+# 添加主键字段
+schema.add_field(field_name="my_id", datatype=DataType.INT64, is_primary=True)
+
+# 添加向量字段
+schema.add_field(field_name="my_vector", datatype=DataType.FLOAT_VECTOR, dim=5)
+
+# 添加标量字段
+schema.add_field(field_name="my_varchar", datatype=DataType.VARCHAR, max_length=512)
+```
+
+### 3.2.4 主键字段配置
+
+主键字段有以下特点:
+
+- **支持的数据类型**:INT64 或 VARCHAR
+- **唯一性**:每个实体必须有唯一的主键值
+- **非空性**:主键字段不能为空
+
+#### AutoID 配置
+
+Milvus 支持两种主键管理模式:
+
+**1. 自动生成 ID (AutoID)**
+
+```python
+schema.add_field(
+    field_name="id",
+    is_primary=True,
+    auto_id=True,  # Milvus 自动生成 ID
+    datatype=DataType.INT64
+)
+```
+
+使用 AutoID 时:
+- Milvus 自动为每个实体生成唯一 ID
+- 插入数据时不需要提供主键字段值
+- 适合大多数不需要手动管理 ID 的场景
+
+**2. 手动指定 ID**
+
+```python
+schema.add_field(
+    field_name="product_id",
+    is_primary=True,
+    auto_id=False,  # 手动提供 ID
+    datatype=DataType.VARCHAR,
+    max_length=100
+)
+```
+
+手动指定 ID 时:
+- 需要在插入数据时提供主键字段值
+- 适合需要与外部系统对齐的场景
+- 必须确保所有 ID 的唯一性
+
+### 3.2.5 向量字段配置
+
+向量字段需要指定维度:
+
+```python
+schema.add_field(
+    field_name="embedding",
+    datatype=DataType.FLOAT_VECTOR,
+    dim=768  # 向量维度
+)
+```
+
+**维度限制**:
+- Milvus 默认支持最多 32,768 维的向量
+- 可以通过配置 `Proxy.maxDimension` 支持更大维度
+
+### 3.2.6 动态字段
+
+启用动态字段后,可以存储未在 Schema 中定义的字段:
+
+```python
+schema = MilvusClient.create_schema(
+    auto_id=False,
+    enable_dynamic_field=True,  # 启用动态字段
+)
+```
+
+启用动态字段时:
+- Milvus 会创建一个名为 `$meta` 的保留字段
+- 未定义的字段会以键值对形式存储在动态字段中
+- 适合需要灵活存储额外元数据的场景
+
+
+
+### 3.2.2 创建 Schema
+
+创建 Schema 有两种方式：使用 `create_schema()` 方法或使用 `FieldSchema` 和 `CollectionSchema` 类。
+
+**方式一：使用 create_schema()**
+
+```python
+from pymilvus import MilvusClient, DataType
+
+client = MilvusClient("milvus_demo.db")
+
+# 创建 Schema
 schema = client.create_schema(
-    auto_id=False,  # 是否自动生成主键ID
-    enable_dynamic_field=True,  # 是否启用动态字段
+    auto_id=False,           # 手动指定ID，不自动生成
+    enable_dynamic_field=True # 启用动态字段，可以插入未预定义的字段
 )
 
 # 添加字段
-schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)  # 字段名、数据类型、是否为主键
-schema.add_field(field_name="vector", datatype=DataType.FLOAT_VECTOR, dim=128)  # 向量字段，维度为128
+schema.add_field(
+    field_name="id",
+    datatype=DataType.INT64,
+    is_primary=True
+)
 
-# 创建集合
+schema.add_field(
+    field_name="title",
+    datatype=DataType.VARCHAR,
+    max_length=256
+)
+
+schema.add_field(
+    field_name="embedding",
+    datatype=DataType.FLOAT_VECTOR,
+    dim=768  # 向量维度，要与使用的嵌入模型维度一致
+)
+
+schema.add_field(
+    field_name="price",
+    datatype=DataType.FLOAT
+)
+```
+
+**方式二：使用 CollectionSchema**
+
+```python
+from pymilvus import FieldSchema, CollectionSchema, DataType
+
+# 定义字段
+id_field = FieldSchema(
+    name="id",
+    dtype=DataType.INT64,
+    is_primary=True,
+    auto_id=False
+)
+
+title_field = FieldSchema(
+    name="title",
+    dtype=DataType.VARCHAR,
+    max_length=256
+)
+
+embedding_field = FieldSchema(
+    name="embedding",
+    dtype=DataType.FLOAT_VECTOR,
+    dim=768
+)
+
+price_field = FieldSchema(
+    name="price",
+    dtype=DataType.FLOAT
+)
+
+# 创建 Schema
+schema = CollectionSchema(
+    fields=[id_field, title_field, embedding_field, price_field],
+    description="Product collection",
+    enable_dynamic_field=True
+)
+```
+
+### 3.2.3 创建 Collection
+
+创建 Collection 需要指定集合名称、Schema 和可选的索引参数。
+
+```python
+# 基本创建方式
 client.create_collection(
-    collection_name="my_collection",  # 集合名称
-    schema=schema  # 集合的模式定义
+    collection_name="products",
+    schema=schema
 )
-```
-上述代码中，主键和向量字段采用默认名称`（"id"和"vector"）`，度量类型（向量距离定义）设为默认值（COSINE） 。
 
-2. 插入向量
+# 创建带索引的 Collection
+index_params = client.prepare_index_params()
 
-Milvus 期望数据以字典列表的形式插入，每个字典代表一条数据记录，称作一个实体。假设已有向量化后的数据vectors（为浮点数数组列表），以及对应的实体 ID 列表ids，可按如下方式插入数据：
-```python
-entities = [
-    {"id": id, "vector": vector}  # 实体字典，包含ID和向量数据
-    for id, vector in zip(ids, vectors)  # 将ID列表和向量列表组合
-]
-client.insert("my_collection", entities)  # 集合名称，要插入的实体列表
-```
-
-3. 向量搜索
-
-Milvus 可同时处理一个或多个向量搜索请求。`query_vectors`变量是一个向量列表，其中每个向量都是一个浮点数数组。
-```python
-query_vectors = embedding_fn.encode_queries(("Who is Alan Turing?",))  # 将查询文本编码为向量
-```
-执行搜索的示例代码如下：
-```python
-results = client.search(
-    collection_name="my_collection",  # 要搜索的集合名称
-    data=query_vectors,  # 查询向量数据
-    limit=5,  # 返回结果的最大数量
-    output_fields=["id"]  # 需要返回的字段列表
+index_params.add_index(
+    field_name="embedding",
+    index_type="IVF_FLAT",
+    metric_type="COSINE",
+    params={"nlist": 128}
 )
-```
-输出结果是一个结果列表，每个结果对应一个向量搜索查询。每个查询包含一个结果列表，其中每个结果涵盖实体主键、到查询向量的距离，以及指定output_fields的实体详细信息。
 
-还能在过滤指定的标量（标量指非向量数据）的同时进行向量搜索，可通过指定特定条件的过滤表达式达成。例如，假设集合中存在一个名为"category"的标量字段，要搜索"category"为"tech"的相关向量，可这样操作：
-
-```python
-results = client.search(
-    collection_name="my_collection",
-    data=query_vectors,
-    limit=5,
-    output_fields=["id"],
-    filter='category == "tech"'  # 过滤条件表达式
+client.create_collection(
+    collection_name="products",
+    schema=schema,
+    index_params=index_params
 )
 ```
 
-4. 加载现有数据
+**常用的度量类型**
 
-由于 Milvus Lite 的所有数据都存储于本地文件，即便程序终止，也能通过创建带有现有文件的MilvusClient，将所有数据加载至内存。例如，恢复"milvus_demo.db"文件中的集合，并继续写入数据：
+| 度量类型 | 说明 | 距离范围 | 适用场景 |
+|---------|------|---------|---------|
+| COSINE | 余弦相似度 | [-1, 1] | 文本向量，关注方向而非大小 |
+| L2 | 欧几里得距离 | [0, ∞) | 通用向量，关注绝对距离 |
+| IP | 内积 | [-∞, ∞) | 归一化向量，与余弦相似度相关 |
+
+ 
+
+---
+
+## 3.2.4 Collection 的基本管理
+
+### 查看 Collection 信息
+
+列出数据库中所有已创建的 Collection：
+
 ```python
-client = MilvusClient("milvus_demo.db")  # 连接到现有的数据库文件
+# 列出所有 Collection
+collections = client.list_collections()
+print(collections)
 ```
 
-## Collection
+### 重命名 Collection
 
-每个数据库中可包含多个Collection，类似于关系数据库中的表和记录。
-Collection是一个二维表格，拥有固定的列和行，每一列表示一个字段，每一行表示一个实体，
+重命名现有的 Collection。注意：为 Collection 创建的别名在此操作后保持不变：
 
-### 构建Collection
-
-构建一个Collection需要如下三个步骤：
-
-1. 需要创建Schema，Schema定义了Collection的列和字段的类型。
-2. 设置索引参数（可选）。
-3. 创建Collection
-
-首先，对于Schema，参考如下代码：
-```python
-from pymilvus import MilvusClient, DataType
-
-# 创建MilvusClient实例
-client = MilvusClient(uri="http://localhost:19530")  # Milvus服务器地址
-
-# 定义collection schema
-schema = client.create_schema(
-    auto_id=False,  # 不自动生成ID
-    enable_dynamic_fields=True,  # 启用动态字段
-)
-
-schema.add_field(field_name="id", datatype=DataType.INT64, is_primary=True)
-schema.add_field(field_name="content", datatype=DataType.VARCHAR, max_length=1024)  # 文本字段，最大长度1024
-schema.add_field(field_name="embedding", datatype=DataType.FLOAT_VECTOR, dim=1024)  # 1024维向量字段
-```
-其次创建索引，加载集合
-```python
-# 设置索引参数
-index_params = {
-    "index_type": "IVF_FLAT",  # 索引类型：倒排文件平面索引
-    "metric_type": "IP",  # 距离度量类型：内积
-    "params": {
-        "nlist": 1024  # 聚类中心数量
-    }
-}
-
-# 在vector字段上创建索引
-collection.create_index(
-    field_name="embedding",  # 要创建索引的字段名
-    index_params=index_params,  # 索引参数配置
-    timeout=None  # 超时时间，None表示无限等待
-)
-
-# 加载整个collection
-collection.load()  # 将集合加载到内存中
-
-# 或加载指定字段
-collection.load(
-    load_fields=["id", "embedding"],  # 指定要加载的字段列表
-    skip_load_dynamic_field=True  # 跳过动态字段的加载
-)
-```
-你可以使用如下代码检查你数据库中存在的Collection:
-```python
-res = client.describe_collection(
-    collection_name="quick_setup"  # 要查看的集合名称
-)
-
-print(res)  # 打印集合详细信息
-
-```
-您可以按以下方式重命名一个 Collection:
 ```python
 client.rename_collection(
-    old_name="video_push",  # 原集合名称
-    new_name="Dw_easy_vectorDB"  # 新集合名称
+    old_name="products",
+    new_name="product_catalog"
 )
 ```
-Milvus在查询时速度很快，是因为每次加载的Collection的数据会缓存在内存中。为了减少内存的消耗，您可以使用动态字段的方式加载你需要的数据进入Milvus。
+
+### 删除 Collection
+
+删除不再需要的 Collection。此操作不可逆，请谨慎使用：
 ```python
+client.drop_collection(collection_name="product_catalog")
+```
+
+### 加载与释放 Collection
+
+**为什么需要加载？**
+
+在执行相似性搜索或查询之前，必须将 Collection 加载到内存中。 加载操作会将索引文件和所有字段的原始数据加载到内存，以实现快速响应。
+
+**加载整个 Collection**
+
+对于小规模数据，可以加载整个 Collection：
+```python
+# 加载整个 Collection
 client.load_collection(
-    collection_name="Dw_easy_vectorDB",  # 要加载的集合名称
-    load_fields=["id", "embedding"],  # 指定加载的字段
-    skip_load_dynamic_field=True  # 跳过动态字段加载
-)
-```
-这样做除了能减少内存的消耗外，还有一个好处，即后续使用GPU HMB和SSD对大规模数据进行优化存储和加速检索时，id字段所占用的空间非常小，往往只有几bit，在CPU和SSD、HMB之间传输时，性能差异不大，因此可以忽略消耗。
-关于这一部分，请学习完成所有知识后，浏览[FusionANNS]()。
-
-当你使用结束此Collection后，请及时释放Collection，释放内存。
-```python
-client.release_collection(
-    collection_name="Dw_easy_vectorDB"  # 要释放的集合名称
-)
-
-res = client.get_load_state(
-    collection_name="Dw_easy_vectorDB"  # 要查询加载状态的集合名称
-)
-
-print(res)  # 打印加载状态
-```
-释放collection后，get_load_state()会返回NotLoad状态，表明collection已成功从内存中释放。
-这样做可以有效减少内存消耗，特别是在处理大规模数据时非常重要
-
-如果你的使用场景是大模型问答系统，对于用户提供的信息数据，你需要快速的向量化存储，以便提供更加高质量的回答，并且你使用的模型上下文比较短的情况下，可以通过设置Collection的TTL来实现。用户投喂的大规模文档数据，存储到Milvus中，设置TTL后，Milvus会自动删除超过指定时间的数据：
-
-* TTL以秒为单位指定
-* 删除过程是异步的，可能会有延迟
-* 过期的实体不会出现在搜索或查询结果中
-* 实际删除会在后续的数据压缩过程中进行，通常在24小时内
-  
-
-你可以使用如下代码来实现：
-```python
-#  创建新的集合
-from pymilvus import MilvusClient
-
-client.create_collection(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    schema=schema,  # 集合模式
-    properties={
-        "collection.ttl.seconds": 604800  # TTL设置，7天后自动删除数据
-    }
-)
-
-```
-```python
-#  修改已存在的集合
-client.alter_collection_properties(
-    collection_name="Dw_easy_vectorDB",  # 要修改的集合名称
-    properties={"collection.ttl.seconds": 604800}  # 新的TTL属性设置
+    collection_name="products"
 )
 ```
 
-### Collection中设置数据分区
-当你第一次创建一个Collection时，所有的数据都会被存储在一个默认分区中。然而，为了更好地管理数据，你可以创建多个分区，并将数据分布到这些分区中。分区可以让你更有效地管理和查询数据，例如，你可以根据时间戳将数据分布到不同的分区中，以便按时间范围查询数据。
+**选择性加载字段（优化内存使用）**
 
-创建分区：
-```python
-client.create_partition(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    partition_name="partition_1"  # 分区名称
-)
-```
-释放分区：
-```python
-client.release_partitions(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    partition_names=["partition_1"]  # 要释放的分区名称列表
-)
-```
-删除分区之前必须要先释放分区。
-
-删除分区：
-```python
-client.drop_partition(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    partition_name="partition_1"  # 要删除的分区名称
-)
-```
-查询分区：
-```python
-client.list_partitions(
-    collection_name="Dw_easy_vectorDB"  # 要查询分区的集合名称
-)
-```
-向分区中插入数据：
-```python
-client.insert(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    partition_name="partition_1",  # 目标分区名称
-    data=entities  # 要插入的实体数据
-)
-```
-查询分区中的数据：
-```python
-client.query(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    partition_names=["partition_1"],  # 要查询的分区名称列表
-    filter="your_filter_expression"  # 过滤条件表达式
-)
-```
-不过，对于某些问答系统，分区的设计会影响查询性能。我们很难确定对于某一个问题的答案，应该从哪个分区中查询，除此之外，我们不能保证另一个不相干的分区中是否包含了某条可能对最终回答产生重要影响的数据。所以，不建议使用分区。
-
-### 索引
-参考[Milvus 索引介绍](./milvus%20索引介绍.md)
-## 基本向量搜索
-核心概念：ANN 搜索和 kNN 搜索
-这俩是向量搜索的两种方式，先搞懂它们的区别。
-1. 什么是 “kNN 搜索”？
-全称是 “k 近邻搜索”。简单说就是：拿你的查询向量，和数据库里所有向量一个个比，找出最像的前 k 个（k 是你指定的数量，比如前 5 个）。
-
-举个例子：
-你有 1000 张动物图片，每张都转成了向量。现在你拿一张 “猫” 的图片向量去搜，kNN 会把这张向量和 1000 张的向量全比一遍，最后挑出最像的 5 张（大概率也是猫）。
-
-缺点：如果数据库里有 10 亿个向量，一个个比就太慢了，像在 10 亿本书里找一本相似的，从头翻到尾，耗时又耗力。
-
-2. 什么是 “ANN 搜索”？
-全称是 “近似近邻搜索”。它不跟所有向量比，而是用 “偷懒” 的办法：提前给向量做 “分类整理”（也就是建 “索引”），然后只在 “可能相似的小范围” 里找，最后返回差不多像的前 k 个。
-
-还是刚才的例子：
-提前把 1000 张动物图片分好类（比如 “猫科”“犬科”“鸟类”），建一个 “索引”（类似分类标签）。搜 “猫” 的向量时，ANN 会先通过索引定位到 “猫科” 分类，只在这个小分类里比，不用看犬科和鸟类，速度就快多了。
-
-特点：虽然可能不是 100% 最像的（但差距很小），但速度快太多，适合大数据量的场景（比如手机上的图片搜索、聊天机器人回答问题）。
-
-1. ANN 搜索基础
-与 kNN 的区别：kNN 需比较所有向量，耗时耗资源；ANN 依赖预建索引文件，快速定位相似向量子组，平衡性能与正确性。
-AUTOINDEX：自动分析集合数据分布，优化索引参数，降低使用门槛，适配多种度量类型。
-度量类型：不同度量方式对应不同相似度判断标准，如L2（值越小越相似）、IP（值越大越相似）等，距离范围各有不同。
-1. 主要搜索操作
-* 单向量搜索：针对单个查询向量，根据索引和度量类型返回前 K 个最相似向量。
-* 批量向量搜索：同时处理多个查询向量，Milvus 并行执行搜索并返回对应结果集，代码结构与单向量类似，仅需传入向量列表。
-* 分区中的 ANN 搜索：通过指定partition_names参数将搜索范围限制在特定分区，减少数据量以提升性能，适用于集合内有多个分区的场景。
-* 使用输出字段：默认返回主键和距离，可通过output_fields指定额外字段（如color），使结果包含更多实体信息。
-* 限制与偏移：limit控制单次返回结果数（top-K），offset用于分页查询（跳过指定数量结果），两者总和需小于 16384。
-
-
-了解完这些基本的概念后，我们可以开始编写代码来使用 Milvus 进行搜索。
-
-
-### 标量查询（Query）
-
-与向量搜索不同，标量查询主要用于根据标量字段的条件来检索数据，不涉及向量相似度计算。
-
-#### 基本查询操作
+对于大规模数据，可以只加载搜索和查询所需的字段，以减少内存占用并提升性能：
 
 ```python
-from pymilvus import MilvusClient
-
-client = MilvusClient("http://localhost:19530")  # 连接到Milvus服务器
-
-results = client.query(
-    collection_name="product_recommendation",  # 要查询的集合名称
-    filter="",  # 空表达式查询所有数据
-    output_fields=["id", "category", "brand", "price"],  # 要返回的字段列表
-    limit=100  # 限制返回100条记录
+# 只加载指定字段
+client.load_collection(
+    collection_name="products",
+    load_fields=["id", "embedding"],
+    skip_load_dynamic_field=True
 )
-
-print("所有商品数据：")
-for result in results:
-    print(f"ID: {result['id']}, 类别: {result['category']}, "
-          f"品牌: {result['brand']}, 价格: {result['price']}")
-```
-
-#### 条件查询
-
-```python
-# 2. 基于单个条件查询
-results = client.query(
-    collection_name="product_recommendation",
-    filter='category == "electronics"',  # 单个条件过滤
-    output_fields=["id", "category", "brand", "price"]
-)
-
-print("电子产品：")
-for result in results:
-    print(f"ID: {result['id']}, 品牌: {result['brand']}, 价格: {result['price']}")
-
-# 3. 基于数值范围查询
-results = client.query(
-    collection_name="product_recommendation",
-    filter='price >= 100 and price <= 1000',  # 数值范围过滤条件
-    output_fields=["id", "category", "brand", "price"]
-)
-
-print("价格在100-1000之间的商品：")
-for result in results:
-    print(f"ID: {result['id']}, 类别: {result['category']}, "
-          f"品牌: {result['brand']}, 价格: {result['price']}")
-```
-
-#### 复杂查询表达式
-
-```python
-# 4. 使用 IN 操作符
-results = client.query(
-    collection_name="product_recommendation",
-    filter='category in ["electronics", "clothing"] and price < 500',  # IN操作符和逻辑AND组合
-    output_fields=["id", "category", "brand", "price"]
-)
-
-# 5. 使用 LIKE 操作符（字符串模糊匹配）
-results = client.query(
-    collection_name="product_recommendation",
-    filter='brand like "App%"',  # LIKE操作符，%为通配符
-    output_fields=["id", "category", "brand", "price"]
-)
-
-# 6. 使用逻辑运算符组合条件
-results = client.query(
-    collection_name="product_recommendation",
-    filter='(category == "electronics" and price > 500) or (category == "clothing" and price < 100)',  # 复杂逻辑组合
-    output_fields=["id", "category", "brand", "price"]
-)
-```
-
-#### 查询结果限制和排序
-
-```python
-# 7. 限制返回结果数量
-results = client.query(
-    collection_name="product_recommendation",
-    filter='category == "electronics"',
-    output_fields=["id", "category", "brand", "price"],
-    limit=10  # 只返回前10条结果
-)
-
-# 8. 使用偏移量实现分页
-results = client.query(
-    collection_name="product_recommendation",
-    filter='category == "electronics"',
-    output_fields=["id", "category", "brand", "price"],
-    limit=10,  # 每页返回10条
-    offset=20  # 跳过前20条，实现分页
-)
-```
-
-### 数据删除操作
-
-Milvus 支持根据条件删除数据，删除操作是异步执行的,过期的实体不会立即从搜索或查询结果中消失，而是会在后续的数据压缩过程中被移除，通常在24小时内完成。
-
-```python
-# 1. 根据主键删除
-client.delete(
-    collection_name="product_recommendation",  # 目标集合名称
-    filter="id in [1, 2, 3]"  # 删除条件：ID在指定列表中的记录
-)
-
-# 2. 根据条件删除
-client.delete(
-    collection_name="product_recommendation",
-    filter='category == "discontinued" and price < 10'  # 复合删除条件
-)
-
-# 3. 删除特定品牌的所有商品
-client.delete(
-    collection_name="product_recommendation",
-    filter='brand == "OldBrand"'  # 按品牌删除
-)
-
-print("删除操作已提交，正在异步执行...")
-```
-
-### 数据更新操作（Upsert）
-
-Milvus 支持 Upsert 操作，即如果数据存在则更新，不存在则插入。
-当您执行upsert操作时，Milvus会执行以下流程：
-
-* 检查集合的主字段是否启用了AutoId
-* 如果启用了AutoId，Milvus会用自动生成的主键替换实体中的主键并插入数据
-* 如果没有启用，Milvus会使用实体携带的主键来插入数据
-* 基于upsert请求中包含的实体的主键值执行删除操作
-```python
-from pymilvus import MilvusClient
-
-client = MilvusClient(
-    uri="http://localhost:19530",  # Milvus服务器地址
-    token="root:Milvus"  # 认证令牌，格式为用户名:密码
-)
-
-
-res = client.upsert(
-    collection_name="test_collection",  # 目标集合名称
-    data=[  # 要插入或更新的数据列表
-        {
-            'id': 1,  # 实体ID
-             'vector': [  # 向量数据
-                 0.3457690490452393,
-                 -0.9401784221711342,
-                 0.9123948134344333,
-                 0.49519396415367245,
-                 -0.558567588166478
-             ]
-       },
-       {
-           'id': 2,
-           'vector': [
-               0.42349086179692356,
-               -0.533609076732849,
-               -0.8344432775467099,
-               0.675761846081416,
-               0.57094256393761057
-           ]
-       }
-   ]
-)
-
-# {'upsert_count': 2}  # 返回结果：更新插入的记录数量
-```
-### 数据统计和聚合
-
-```python
-# 1. 统计总记录数
-count_result = client.query(
-    collection_name="product_recommendation",
-    filter="",  # 空过滤条件
-    limit=10,  # 使用空filter时必须指定limit
-    output_fields=["count(*)"]  # 返回计数聚合函数结果
-)
-print(f"总记录数: {count_result[0]['count(*)']}")
-
-# 2. 按条件统计
-electronics_count = client.query(
-    collection_name="product_recommendation",
-    filter='category == "electronics"',  # 按类别过滤
-    output_fields=["count(*)"]  # 统计函数
-)
-print(f"电子产品数量: {electronics_count[0]['count(*)']}")
-
-# 3. 统计不同类别的商品数量
-categories = ["electronics", "clothing", "books"]  # 类别列表
-for category in categories:
-    count = client.query(
-        collection_name="product_recommendation",
-        filter=f'category == "{category}"',  # 动态构建过滤条件
-        output_fields=["count(*)"]
-    )
-    print(f"{category} 商品数量: {count[0]['count(*)']}")
-```
-
-## 混合搜索（Hybrid Search）
-
-在Milvus中，"混合搜索"（Hybrid Search）特指对多个向量字段进行搜索并重新排序的功能
-
-### 向量搜索 + 标量过滤
-```python
-# 1. 基本混合搜索
-from pymilvus import AnnSearchRequest
-
-# 创建多个搜索请求
-search_param_1 = {
-    "data": [query_dense_vector],  # 密集向量查询数据
-    "anns_field": "text_dense",  # 要搜索的密集向量字段名
-    "param": {"nprobe": 10},  # 搜索参数：探测的聚类数量
-    "limit": 2  # 返回结果数量限制
-}
-request_1 = AnnSearchRequest(**search_param_1)  # 创建ANN搜索请求对象
-
-search_param_2 = {
-    "data": [query_text],  # 稀疏向量查询数据
-    "anns_field": "text_sparse",  # 要搜索的稀疏向量字段名
-    "param": {"drop_ratio_search": 0.2},  # 搜索参数：丢弃比例
-    "limit": 2
-}
-request_2 = AnnSearchRequest(**search_param_2)
-
-reqs = [request_1, request_2]  # 搜索请求列表
-```
-
-### 多条件复合过滤
-
-```python
-# 2. 复杂条件组合
-results = client.search(
-    collection_name="product_recommendation",
-    data=[query_vector],  # 查询向量
-    limit=5,
-    # 复杂的过滤条件
-    filter='(category == "electronics" and brand in ["Apple", "Samsung"]) or (category == "clothing" and price < 200)',  # 多条件逻辑组合
-    output_fields=["id", "category", "brand", "price"]
-)
-
-# 3. 时间范围过滤（假设有时间字段）
-# 注意：需要在Schema中定义时间字段
-results = client.search(
-    collection_name="product_recommendation",
-    data=[query_vector],
-    limit=10,
-    filter='category == "electronics" and created_time >= "2024-01-01" and created_time <= "2024-12-31"',  # 时间范围过滤
-    output_fields=["id", "category", "brand", "price", "created_time"]  # 包含时间字段的输出
-)
-```
-
-### 地理位置搜索示例
-
-```python
-# 假设有地理位置相关的Collection
-# 4. 地理位置范围搜索
-results = client.search(
-    collection_name="location_based_products",  # 基于位置的产品集合
-    data=[query_vector],
-    limit=10,
-    # 搜索特定地理范围内的商品
-    filter='latitude >= 39.9 and latitude <= 40.1 and longitude >= 116.3 and longitude <= 116.5',  # 地理坐标范围过滤
-    output_fields=["id", "name", "latitude", "longitude", "category"]  # 包含地理位置的输出字段
-)
-```
-
-## 批量操作和事务
-
-### 批量插入优化
-
-```python
-import random
-from pymilvus import MilvusClient
-
-def batch_insert_large_data(client, collection_name, data, batch_size=1000):
-    """
-    分批插入大量数据，避免单次插入过多导致的性能问题
-    """
-    total_count = len(data)  # 总数据量
-
-    for i in range(0, total_count, batch_size):  # 按批次大小分割数据
-        batch_data = data[i:i + batch_size]  # 当前批次数据
-
-        try:
-            client.insert(
-                collection_name=collection_name,  # 目标集合
-                data=batch_data  # 当前批次的数据
-            )
-            print(f"已插入 {min(i + batch_size, total_count)}/{total_count} 条记录")
-
-        except Exception as e:
-            print(f"批次 {i//batch_size + 1} 插入失败: {e}")
-            continue  # 跳过失败的批次，继续处理下一批
-
-# 创建客户端
-client = MilvusClient(uri="http://localhost:19530")
-
-# 生成测试数据
-large_dataset = []
-for i in range(10000):  # 生成10000条测试数据
-    large_dataset.append({
-        "id": i,  # 唯一ID
-        "category": f"category_{i % 10}",  # 循环生成10个类别
-        "brand": f"brand_{i % 100}",  # 循环生成100个品牌
-        "price": 10.0 + (i % 1000),  # 价格范围10-1010
-        "embedding": [random.random() for _ in range(768)]  # 768维随机向量
-    })
-
-# 调用函数
-batch_insert_large_data(client, "product_recommendation", large_dataset)  # 执行批量插入
-```
-
-### 批量删除
-
-```python
-import random
-from pymilvus import MilvusClient
-
-def batch_delete_by_ids(client, collection_name, ids, batch_size=100):
-    """
-    分批删除大量数据 - 使用 ids 参数
-    """
-    total_count = len(ids)  # 要删除的ID总数
-
-    for i in range(0, total_count, batch_size):  # 按批次处理
-        batch_ids = ids[i:i + batch_size]  # 当前批次的ID列表
-
-        try:
-            result = client.delete(
-                collection_name=collection_name,  # 目标集合
-                ids=batch_ids  # 要删除的ID列表
-            )
-            print(f"已删除 {min(i + batch_size, total_count)}/{total_count} 条记录")
-            print(f"删除数量: {result.get('delete_count', 0)}")  # 实际删除数量
-
-        except Exception as e:
-            print(f"批次删除失败: {e}")
-            continue  # 跳过失败批次
-
-def batch_delete_by_filter(client, collection_name, filter_expr, batch_size=100):
-    """
-    使用过滤条件批量删除数据
-    """
-    try:
-        result = client.delete(
-            collection_name=collection_name,  # 目标集合
-            filter=filter_expr  # 删除条件表达式
-        )
-        print(f"根据条件删除完成，删除数量: {result.get('delete_count', 0)}")
-
-    except Exception as e:
-        print(f"条件删除失败: {e}")
-
-# 创建客户端
-client = MilvusClient(uri="http://localhost:19530")
-
-# 方式1: 通过 ID 列表删除
-ids_to_delete = list(range(1000, 2001))  # 生成ID范围1000-2000的列表
-batch_delete_by_ids(client, "product_recommendation", ids_to_delete)
-
-# 方式2: 通过过滤条件删除
-batch_delete_by_filter(
-    client,
-    "product_recommendation",
-    "id >= 1000 and id <= 2000"  # 删除条件：ID在指定范围内
-)
-```
-
-### 分区中的 ANN 搜索
-假设您在 Collections 中创建了多个分区，您可以将搜索范围缩小到特定数量的分区。在这种情况下，您可以在搜索请求中包含目标分区名称，将搜索范围限制在指定的分区内。减少搜索所涉及的分区数量可以提高搜索性能。
-
-下面的代码片段假定在你的 Collections 中有一个名为PartitionA的分区。
-```python
-query_vector = [.........]  # 查询向量数据
-res = client.search(
-    collection_name="Dw_easy_vectorDB",  # 目标集合名称
-    partition_names=["partitionA"],  # 指定要搜索的分区列表
-    data=[query_vector],  # 查询向量列表
-    limit=3,  # 返回前3个最相似结果
-)
-
-for hits in res:  # 遍历搜索结果
-    print("TopK results:")
-    for hit in hits:  # 遍历每个命中结果
-        print(hit)  # 打印结果详情
-```
-### 使用输出字段
-
-在搜索结果中，Milvus 默认包含包含 top-K 向量嵌入的实体的主字段值和相似性距离/分数。您可以在搜索请求中包含目标字段（包括向量和标量字段）的名称作为输出字段，以使搜索结果携带这些实体中其他字段的值。
-```python
-query_vector = [0.3580376395471989, -0.6023495712049978, 0.18414012509913835, -0.26286205330961354, 0.9029438446296592],  # 查询向量
-
-res = client.search(
-    collection_name="Dw_easy_vectorDB",  # 集合名称
-    data=[query_vector],  # 查询向量数据
-    limit=3,  # 返回结果数量限制
-    search_params={"metric_type": "IP"},  # 搜索参数：使用内积距离度量
-    output_fields=["color"]  # 指定返回的额外字段
-)
-
-print(res)  # 打印搜索结果
-```
-
-### 使用限制和偏移
-您可能会注意到，搜索请求中携带的参数limit 决定了搜索结果中包含的实体数量。该参数指定了单次搜索中返回实体的最大数量，通常称为top-K。
-比如搜出来 100 个相似结果，一页显示 20 个，就可以用 “limit=20”（每页 20 个）和 “offset=20”（跳过前 20 个，看第 2 页）。但注意：一次最多看 16384 个结果，太多了会变慢。
-```python
-query_vector = [.............],  # 查询向量
-
-res = client.search(
-    collection_name="Dw_easy_vectorDB",
-    data=[query_vector],
-    limit=3,  # 每页返回3条结果
-    search_params={
-        "metric_type": "IP",  # 距离度量类型
-        "offset": 10  # 偏移量：跳过前10条结果
-    }
-)
-```
-
-### 使用分区密钥
-
-分区密钥（Partition Key）是一种基于分区的搜索优化解决方案。通过指定特定标量字段作为 Partition Key，并在搜索过程中根据 Partition Key 指定过滤条件，可以将搜索范围缩小到多个分区，从而提高搜索效率。
-
-#### 什么是分区密钥？
-
-分区密钥是一种特殊的标量字段，用于自动将数据分布到不同的分区中。与手动创建分区不同，使用分区密钥可以让 Milvus 根据字段值自动管理数据分布，实现更高效的查询性能。
-
-举个例子：
-假设你有一个电商推荐系统，存储了不同类别商品的向量数据。如果将 "category"（商品类别）设置为分区密钥，Milvus 会自动将 "electronics"、"clothing"、"books" 等不同类别的商品数据分布到不同的分区中。
-
-#### 创建带分区密钥的 Collection
-
-首先，我们需要在创建 Collection 时指定分区密钥：
-
-```python
-from pymilvus import MilvusClient, CollectionSchema, FieldSchema, DataType
-
-client = MilvusClient("http://localhost:19530")
-
-fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),  # 主键字段
-    FieldSchema(name="category", dtype=DataType.VARCHAR, max_length=64, is_partition_key=True),  # 分区密钥字段
-    FieldSchema(name="brand", dtype=DataType.VARCHAR, max_length=64),  # 品牌字段，最大长度64
-    FieldSchema(name="price", dtype=DataType.FLOAT),  # 价格字段，浮点数类型
-    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)  # 768维向量字段
-]
-
-schema = CollectionSchema(
-    fields=fields,  # 字段定义列表
-    description="Product recommendation collection with partition key"  # 集合描述
-)
-
-# 创建 Collection
-client.create_collection(
-    collection_name="product_recommendation",  # 集合名称
-    schema=schema,  # 集合模式
-    num_partitions=64  # 分区数量
-)
-```
-
-#### 插入数据到分区密钥 Collection
-
-插入数据时，Milvus 会根据分区密钥字段的值自动将数据分配到相应的分区：
-
-```python
-# 准备插入数据
-entities = [
-    {
-        "id": 1,  # 实体ID
-        "category": "electronics",  # 分区密钥：电子产品
-        "brand": "Apple",  # 品牌
-        "price": 999.99,  # 价格
-        "embedding": [0.1, 0.2, 0.3, ...]  # 768维向量数据
-    },
-    {
-        "id": 2,
-        "category": "clothing",  # 分区密钥：服装
-        "brand": "Nike",
-        "price": 89.99,
-        "embedding": [0.4, 0.5, 0.6, ...]  # 768维向量
-    },
-    {
-        "id": 3,
-        "category": "electronics",  # 分区密钥：电子产品
-        "brand": "Samsung",
-        "price": 799.99,
-        "embedding": [0.7, 0.8, 0.9, ...]  # 768维向量
-    },
-    {
-        "id": 4,
-        "category": "books",  # 分区密钥：图书
-        "brand": "Penguin",
-        "price": 19.99,
-        "embedding": [0.2, 0.4, 0.6, ...]  # 768维向量
-    }
-]
-
-# 插入数据，Milvus 会根据 category 字段自动分区
-client.insert(
-    collection_name="product_recommendation",  # 目标集合
-    data=entities  # 要插入的实体数据列表
-)
-
-print("数据插入完成，已根据 category 字段自动分区")
-```
-
-#### 使用分区密钥进行高效搜索
-
-使用分区密钥进行搜索时，可以显著提升查询性能：
-
-```python
-# 1. 基于分区密钥的精确搜索
-# 只在 "electronics" 分区中搜索
-query_vector = [0.1, 0.2, 0.3, ...]  # 查询向量
-
-res = client.search(
-    collection_name="product_recommendation",
-    data=[query_vector],  # 查询向量列表
-    limit=5,  # 返回结果数量
-    # 使用分区密钥过滤，只搜索电子产品分区
-    filter='category == "electronics"',  # 分区密钥过滤条件
-    output_fields=["id", "category", "brand", "price"]  # 返回字段
-)
-
-print("电子产品搜索结果：")
-for hits in res:  # 遍历搜索结果
-    for hit in hits:  # 遍历每个命中结果
-        print(f"ID: {hit['id']}, 品牌: {hit['entity']['brand']}, "
-              f"价格: {hit['entity']['price']}, 距离: {hit['distance']}")  # 打印结果详情
-```
-
-```python
-# 2. 多分区搜索
-# 在多个分区中搜索
-res = client.search(
-    collection_name="product_recommendation",
-    data=[query_vector],
-    limit=5,
-    # 搜索多个类别
-    filter='category in ["electronics", "clothing"]',  # 多分区密钥过滤
-    output_fields=["id", "category", "brand", "price"]
-)
-
-print("电子产品和服装搜索结果：")
-for hits in res:
-    for hit in hits:
-        print(f"ID: {hit['id']}, 类别: {hit['entity']['category']}, "
-              f"品牌: {hit['entity']['brand']}, 距离: {hit['distance']}")
-```
-
-```python
-# 3. 结合其他过滤条件
-# 在特定分区中进行复合条件搜索
-res = client.search(
-    collection_name="product_recommendation",
-    data=[query_vector],
-    limit=5,
-    # 组合分区密钥和其他条件
-    filter='category == "electronics" && price < 900',  # 分区密钥+价格条件组合
-    output_fields=["id", "category", "brand", "price"]
-)
-
-print("价格低于900的电子产品：")
-for hits in res:
-    for hit in hits:
-        print(f"ID: {hit['id']}, 品牌: {hit['entity']['brand']}, "
-              f"价格: {hit['entity']['price']}, 距离: {hit['distance']}")
-```
-
-#### 查看分区信息
-
-可以查看 Collection 的分区分布情况：
-
-```python
-# 查看所有分区
-partitions = client.list_partitions(collection_name="product_recommendation")  # 获取分区列表
-print("分区列表：", partitions)
-
-# 查看 Collection 详细信息
-collection_info = client.describe_collection(collection_name="product_recommendation")  # 获取集合详细信息
-print("Collection 信息：", collection_info)
-
-# 统计不同类别的数据量
-categories = ["electronics", "clothing", "books"]  # 分区密钥值列表
-
-for category in categories:  # 遍历每个类别
-    count = client.query(
-        collection_name="product_recommendation",
-        filter=f'category == "{category}"',  # 按类别过滤
-        output_fields=["count(*)"]  # 返回计数结果
-    )
-    print(f"类别 {category} 数据量: {count}")
 ```
 
 **注意事项：**
-1. **分区密钥选择**：
-   - 选择具有良好分布特性的字段（避免数据倾斜）
-   - 常用于查询过滤的字段
-   - 基数适中的字段（不要太少也不要太多）
+- `load_fields` 中必须包含主键字段和至少一个向量字段
+- 只有 `load_fields` 中指定的字段可用于过滤条件和输出字段
+- `skip_load_dynamic_field=True` 会跳过加载动态字段（`$meta`），使其无法用于过滤和输出
 
-```txt
-# 好的分区密钥示例
-# - 用户地区：["北京", "上海", "广州", "深圳", ...]
-# - 商品类别：["electronics", "clothing", "books", ...]
-# - 时间分片：["2024-01", "2024-02", "2024-03", ...]
-```
-```txt
-# 不好的分区密钥示例
-# - 用户ID：基数太大，分区过多
-# - 性别：基数太小，分区太少
-# - 连续数值：如价格，分布不均匀
-```
+**释放 Collection**
 
-2. **查询模式**：
-   - 尽量在查询中包含分区密钥过滤条件
-   - 避免跨所有分区的全局搜索
+搜索和查询是内存密集型操作。使用完毕后应释放 Collection 以节省成本：
 
 ```python
-# 推荐的查询方式
-filter='category == "electronics"'  # 利用分区密钥
+# 释放 Collection
+client.release_collection(collection_name="products")
 
-# 不推荐的查询方式  
-filter='price > 100'  # 没有使用分区密钥，需要扫描所有分区
+# 检查加载状态
+status = client.get_load_state(collection_name="products")
+print(status)  # 输出: {'state': <LoadState: Loaded>} 或 {'state': <LoadState: NotLoad>}
+```
 
-# 基于单个分区密钥值的过滤
+`get_load_state()` 返回的状态包括：
+- `Loaded`：Collection 已加载
+- `Loading`：Collection 正在加载中
+- `NotLoad`：Collection 未加载
+
+---
+
+## 3.3 数据写入操作
+
+### 3.3.1 准备数据
+
+Milvus 接受的数据格式是字典列表，每个字典代表一条记录。在插入数据之前，需要准备好向量数据和元数据。向量数据通常由嵌入模型生成，这里我们使用随机数据进行演示。
+
+```python
+import random
+
+# 生成模拟向量数据
+def generate_embeddings(num_vectors, dim=768):
+    return [[random.random() for _ in range(dim)] for _ in range(num_vectors)]
+
+# 准备数据
+data = [
+    {
+        "id": 1,
+        "title": "Apple iPhone 15 Pro",
+        "embedding": generate_embeddings(1)[0],
+        "price": 999.99,
+        "brand": "Apple",
+        "category": "smartphone"
+    },
+    {
+        "id": 2,
+        "title": "Samsung Galaxy S24",
+        "embedding": generate_embeddings(1)[0],
+        "price": 899.99,
+        "brand": "Samsung",
+        "category": "smartphone"
+    },
+    {
+        "id": 3,
+        "title": "Sony WH-1000XM5",
+        "embedding": generate_embeddings(1)[0],
+        "price": 349.99,
+        "brand": "Sony",
+        "category": "headphones"
+    }
+]
+```
+
+**数据格式要求：**
+- 每条记录必须包含 Collection schema 中定义的所有必填字段
+- 主键字段（如 `id`）必须提供，除非设置了 `auto_id=True`
+- 向量字段的维度必须与 schema 中定义的维度一致
+### 3.3.2 插入数据
+
+**单次插入**
+
+使用 `insert()` 方法将数据插入到 Collection 中：
+
+```python
+insert_result = client.insert(
+    collection_name="products",
+    data=data
+)
+
+print(f"插入的记录数: {insert_result['insert_count']}")
+```
+
+`insert()` 方法返回一个包含以下信息的结果对象：
+- `insert_count`：成功插入的实体数量
+- `primary_keys`：插入实体的主键列表
+- `timestamp`：操作完成的时间戳
+
+**批量插入**
+
+对于大规模数据，建议分批插入以提高性能和稳定性：
+
+```python
+def batch_insert(client, collection_name, data, batch_size=1000):
+    """分批插入数据"""
+    total = len(data)
+    for i in range(0, total, batch_size):
+        batch = data[i:i + batch_size]
+        result = client.insert(
+            collection_name=collection_name,
+            data=batch
+        )
+        print(f"已插入 {min(i + batch_size, total)}/{total} 条记录")
+    
+    print("所有数据插入完成")
+
+# 使用示例
+large_data = [
+    {
+        "id": i, 
+        "embedding": generate_embeddings(1)[0],
+        "title": f"Product {i}",
+        "price": 100.0 + i
+    }
+    for i in range(10000)
+]
+batch_insert(client, "products", large_data, batch_size=500)
+```
+
+**插入到指定分区**
+
+如果 Collection 中有多个分区，可以指定插入到特定分区：
+
+```python
+client.insert(
+    collection_name="products",
+    data=data,
+    partition_name="electronics"
+)
+```
+
+**注意事项：**
+- 插入数据前，Collection 可以处于加载或未加载状态
+- 如果启用了 `auto_id=True`，则不要在数据中包含主键字段
+- 插入操作是异步的，数据可能不会立即可搜索，可以调用 `flush()` 确保数据持久化
+
+### 3.3.3 数据更新（Upsert）
+
+Upsert 操作结合了"更新"和"插入"：如果记录已存在（根据主键判断），则更新该记录；否则插入新记录。这是一个数据级操作，会覆盖已存在的实体。
+
+```python
+update_data = [
+    {
+        "id": 1,  # 已存在的记录，会被更新
+        "title": "Apple iPhone 15 Pro Max",
+        "price": 1099.99,
+        "embedding": generate_embeddings(1)[0],
+        "brand": "Apple",
+        "category": "smartphone"
+    },
+    {
+        "id": 999,  # 不存在的记录，会被插入
+        "title": "Google Pixel 8",
+        "price": 699.99,
+        "embedding": generate_embeddings(1)[0],
+        "brand": "Google",
+        "category": "smartphone"
+    }
+]
+
+upsert_result = client.upsert(
+    collection_name="products",
+    data=update_data
+)
+
+print(f"Upsert 处理的记录数: {upsert_result['upsert_count']}")
+```
+
+`upsert()` 方法返回的结果对象包含：
+- `upsert_count`：成功 upsert 的实体数量
+- `primary_keys`：受影响实体的主键列表
+- `timestamp`：操作完成的时间戳
+
+**Upsert 到指定分区**
+
+同样可以将 upsert 操作限定在特定分区：
+
+```python
+client.upsert(
+    collection_name="products",
+    data=update_data,
+    partition_name="electronics"
+)
+```
+
+**使用场景：**
+- 需要更新已存在记录的某些字段
+- 不确定记录是否存在，希望统一处理插入和更新逻辑
+- 定期同步外部数据源到 Milvus
+
+**注意事项：**
+- Upsert 会完全覆盖已存在的实体，确保提供所有必需字段
+- 性能略低于纯插入操作，因为需要先检查主键是否存在
+- 与 insert 一样，upsert 也是异步操作
+
+---
+
+
+## 3.4 向量搜索
+
+向量搜索是 Milvus 的核心功能，用于找出与查询向量最相似的数据记录。
+
+### 3.4.1 基本向量搜索
+
+**单向量搜索**
+
+```python
+query_vector = generate_embeddings(1)[0]
+
+results = client.search(
+    collection_name="products",
+    data=[query_vector],  # 查询向量列表
+    limit=5,              # 返回前5个最相似的结果
+    output_fields=["title", "price", "brand"]  # 返回的字段
+)
+
+# 处理搜索结果
+for i, hits in enumerate(results):
+    print(f"查询 {i+1} 的结果:")
+    for hit in hits:
+        print(f"  ID: {hit['id']}")
+        print(f"  距离: {hit['distance']:.4f}")
+        print(f"  标题: {hit['title']}")
+        print(f"  价格: ${hit['price']}")
+        print()
+```
+
+**批量向量搜索**
+
+Milvus 支持在一次请求中处理多个查询向量：
+
+```python
+query_vectors = generate_embeddings(3)  # 3个查询向量
+
+results = client.search(
+    collection_name="products",
+    data=query_vectors,
+    limit=3,
+    output_fields=["title", "price"]
+)
+
+# results[0] 对应第一个查询向量的结果
+# results[1] 对应第二个查询向量的结果
+# 以此类推
+```
+
+### 3.4.2 向量搜索 + 标量过滤
+
+在实际应用中，经常需要在向量搜索的同时添加标量过滤条件，实现精确检索和语义检索的结合。
+
+```python
+# 只搜索电子产品类别
+results = client.search(
+    collection_name="products",
+    data=[query_vector],
+    filter='category == "smartphone"',
+    limit=5,
+    output_fields=["title", "category", "price"]
+)
+
+# 复杂过滤条件
+results = client.search(
+    collection_name="products",
+    data=[query_vector],
+    filter='category == "smartphone" and price < 1000',
+    limit=5,
+    output_fields=["title", "price"]
+)
+
+# 使用 IN 操作符
+results = client.search(
+    collection_name="products",
+    data=[query_vector],
+    filter='brand in ["Apple", "Samsung", "Google"]',
+    limit=5,
+    output_fields=["title", "brand"]
+)
+```
+
+**支持的过滤表达式**
+
+Milvus 支持丰富的布尔表达式用于标量过滤：
+
+| 操作符 | 说明 | 示例 |
+|-------|------|------|
+| ==, != | 等于、不等于 | `price == 999` |
+| >, >=, <, <= | 比较运算符 | `price > 500` |
+| in, not in | 包含、不包含 | `brand in ["Apple", "Samsung"]` |
+| and, or, not | 逻辑运算符 | `price > 500 and price < 1000` |
+| like | 模糊匹配 | `title like "%Pro%"` |
+
+### 3.4.3 搜索参数配置
+
+搜索行为可以通过 `search_params` 参数进行精细控制：
+
+```python
+results = client.search(
+    collection_name="products",
+    data=[query_vector],
+    limit=10,
+    search_params={
+        "metric_type": "COSINE",    # 距离度量类型
+        "params": {"nprobe": 10}     # 搜索参数
+    }
+)
+```
+
+**不同索引类型的搜索参数**：
+
+- **IVF 系列索引**（IVF_FLAT, IVF_SQ8, IVF_PQ）：
+  - `nprobe`：要查询的聚类单元数量，范围 [1, nlist]，默认值 8
+  
+- **HNSW 索引**：
+  - `ef`：控制查询时间/准确度权衡的参数，更高的 `ef` 会带来更准确但更慢的搜索，范围 [top_k, int_max]
+
+- **SCANN 索引**：
+  - `nprobe`：要查询的聚类单元数量
+  - `reorder_k`：要查询的候选单元数量，范围 [top_k, ∞]，默认值为 top_k
+
+### 3.4.4 分页搜索
+
+使用 `offset` 参数实现分页：
+
+```python
+# 第一页：前10条结果
+page1 = client.search(
+    collection_name="products",
+    data=[query_vector],
+    limit=10,
+    offset=0
+)
+
+# 第二页：跳过前10条，返回第11-20条
+page2 = client.search(
+    collection_name="products",
+    data=[query_vector],
+    limit=10,
+    offset=10
+)
+```
+
+**注意事项**：
+- `offset` 与 `limit` 的总和应小于 16,384
+- 对于大规模分页，建议使用 `search_iterator()` 方法以获得更好的性能
+
+---
+
+## 3.5 标量查询
+
+标量查询（Query）不涉及向量相似度计算，直接根据标量字段的值进行数据检索。
+
+### 3.5.1 基本查询
+
+```python
+# 查询所有数据（限制返回数量）
+results = client.query(
+    collection_name="products",
+    filter="",  # 空过滤条件表示查询所有
+    output_fields=["id", "title", "price"],
+    limit=100
+)
+
+# 根据ID查询
+results = client.query(
+    collection_name="products",
+    filter='id in [1, 2, 3]',
+    output_fields=["id", "title", "price"]
+)
+
+# 条件查询
+results = client.query(
+    collection_name="products",
+    filter='category == "smartphone" and price > 500',
+    output_fields=["id", "title", "brand", "price"]
+)
+```
+
+**重要说明**：
+- 当 `filter` 设置为空字符串时，必须设置 `limit` 来限制返回的实体数量
+- `offset` 和 `limit` 的总和应小于 16,384
+
+### 3.5.2 字符串匹配查询
+
+```python
+# 精确匹配
+results = client.query(
+    collection_name="products",
+    filter='brand == "Apple"',
+    output_fields=["id", "title"]
+)
+
+# 模糊匹配
+results = client.query(
+    collection_name="products",
+    filter='title like "%Pro%"',  # 标题包含 "Pro"
+    output_fields=["id", "title"]
+)
+```
+
+### 3.5.3 数值范围查询
+
+```python
+# 价格区间查询
+results = client.query(
+    collection_name="products",
+    filter='price >= 100 and price <= 1000',
+    output_fields=["id", "title", "price"]
+)
+
+# 多条件组合
+results = client.query(
+    collection_name="products",
+    filter='(category == "smartphone" and price > 800) or (category == "headphones" and price < 200)',
+    output_fields=["id", "category", "title", "price"]
+)
+```
+
+### 3.5.4 统计查询
+
+Milvus 支持使用 `count(*)` 来统计满足条件的实体数量：
+
+```python
+# 统计总数
+count_result = client.query(
+    collection_name="products",
+    filter="",
+    output_fields=["count(*)"]
+)
+total_count = count_result[0]["count(*)"]
+print(f"总记录数: {total_count}")
+
+# 按类别统计
+categories = ["smartphone", "headphones", "tablet"]
+for category in categories:
+    result = client.query(
+        collection_name="products",
+        filter=f'category == "{category}"',
+        output_fields=["count(*)"]
+    )
+    count = result[0]["count(*)"]
+    print(f"{category}: {count} 条记录")
+```
+
+**查询优化建议**：
+- 对于大规模数据集的查询，建议使用 `query_iterator()` 方法进行迭代查询
+- 查询前确保 Collection 已加载到内存中
+- 可以通过 `consistency_level` 参数调整一致性级别以平衡性能和准确性
+
+---
+ I don't have the complete information to verify all aspects of your documentation. However, based on the available sources, here are the corrections I can confirm:
+
+## 3.6 索引管理
+
+索引是提升向量搜索性能的关键。Milvus 支持多种索引类型,不同的索引适用于不同的场景。
+
+### 3.6.1 索引类型选择
+
+| 索引类型 | 特点 | 适用场景 |
+|---------|------|---------|
+| FLAT | 精确搜索,无压缩 | 相对较小的数据集,需要100%召回率 |
+| IVF_FLAT | 高速查询,尽可能高的召回率 | 中等规模数据 |
+| IVF_SQ8 | 非常高速查询,内存资源有限,可接受轻微召回率损失 | 内存受限场景 |
+| IVF_PQ | 高速查询,内存资源有限,可接受轻微召回率损失 | 大规模数据 |
+| IVF_RABITQ | 高精度1-bit量化 | 大规模数据集,需要高召回率同时优化资源利用 |
+| HNSW | 非常高速查询,尽可能高的召回率,大内存资源 | 高性能需求 |
+| HNSW_SQ | 非常高速查询,内存资源有限,可接受轻微召回率损失 | 高性能需求且内存受限 |
+| HNSW_PQ | 中速查询,非常有限的内存资源,可接受轻微召回率损失 | 内存极度受限 |
+| HNSW_PRQ | 中速查询,非常有限的内存资源,可接受轻微召回率损失 | 内存极度受限 |
+| SCANN | 非常高速查询,尽可能高的召回率,大内存资源 | 高性能需求 |
+| DISKANN | 磁盘索引 | 超大规模数据 |
+| AUTOINDEX | 自动优化 | 快速启动,所有字段类型 |
+
+### 3.6.2 创建索引
+
+**创建向量索引**
+
+```python
+# 准备索引参数
+index_params = client.prepare_index_params()
+
+# 添加向量字段索引
+index_params.add_index(
+    field_name="embedding",
+    index_type="HNSW",
+    metric_type="COSINE",
+    params={
+        "M": 16,
+        "efConstruction": 256
+    }
+)
+
+# 在创建 Collection 时指定索引
+client.create_collection(
+    collection_name="products",
+    schema=schema,
+    index_params=index_params
+)
+```
+
+**为已存在的 Collection 创建索引**
+
+```python
+index_params = client.prepare_index_params()
+
+index_params.add_index(
+    field_name="embedding",
+    index_type="IVF_FLAT",
+    metric_type="COSINE",
+    params={"nlist": 128}
+)
+
+client.create_index(
+    collection_name="products",
+    index_params=index_params
+)
+```
+
+### 3.6.3 标量字段索引
+
+对于经常用于过滤的标量字段,可以创建标量索引以提升查询性能[(3)](https://milvus.io/docs/scalar_index.md):
+
+```python
+# 为字符串字段创建索引
+index_params.add_index(
+    field_name="category",
+    index_type="INVERTED"  # 倒排索引,适用于除JSON外的所有标量字段
+)
+
+# 为数值字段创建索引
+index_params.add_index(
+    field_name="price",
+    index_type="INVERTED"
+)
+```
+
+**标量字段支持的索引类型**:
+
+- **INVERTED**: 倒排索引,适用于除JSON外的所有标量字段
+- **STL_SORT**: 排序索引,适用于数值类型字段
+- **TRIE**: 字典树索引,仅适用于VarChar字段
+- **BITMAP**: 位图索引,适用于Bool、Int8、Int16、Int32、Int64、VarChar和Array字段(元素类型为上述之一)
+- **AUTOINDEX**: 自动索引,根据数据类型自动选择最佳索引
+
+### 3.6.4 索引管理操作
+
+```python
+# 查看索引信息
+indexes = client.list_indexes(collection_name="products")
+print(indexes)
+
+# 描述索引详情
+index_info = client.describe_index(
+    collection_name="products",
+    index_name="embedding_vector_idx"
+)
+print(index_info)
+
+# 删除索引
+client.drop_index(
+    collection_name="products",
+    index_name="embedding_vector_idx"
+)
+```
+
+### 3.6.5 使用 AUTOINDEX
+
+AUTOINDEX 是 Milvus 提供的智能索引选项,会根据数据类型自动选择最合适的索引类型:
+
+```python
+index_params = client.prepare_index_params()
+
+index_params.add_index(
+    field_name="embedding",
+    index_type="AUTOINDEX",
+    metric_type="COSINE"
+)
+
+client.create_collection(
+    collection_name="products",
+    schema=schema,
+    index_params=index_params
+)
+```
+
+**AUTOINDEX 自动选择规则**:
+
+| 数据类型 | 自动选择的索引算法 |
+|---------|------------------|
+| VARCHAR | 倒排索引 |
+| INT8/INT16/INT32/INT64 | 倒排索引 |
+| FLOAT/DOUBLE | 倒排索引 |
+
+## 3.7 数据删除操作
+
+### 3.7.1 根据主键删除
+
+```python
+# 删除指定ID的记录
+client.delete(
+    collection_name="products",
+    ids=[1, 2, 3]  # 要删除的主键ID列表
+)
+```
+
+### 3.7.2 根据条件删除
+
+```python
+# 根据单个条件删除
+client.delete(
+    collection_name="products",
+    filter='price < 100'
+)
+
+# 根据复杂条件删除
+client.delete(
+    collection_name="products",
+    filter='brand == "OldBrand" or (category == "discontinued" and price < 50)'
+)
+
+# 删除特定时间之前的数据
+client.delete(
+    collection_name="products",
+    filter='created_at < "2024-01-01"'
+)
+```
+
+**注意**：Milvus 的删除操作是异步执行的，数据不会立即从磁盘中删除，而是在后续的数据压缩过程中清理。
+ 根据可用的信息源,我对您的文档进行了修改和补充。以下是修改后的完整内容:
+
+### 3.7.3 批量删除优化
+
+Milvus 支持通过布尔表达式删除实体。对于大规模数据删除,建议使用过滤表达式:
+
+```python
+# 使用过滤表达式删除
+res = client.delete(
+    collection_name="products",
+    filter='price < 100 and category == "old_items"'
+)
+```
+
+**在分区中删除数据**
+
+```python
+# 在指定分区中删除
+client.delete(
+    collection_name="products",
+    partition_name="electronics",
+    filter="id in [0, 1]"
+)
+```
+
+删除操作的注意事项:
+- 删除请求必须包含主键或过滤表达式
+- 目标集合必须已加载并可用于查询
+- 删除是异步操作,在删除完成前搜索和查询仍然可能返回已删除的实体
+
+## 3.8 分区管理
+
+分区是集合的子集,每个分区与其父集合共享相同的数据结构,但只包含集合中数据的一个子集。合理使用分区可以提升查询性能并简化数据管理。
+
+### 3.8.1 创建和管理分区
+
+**默认分区**
+
+创建集合时,Milvus 会自动创建一个名为 **_default** 的分区。如果不添加其他分区,所有插入的实体都会进入默认分区。
+
+**创建分区**
+
+一个集合最多可以有 1,024 个分区。
+
+```python
+# 创建分区
+client.create_partition(
+    collection_name="my_collection",
+    partition_name="partitionA"
+)
+```
+
+**查看分区**
+
+```python
+# 列出所有分区
+res = client.list_partitions(
+    collection_name="my_collection"
+)
+print(res)
+# 输出: ["_default", "partitionA"]
+```
+
+**检查分区是否存在**
+
+```python
+res = client.has_partition(
+    collection_name="my_collection",
+    partition_name="partitionA"
+)
+print(res)
+# 输出: True
+```
+
+**删除分区**
+
+删除分区前需要确保分区已释放。
+
+```python
+# 释放分区
+client.release_partitions(
+    collection_name="my_collection",
+    partition_names=["partitionA"]
+)
+
+# 删除分区
+client.drop_partition(
+    collection_name="my_collection",
+    partition_name="partitionA"
+)
+
+# 验证删除
+res = client.list_partitions(
+    collection_name="my_collection"
+)
+print(res)
+# 输出: ["_default"]
+```
+### 3.8.2 加载和释放分区
+
+**加载分区**
+
+您可以单独加载集合中的特定分区。如果集合中有未加载的分区,集合的加载状态将保持为未加载。
+
+```python
+client.load_partitions(
+    collection_name="my_collection",
+    partition_names=["partitionA"]
+)
+
+res = client.get_load_state(
+    collection_name="my_collection",
+    partition_name="partitionA"
+)
+print(res)
+# 输出: {"state": "<LoadState: Loaded>"}
+```
+
+**释放分区**
+
+```python
+client.release_partitions(
+    collection_name="my_collection",
+    partition_names=["partitionA"]
+)
+
+res = client.get_load_state(
+    collection_name="my_collection",
+    partition_name="partitionA"
+)
+print(res)
+# 输出: {"state": "<LoadState: NotLoaded>"}
+```
+
+### 3.8.3 使用 Partition Key
+
+Partition Key 是一种基于分区的搜索优化解决方案。通过指定特定的标量字段作为 Partition Key,并在搜索时基于 Partition Key 指定过滤条件,可以将搜索范围缩小到若干分区,从而提升搜索效率。
+
+**设置 Partition Key**
+
+在添加标量字段时,将其 `is_partition_key` 属性设置为 `True`:
+
+```python
+schema.add_field(
+    field_name="my_varchar", 
+    datatype=DataType.VARCHAR, 
+    max_length=512,
+    is_partition_key=True,
+)
+```
+
+**设置分区数量**
+
+当指定标量字段作为 Partition Key 时,Milvus 会自动在集合中创建 16 个分区。您也可以自定义分区数量:
+
+```python
+client.create_collection(
+    collection_name="my_collection",
+    schema=schema,
+    num_partitions=128
+)
+```
+
+**基于 Partition Key 的过滤**
+
+在启用 Partition Key 功能的集合中进行 ANN 搜索时,需要在搜索请求中包含涉及 Partition Key 的过滤表达式:
+
+```python
+# 基于单个 partition key 值过滤
 filter='partition_key == "x" && <other conditions>'
 
-# 基于多个分区密钥值的过滤
+# 基于多个 partition key 值过滤
 filter='partition_key in ["x", "y", "z"] && <other conditions>'
 ```
 
-3. **分区数量限制**：
-   - 默认最大分区数为 1024
-   - 分区过多会影响性能
-   - 建议根据实际数据分布调整
+**启用 Partition Key Isolation**
 
-#### 实际应用场景
+Partition Key Isolation 功能可以进一步提升搜索性能。启用后,Milvus 会基于 Partition Key 值对实体进行分组,并为每个组创建单独的索引。
 
-**1. 多租户系统**
 ```python
-# 以租户ID作为分区密钥
-fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),  # 主键字段
-    FieldSchema(name="tenant_id", dtype=DataType.VARCHAR, max_length=32, is_partition_key=True),  # 租户ID作为分区密钥
-    FieldSchema(name="document", dtype=DataType.VARCHAR, max_length=1000),  # 文档内容字段
-    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=768)  # 文档向量字段
-]
-
-# 查询时只搜索特定租户的数据
-res = client.search(
-    collection_name="multi_tenant_docs",  # 多租户文档集合
-    data=[query_vector],  # 查询向量
-    filter='tenant_id == "company_a"',  # 租户过滤条件
-    limit=10  # 返回结果数量
+client.create_collection(
+    collection_name="my_collection",
+    schema=schema,
+    properties={"partitionkey.isolation": True}
 )
 ```
 
-**2. 时间序列数据**
-```python
-# 以时间分片作为分区密钥
-fields = [
-    FieldSchema(name="id", dtype=DataType.INT64, is_primary=True),  # 主键字段
-    FieldSchema(name="time_bucket", dtype=DataType.VARCHAR, max_length=16, is_partition_key=True),  # 时间分片作为分区密钥，如"2024-01"
-    FieldSchema(name="sensor_data", dtype=DataType.FLOAT_VECTOR, dim=128)  # 传感器数据向量字段
-]
+启用 Partition Key Isolation 后,基于 Partition Key 的过滤器应仅包含一个特定的 Partition Key 值。目前,Partition Key Isolation 功能仅适用于索引类型设置为 HNSW 的搜索。
 
-# 查询特定时间段的数据
-res = client.search(
-    collection_name="sensor_data",  # 传感器数据集合
-    data=[query_vector],  # 查询向量
-    filter='time_bucket in ["2024-01", "2024-02"]',  # 时间范围过滤条件
-    limit=10  # 返回结果数量
+
+## 3.9 数据过期管理（TTL）
+
+对于某些应用场景,如临时数据存储或会话数据,可以设置 Collection 的 TTL(Time To Live),让数据在指定时间后自动过期。
+
+### 3.9.1 TTL 概述
+
+TTL(Time-to-Live)是数据库中常用的功能,用于在插入或修改数据后的特定时间段内保持数据有效或可访问。例如,如果您每天导入数据但只需要保留 14 天的记录,可以通过将集合的 TTL 设置为 **14 × 24 × 3600 = 1209600** 秒来配置 Milvus 自动删除超过该时间的数据。
+
+**TTL 工作原理**:
+
+- 过期的实体不会出现在任何搜索或查询结果中
+- 过期数据可能会保留在存储中,直到下一次数据压缩(通常在 24 小时内进行)
+- 可以通过设置 Milvus 配置文件中的 `dataCoord.compaction.expiry.tolerance` 配置项来控制何时触发数据压缩
+- 该配置项默认为 `-1`,表示使用现有的数据压缩间隔。当更改为正整数(如 `12`)时,数据压缩将在任何实体过期后的指定小时数后触发
+
+### 3.9.2 创建带 TTL 的 Collection
+
+**Python**
+
+```python
+from pymilvus import MilvusClient
+
+# 创建 Collection 时设置 TTL
+client.create_collection(
+    collection_name="my_collection",
+    schema=schema,
+    properties={
+        "collection.ttl.seconds": 1209600  # 14天
+    }
 )
 ```
 
-通过合理使用分区密钥，可以在大规模向量数据场景下获得显著的性能提升，同时简化数据管理的复杂度。
+**Node.js**
+
+```javascript
+const createCollectionReq = {
+    collection_name: "my_collection",
+    schema: schema,
+    properties: {
+        "collection.ttl.seconds": 1209600
+    }
+}
+```
+
+### 3.9.3 修改已有 Collection 的 TTL
+
+**Python**
+
+```python
+client.alter_collection_properties(
+    collection_name="my_collection",
+    properties={"collection.ttl.seconds": 1209600}
+)
+```
+
+**Node.js**
+
+```javascript
+res = await client.alterCollection({
+    collection_name: "my_collection",
+    properties: {
+        "collection.ttl.seconds": 60
+    }
+})
+```
+
+### 3.9.4 删除 TTL 设置
+
+如果您决定无限期保留集合中的数据,可以从该集合中删除 TTL 设置。
+
+**Python**
+
+```python
+client.drop_collection_properties(
+    collection_name="my_collection",
+    property_keys=["collection.ttl.seconds"]
+)
+```
+
+**Node.js**
+
+```javascript
+res = await client.dropCollectionProperties({
+    collection_name: "my_collection",
+    properties: ["collection.ttl.seconds"]
+})
+```
 
 
+## 3.10 小结
+
+本章介绍了 PyMilvus 的核心 API 和基础操作，包括：
+
+1. **环境准备**：如何安装和连接 Milvus
+2. **Schema 设计**：定义 Collection 的数据结构
+3. **Collection 管理**：创建、加载、释放、删除 Collection
+4. **数据操作**：插入、更新、删除数据
+5. **向量搜索**：基本搜索、过滤搜索、批量搜索
+6. **标量查询**：基于条件的精确查询
+7. **索引管理**：创建和管理索引以提升性能
+8. **分区管理**：使用分区和分区密钥优化查询
+9. **数据管理**：使用TTL管理数据
+
+掌握这些基础知识后，你就可以开始构建基于 Milvus 的向量检索应用了。

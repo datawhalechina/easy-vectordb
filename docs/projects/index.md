@@ -22,6 +22,12 @@
 **技术栈**: Milvus + towhere
 **源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/text_search_img
 
+### 🚀 [graph_rag](./graph_rag)
+文搜图
+
+**技术栈**: Milvus + langgraph
+**源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/graph_rag
+
 ### 🚀 [HDBSCAN](./HDBSCAN)
 聚类数据可视化
 
