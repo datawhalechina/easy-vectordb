@@ -133,7 +133,7 @@ export default defineConfig({
         {
           text: 'Chapter 2 · Milvus核心概念',
           items: [
-            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念new' }
+            { text: 'Milvus核心概念', link: '/Milvus/chapter2/Milvus核心概念' }
           ]
         },
         {
