@@ -126,7 +126,8 @@ export default defineConfig({
         {
           text: 'Chapter 1 · Milvus向量数据库入门',
           items: [
-            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' }
+            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' },
+            { text: 'Milvus底层架构详解（选学）', link: '/Milvus/chapter1/Milvus底层架构详解' }
           ]
         },
         {
