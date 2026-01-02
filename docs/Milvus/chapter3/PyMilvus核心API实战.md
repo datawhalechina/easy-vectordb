@@ -61,6 +61,12 @@ from pymilvus import utility
 print(utility.get_server_version(client))
 ```
 
+如果上述命令成功返回版本号，说明连接已建立。但是如果报错：`pymilvus.exceptions.ConnectionConfigException: <ConnectionConfigException: (code=1, message=Alias should be string, but <class 'pymilvus.milvus_client.milvus_client.MilvusClient'> is given.)>`，是因为新版pymilvus打印版本号的api发生了更改：
+```python
+# 检查服务器连接状态
+print(client.get_server_version())
+```
+
 ## 3.2 Collection 与 Schema 设计
 
 Collection 是 Milvus 中存储和管理数据的基本容器,可以将其类比为关系数据库中的表。每个 Collection 都需要一个 Schema 来定义其结构,包括字段名称、数据类型、主键等。
@@ -125,8 +131,8 @@ client = MilvusClient(uri="http://localhost:19530")
 
 # 创建 schema
 schema = MilvusClient.create_schema(
-    auto_id=False,
-    enable_dynamic_field=True,
+    auto_id=False,  # 是否自动为主键字段生成唯一 ID。False 表示主键由你自己提供
+    enable_dynamic_field=True, # 是否开启动态字段。True 表示可在插入数据时携带未在 schema 中显式定义的额外键值对，MILVUS 会以动态列存储
 )
 
 # 添加主键字段
@@ -313,10 +319,10 @@ client.create_collection(
 index_params = client.prepare_index_params()
 
 index_params.add_index(
-    field_name="embedding",
-    index_type="IVF_FLAT",
-    metric_type="COSINE",
-    params={"nlist": 128}
+    field_name="embedding",  # 需要建立索引的字段名。应为向量字段
+    index_type="IVF_FLAT",  # 索引类型。IVF_FLAT表示倒排文件平铺索引，适合大规模向量的近似搜索；常见还有IVF_SQ8`、`HNSW` 等
+    metric_type="COSINE",  # 距离度量方式。COSINE余弦相似度；常用还有L2`（欧氏距离）、`IP`（内积）。使用 `COSINE` 时一般需要对向量做归一化。
+    params={"nlist": 128} # 索引的超参数字典。{"nlist": 128} 中nlist` 表示聚类中心数量（分桶数），影响召回与性能；值越大召回率越高但索引与搜索更慢。根据数据规模调优（例如 10K~1M 样本可从 64~4096 试配）。
 )
 
 client.create_collection(
@@ -378,6 +384,32 @@ client.drop_collection(collection_name="product_catalog")
 
 对于小规模数据，可以加载整个 Collection：
 ```python
+# 由于之前rename和drop操作，重新创建名为"products"的Collection
+client.create_collection(
+    collection_name="products",
+    schema=schema
+)
+
+# 创建带索引的 Collection
+index_params = client.prepare_index_params()
+
+index_params.add_index(
+    field_name="embedding",
+    index_type="IVF_FLAT",
+    metric_type="COSINE",
+    params={"nlist": 128}
+)
+
+client.create_collection(
+    collection_name="products",
+    schema=schema,
+    index_params=index_params
+)
+
+# 列出所有 Collection
+collections = client.list_collections()
+print(collections)
+
 # 加载整个 Collection
 client.load_collection(
     collection_name="products"
@@ -392,8 +424,8 @@ client.load_collection(
 # 只加载指定字段
 client.load_collection(
     collection_name="products",
-    load_fields=["id", "embedding"],
-    skip_load_dynamic_field=True
+    load_fields=["id", "embedding"], # load_fields: 可选，指定需预加载的字段列表。只加载这些字段，其它字段不加载以省内存。向量检索至少应包含向量字段（如 embedding），通常也加载主键（如 id）。若查询/输出引用未加载字段会失败或无法返回该列。默认 None 表示加载全部字段。
+    skip_load_dynamic_field=True  # 可选，布尔值。集合启用动态字段时，是否跳过动态列（如内部的 \$meta）的加载。True 跳过以节省内存；False 一并加载。默认通常为 False
 )
 ```
 
@@ -488,6 +520,9 @@ print(f"插入的记录数: {insert_result['insert_count']}")
 - `primary_keys`：插入实体的主键列表
 - `timestamp`：操作完成的时间戳
 
+注意，在新版本的 PyMilvus 中，`insert()` 方法的返回值是一个字典，而不是之前版本中的 `InsertResult` 对象。`Returns: Dict: Number of rows that were inserted and the inserted primary key list.`,如：
+`{'insert_count': 3, 'ids': [1, 2, 3]}`
+
 **批量插入**
 
 对于大规模数据，建议分批插入以提高性能和稳定性：
@@ -524,6 +559,12 @@ batch_insert(client, "products", large_data, batch_size=500)
 如果 Collection 中有多个分区，可以指定插入到特定分区：
 
 ```python
+# 创建分区
+client.create_partition(
+    collection_name="products",
+    partition_name="electronics"
+)
+
 client.insert(
     collection_name="products",
     data=data,
@@ -607,6 +648,15 @@ client.upsert(
 **单向量搜索**
 
 ```python
+# 加载 Collection
+client.load_collection(
+    collection_name="products"
+)
+
+# 检查加载状态
+status = client.get_load_state(collection_name="products")
+print(status)
+
 query_vector = generate_embeddings(1)[0]
 
 results = client.search(
@@ -641,6 +691,8 @@ results = client.search(
     output_fields=["title", "price"]
 )
 
+print(results)
+
 # results[0] 对应第一个查询向量的结果
 # results[1] 对应第二个查询向量的结果
 # 以此类推
@@ -660,6 +712,8 @@ results = client.search(
     output_fields=["title", "category", "price"]
 )
 
+print(results)
+
 # 复杂过滤条件
 results = client.search(
     collection_name="products",
@@ -669,6 +723,8 @@ results = client.search(
     output_fields=["title", "price"]
 )
 
+print(results)
+
 # 使用 IN 操作符
 results = client.search(
     collection_name="products",
@@ -677,6 +733,8 @@ results = client.search(
     limit=5,
     output_fields=["title", "brand"]
 )
+
+print(results)
 ```
 
 **支持的过滤表达式**
@@ -705,6 +763,8 @@ results = client.search(
         "params": {"nprobe": 10}     # 搜索参数
     }
 )
+
+print(results)
 ```
 
 **不同索引类型的搜索参数**：
@@ -732,6 +792,8 @@ page1 = client.search(
     offset=0
 )
 
+print(page1)
+
 # 第二页：跳过前10条，返回第11-20条
 page2 = client.search(
     collection_name="products",
@@ -739,6 +801,8 @@ page2 = client.search(
     limit=10,
     offset=10
 )
+
+print(page2)
 ```
 
 **注意事项**：
@@ -762,6 +826,8 @@ results = client.query(
     limit=100
 )
 
+print(results)
+
 # 根据ID查询
 results = client.query(
     collection_name="products",
@@ -769,12 +835,16 @@ results = client.query(
     output_fields=["id", "title", "price"]
 )
 
+print(results)
+
 # 条件查询
 results = client.query(
     collection_name="products",
     filter='category == "smartphone" and price > 500',
     output_fields=["id", "title", "brand", "price"]
 )
+
+print(results)
 ```
 
 **重要说明**：
@@ -791,12 +861,16 @@ results = client.query(
     output_fields=["id", "title"]
 )
 
+print(results)
+
 # 模糊匹配
 results = client.query(
     collection_name="products",
     filter='title like "%Pro%"',  # 标题包含 "Pro"
     output_fields=["id", "title"]
 )
+
+print(results)
 ```
 
 ### 3.5.3 数值范围查询
@@ -809,12 +883,16 @@ results = client.query(
     output_fields=["id", "title", "price"]
 )
 
+print(results)
+
 # 多条件组合
 results = client.query(
     collection_name="products",
     filter='(category == "smartphone" and price > 800) or (category == "headphones" and price < 200)',
     output_fields=["id", "category", "title", "price"]
 )
+
+print(results)
 ```
 
 ### 3.5.4 统计查询
@@ -844,12 +922,44 @@ for category in categories:
 ```
 
 **查询优化建议**：
-- 对于大规模数据集的查询，建议使用 `query_iterator()` 方法进行迭代查询
+- 对于大规模数据集的查询，建议使用 `query_iterator()` 方法进行迭代查询。query()：一次性返回满足过滤条件的所有结果（可配合limit、output_fields）。适合结果集较小的场景。
+query_iterator()：返回一个迭代器，按批次分页拉取结果，内存友好，适合结果集较大的场景或需要流式处理。
 - 查询前确保 Collection 已加载到内存中
 - 可以通过 `consistency_level` 参数调整一致性级别以平衡性能和准确性
 
----
- I don't have the complete information to verify all aspects of your documentation. However, based on the available sources, here are the corrections I can confirm:
+举个query()和query_iterator()的对比例子：
+```python
+# 一次性查询：直接拿到所有匹配记录
+all_results = client.query(
+    collection_name="products",
+    filter='category == "smartphone" and price < 1000',
+    output_fields=["id", "title", "price", "category"],
+    limit=1000  # 可选，控制最大返回条数
+)
+print(f"总结果数: {len(all_results)}")
+for row in all_results:
+    print(row["id"], row["title"], row["price"])
+
+# 迭代式查询：分批获取，适合海量数据
+it = client.query_iterator(
+    collection_name="products",
+    filter='category == "smartphone" and price < 1000',
+    output_fields=["id", "title", "price", "category"],
+    batch_size=200
+)
+
+total = 0
+while True:
+    batch = it.next()
+    if not batch:
+        break
+    for row in batch:
+        total += 1
+        # 处理每条记录
+        print(row["id"], row["title"], row["price"])
+
+print(f"累计结果数: {total}")
+```
 
 ## 3.6 索引管理
 
@@ -893,7 +1003,7 @@ index_params.add_index(
 
 # 在创建 Collection 时指定索引
 client.create_collection(
-    collection_name="products",
+    collection_name="products1",
     schema=schema,
     index_params=index_params
 )
@@ -922,16 +1032,16 @@ client.create_index(
 对于经常用于过滤的标量字段,可以创建标量索引以提升查询性能[(3)](https://milvus.io/docs/scalar_index.md):
 
 ```python
-# 为字符串字段创建索引
-index_params.add_index(
-    field_name="category",
-    index_type="INVERTED"  # 倒排索引,适用于除JSON外的所有标量字段
-)
 
 # 为数值字段创建索引
 index_params.add_index(
     field_name="price",
     index_type="INVERTED"
+)
+
+client.create_index(
+    collection_name="products",
+    index_params=index_params
 )
 ```
 
@@ -978,7 +1088,7 @@ index_params.add_index(
 )
 
 client.create_collection(
-    collection_name="products",
+    collection_name="products2",
     schema=schema,
     index_params=index_params
 )
@@ -1007,6 +1117,11 @@ client.delete(
 ### 3.7.2 根据条件删除
 
 ```python
+# 加载 Collection
+client.load_collection(
+    collection_name="products"
+)
+
 # 根据单个条件删除
 client.delete(
     collection_name="products",
@@ -1074,7 +1189,7 @@ client.delete(
 ```python
 # 创建分区
 client.create_partition(
-    collection_name="my_collection",
+    collection_name="products",
     partition_name="partitionA"
 )
 ```
@@ -1084,17 +1199,16 @@ client.create_partition(
 ```python
 # 列出所有分区
 res = client.list_partitions(
-    collection_name="my_collection"
+    collection_name="products"
 )
 print(res)
-# 输出: ["_default", "partitionA"]
 ```
 
 **检查分区是否存在**
 
 ```python
 res = client.has_partition(
-    collection_name="my_collection",
+    collection_name="products",
     partition_name="partitionA"
 )
 print(res)
@@ -1108,22 +1222,21 @@ print(res)
 ```python
 # 释放分区
 client.release_partitions(
-    collection_name="my_collection",
+    collection_name="products",
     partition_names=["partitionA"]
 )
 
 # 删除分区
 client.drop_partition(
-    collection_name="my_collection",
+    collection_name="products",
     partition_name="partitionA"
 )
 
 # 验证删除
 res = client.list_partitions(
-    collection_name="my_collection"
+    collection_name="products"
 )
 print(res)
-# 输出: ["_default"]
 ```
 ### 3.8.2 加载和释放分区
 
@@ -1132,13 +1245,19 @@ print(res)
 您可以单独加载集合中的特定分区。如果集合中有未加载的分区,集合的加载状态将保持为未加载。
 
 ```python
+# 创建分区
+client.create_partition(
+    collection_name="products",
+    partition_name="partitionA"
+)
+
 client.load_partitions(
-    collection_name="my_collection",
+    collection_name="products",
     partition_names=["partitionA"]
 )
 
 res = client.get_load_state(
-    collection_name="my_collection",
+    collection_name="products",
     partition_name="partitionA"
 )
 print(res)
@@ -1149,12 +1268,12 @@ print(res)
 
 ```python
 client.release_partitions(
-    collection_name="my_collection",
+    collection_name="products",
     partition_names=["partitionA"]
 )
 
 res = client.get_load_state(
-    collection_name="my_collection",
+    collection_name="products",
     partition_name="partitionA"
 )
 print(res)
@@ -1208,7 +1327,7 @@ Partition Key Isolation 功能可以进一步提升搜索性能。启用后,Milv
 
 ```python
 client.create_collection(
-    collection_name="my_collection",
+    collection_name="my_collection1",
     schema=schema,
     properties={"partitionkey.isolation": True}
 )
@@ -1241,24 +1360,12 @@ from pymilvus import MilvusClient
 
 # 创建 Collection 时设置 TTL
 client.create_collection(
-    collection_name="my_collection",
+    collection_name="my_collection2",
     schema=schema,
     properties={
         "collection.ttl.seconds": 1209600  # 14天
     }
 )
-```
-
-**Node.js**
-
-```javascript
-const createCollectionReq = {
-    collection_name: "my_collection",
-    schema: schema,
-    properties: {
-        "collection.ttl.seconds": 1209600
-    }
-}
 ```
 
 ### 3.9.3 修改已有 Collection 的 TTL
@@ -1267,20 +1374,9 @@ const createCollectionReq = {
 
 ```python
 client.alter_collection_properties(
-    collection_name="my_collection",
+    collection_name="my_collection2",
     properties={"collection.ttl.seconds": 1209600}
 )
-```
-
-**Node.js**
-
-```javascript
-res = await client.alterCollection({
-    collection_name: "my_collection",
-    properties: {
-        "collection.ttl.seconds": 60
-    }
-})
 ```
 
 ### 3.9.4 删除 TTL 设置
@@ -1291,18 +1387,9 @@ res = await client.alterCollection({
 
 ```python
 client.drop_collection_properties(
-    collection_name="my_collection",
+    collection_name="my_collection2",
     property_keys=["collection.ttl.seconds"]
 )
-```
-
-**Node.js**
-
-```javascript
-res = await client.dropCollectionProperties({
-    collection_name: "my_collection",
-    properties: ["collection.ttl.seconds"]
-})
 ```
 
 
