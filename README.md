@@ -50,10 +50,11 @@
 | [Chapter 2 Milvus 核心概念：数据模型与索引体系](./docs/milvus/chapter2/Milvus核心概念.md) | Collection、Partition、Index | ✅ |
 | [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
 | [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
-| [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/milvus/chapter5/1_build_text_image_search_engine.ipynb) | 图像检索 | ✅ |
+| [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
 | [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
-| <strong>第四部分：基于向量数据库的AI应用开发</strong> |  |  |
-|  |  |  |
+| <strong>第四部分：向量数据库应用开发案例</strong> | 应用开发案例 |  |
+| 项目1 XXXXXX | XXXXXX |🚧 |
+| 项目2 XXXXXX | XXXXXX |🚧 |
 | <strong>第五部分：补充内容</strong> | 与向量数据库有关的内容 |  |
 | [向量基础知识](./docs/more/chapter5/向量.md) | 向量基础概念与数学原理 | ✅ |
 | [FusionANNS架构设计](./docs/more/chapter1/GPU加速检索-基于FusionANNS.md) | GPU加速检索系统架构 | ✅ |
