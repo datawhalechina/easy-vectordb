@@ -1,4 +1,4 @@
-# 快速构建基于Milvus的文本-图像搜索引擎
+# Chapter 5 Milvus的AI应用开发：图像检索应用实战
 本章节采用ipynb的方式进行操作，按照指示运行代码，手把手带你实现一个文搜图应用。
 
 点击->[Text_search_pic代码](https://github.com/datawhalechina/easy-vectordb/blob/main/docs/Milvus/chapter5/1_build_text_image_search_engine.ipynb) 进行下载。
