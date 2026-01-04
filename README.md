@@ -48,12 +48,12 @@
 | <strong>第三部分：Milvus 教程（Milvus）</strong> | 分布式向量数据库与工程实践 |  |
 | [Chapter 1 Milvus 向量数据库入门：认知与架构](./docs/milvus/chapter1/Milvus向量数据库入门.md) | 架构设计、核心组件 | ✅ |
 | [Chapter 2 Milvus 核心概念：数据模型与索引体系](./docs/milvus/chapter2/Milvus核心概念.md) | Collection、Partition、Index | ✅ |
-| Chapter 3 Milvus 基础操作：PyMilvus 核心 API 实战 | 数据写入、查询、索引管理 | 🚧 |
-| Chapter 4 综合实战：基于 Milvus 的 AI 应用开发 | RAG、向量检索应用 | 🚧 |
-| Chapter 5 Milvus 生态与进阶学习 | 分布式部署、性能优化 | 🚧 |
+| [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
+| [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
+| Chapter 5 Milvus的AI应用开发：图像检索应用实战 | 图像检索 | 🚧 |
+| [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
 |  |  |  |
 | <strong>补充内容</strong> | 与向量数据库有关的内容 |  |
-| [MinerU部署教程](./docs/milvus/chapter5/MinerU部署教程.md)| pdf/扫描件 转markdown 格式 |✅  |
 | [向量基础知识](./docs/more/chapter5/向量.md) | 向量基础概念与数学原理 | ✅ |
 | [FusionANNS架构设计](./docs/more/chapter1/GPU加速检索-基于FusionANNS.md) | GPU加速检索系统架构 | ✅ |
 | [Meta-Chunking策略](./docs/more/chapter2/Meta-Chunking：一种新的文本切分策略.md) | 智能文本切分算法 | ✅ |

@@ -75,7 +75,6 @@ export default defineConfig({
         {
           text: 'Chapter 5 · 向量ANN搜索算法',
           items: [
-            { text: 'FLAT暴力算法', link: '/base/chapter5/FLAT暴力算法' },
             { text: 'ANN搜索算法', link: '/base/chapter5/ANN搜索算法' },
             { text: 'IVF算法', link: '/base/chapter5/IVF算法' },
             { text: 'HNSW算法', link: '/base/chapter5/HNSW算法' },
@@ -127,8 +126,7 @@ export default defineConfig({
         {
           text: 'Chapter 1 · Milvus向量数据库入门',
           items: [
-            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' },
-            { text: 'Milvus底层架构详解（选学）', link: '/Milvus/chapter1/Milvus底层架构详解' }
+            { text: 'Milvus向量数据库入门', link: '/Milvus/chapter1/Milvus向量数据库入门' }
           ]
         },
         {
@@ -154,11 +152,17 @@ export default defineConfig({
           text: 'Chapter 5 · Milvus生态与进阶学习',
           items: [
             { text: 'Milvus 生态与进阶', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
-            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter5/Milvus Lite部署与应用' },
             { text: 'Milvus Standalone部署教程', link: '/Milvus/chapter5/Milvus Standalone部署' },
             { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
           ]
-        }
+        },
+        {
+          text: 'Chapter 6 · Milvus选学部分',
+          items: [
+            { text: 'Milvus底层架构详解', link: '/Milvus/chapter6/Milvus底层架构详解' },
+            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter6/Milvus Lite部署与应用' }
+          ]
+        },
       ],
       '/Annoy/': [
         {
