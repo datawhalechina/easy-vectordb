@@ -16,12 +16,6 @@
 **技术栈**: Milvus + Streamlit + FastAPI
 **源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/Cre_milvus
 
-### 🚀 [Text_search_pic](./text_search_img)
-文搜图
-
-**技术栈**: Milvus + towhere
-**源码位置**: https://github.com/datawhalechina/easy-vectordb/tree/main/src/text_search_img
-
 ### 🚀 [graph_rag](./graph_rag)
 文搜图
 
@@ -62,7 +56,7 @@ Milvus性能测试工具和基准测试。
 ## 学习路径
 
 1. **入门**: 从URL处理实践开始
-2. **使用**: 尝试文搜图以及HDBSCAN聚类
+2. **使用**: 尝试HDBSCAN聚类
 3. **进阶**：学习Cre_milvus主项目(开发ing)
 4. **部署**: 掌握K8s+Loki监控
 5. **优化**: 研究Meta-chunking和性能测试
