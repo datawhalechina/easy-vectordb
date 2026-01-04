@@ -144,7 +144,7 @@ export default defineConfig({
         {
           text: 'Chapter 4 · 综合实战',
           items: [
-            { text: '综合实战', link: '/Milvus/chapter4/Milvus的AI应用开发.md' }
+            { text: '综合实战', link: '/Milvus/chapter4/Milvus的AI应用开发' }
           ]
         }
         ,
