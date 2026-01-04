@@ -151,7 +151,7 @@ export default defineConfig({
         {
           text: 'Chapter 5 · Milvus的AI应用开发',
           items: [
-            { text: '综合实战:图像检索应用实战', link: '/Milvus/chapter5/1_build_text_image_search_engine' }
+            { text: '综合实战:图像检索应用实战', link: '/Milvus/chapter5/Milvus的AI应用开发' }
           ]
         },
         {
