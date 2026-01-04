@@ -52,9 +52,6 @@ wheel==0.40.0
 
 2. 本次使用的Milvus版本为2.5.x，首先启动Milvus（docker部署）以及Attu（用于查看数据）。等待全部准备完成后，运行以下代码，构建Schema与Collection
 
-<details>
-<summary>点击展开Python代码</summary>
-
 ```python
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
@@ -358,14 +355,12 @@ if __name__ == "__main__":
                 "市场分割和地方保护有哪些典型表现形式？"
                 ...
             ]
-            },
+            }
+        ],
     }
     ```
 
 数据导入代码用于将预处理好的政务问答数据批量插入到Milvus集合中。以下是数据导入的Python实现：
-
-<details>
-<summary>点击展开Python代码</summary>
 
 ```python
 #!/usr/bin/env python3
@@ -721,8 +716,6 @@ if __name__ == "__main__":
     main()
 ```
 
-</details>
-
 **代码说明：**
 
 1. **数据加载**：从JSON文件读取预处理好的政务问答数据，包含ID、标题、内容和向量字段
@@ -910,9 +903,6 @@ def generate_embedding(self, texts: List[str]) -> List[List[float]]:
 4. 生产环境建议使用API服务，避免本地GPU资源占用
 
 下面是完整的检索代码实现：
-
-<details>
-<summary>点击展开Python代码</summary>
 
 ```python
 import os
@@ -1226,7 +1216,6 @@ def main():
 if __name__ == "__main__":
     main()
 ```
-</details>
 
 ### 4.5.2 检索代码说明
 
@@ -1262,9 +1251,6 @@ if __name__ == "__main__":
 ### 4.5.3 Java版本实现
 
 对于Java开发者，我们也提供了完整的Java实现版本。同样需要实现`generateEmbedding`方法来生成查询向量。
-
-<details>
-<summary>点击展开Java代码</summary>
 
 ```java
 package com.czkj;
@@ -1955,7 +1941,6 @@ public class searchDemo {
 
   }
 ```
-</details>
 
 **Java代码核心说明：**
 
