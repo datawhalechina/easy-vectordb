@@ -11,7 +11,7 @@
    * locust测试
    * VectorDBench 测试
    * FusionANNS的实践，包含codeBook、DistanceTable的构建、分层PQ、启发式重排序、反馈控制、IO去重（分割为独立项目，后续补充链接）
-3. 文搜图[text_search_img](./text_search_img/1_build_text_image_search_engine.ipynb)
+3. 文搜图（已迁移到Milvus Chapter5）
 4. 数据聚类可视化[HDBSCAN](./HDBSCAN/README.md)
 5. 基于 Kubernetes 部署 Grafana + Loki 监控 Milvus 日志[k8s+loki](./k8s+loki/README.md)
 6. Meta-chunking论文代码demo[Meta-chunking](./Meta_chunking/README.md)
