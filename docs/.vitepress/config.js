@@ -144,23 +144,22 @@ export default defineConfig({
         {
           text: 'Chapter 4 · 综合实战',
           items: [
-            { text: '综合实战', link: '/Milvus/chapter4/综合实战.md' }
+            { text: '综合实战', link: '/Milvus/chapter4/Milvus的AI应用开发.md' }
           ]
         }
         ,
         {
           text: 'Chapter 5 · Milvus生态与进阶学习',
           items: [
-            { text: 'Milvus 生态与进阶', link: '/Milvus/chapter5/Milvus生态与进阶学习' },
-            { text: 'Milvus Standalone部署教程', link: '/Milvus/chapter5/Milvus Standalone部署' },
-            { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
+            { text: 'Milvus 生态与进阶', link: '/Milvus/chapter5/Milvus生态与进阶学习' }
           ]
         },
         {
           text: 'Chapter 6 · Milvus选学部分',
           items: [
             { text: 'Milvus底层架构详解', link: '/Milvus/chapter6/Milvus底层架构详解' },
-            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter6/Milvus Lite部署与应用' }
+            { text: 'Milvus Lite部署教程', link: '/Milvus/chapter6/Milvus Lite部署与应用' },
+            { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
           ]
         },
       ],
