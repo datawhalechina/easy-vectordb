@@ -41,7 +41,6 @@ export default defineConfig({
       { text: '向量基础', link: '/base/chapter1/项目介绍' },
       { text: 'Faiss 教程', link: '/Faiss/chapter1/FAISS入门与环境搭建' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus向量数据库入门' },
-      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy 介绍' },
       { text: '补充内容', link: '/more/chapter5/向量' },
       { text: '实战项目', link: '/projects/' }
     ],
@@ -160,20 +159,6 @@ export default defineConfig({
             { text: 'Milvus底层架构详解', link: '/Milvus/chapter6/Milvus底层架构详解' },
             { text: 'Milvus Lite部署教程', link: '/Milvus/chapter6/Milvus Lite部署与应用' },
             { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
-          ]
-        },
-      ],
-      '/Annoy/': [
-        {
-          text: 'Chapter 1 · 基础概念',
-          items: [
-            { text: 'Annoy 介绍', link: '/Annoy/chapter1/Annoy 介绍' },
-          ]
-        },
-        {
-          text: 'Chapter 2 · 部署与基础使用',
-          items: [
-            { text: 'Annoy 部署与基础使用', link: '/Annoy/chapter2/Annoy 部署与基础使用' },
           ]
         },
       ],
