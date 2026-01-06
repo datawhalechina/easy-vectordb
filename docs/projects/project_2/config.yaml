@@ -1,7 +1,7 @@
 # 大语言模型配置
 llm:
   model: "deepseek-chat"                      # 使用的模型名称
-  api_key: "sk-e1895a18b1b944178fa9e00de1efd436" # 您的 API Key
+  api_key: "sk-xxxx" # 您的 API Key
 
 # 向量化模型配置
 embedding:
