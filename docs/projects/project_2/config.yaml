@@ -1,0 +1,17 @@
+llm:
+  model: "deepseek-chat"
+  api_key: "sk-your_api_key_here"
+
+embedding:
+  model: "Qwen3-Embedding-0___6B"
+  device: "cpu"
+  dim: 1024
+
+rag:
+  top_k: 5
+
+storage:
+  persist_dir: "db/faiss_db"
+
+data:
+  path: "docs"
