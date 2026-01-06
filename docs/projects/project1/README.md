@@ -1,4 +1,7 @@
-# 实战项目_2:基于 FAISS数据库的RAG 系统
+
+# Chapter1 RAG with FAISS
+
+
 ## 什么是 RAG？
 检索增强生成（Retrieval-Augmented Generation，RAG）= 检索 +增强+ 生成 
 整个过程就像“开卷考试”：
@@ -10,7 +13,7 @@
 ## RAG的基本组成
 讲RAG的基本组成就不得不拿出这张经典的图
 
-![.\images](01.png)
+![alt text](../images/1.png)
 
 整个RAG流程分为四大模块：
 
