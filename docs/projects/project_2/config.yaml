@@ -1,17 +1,22 @@
+# 大语言模型配置
 llm:
-  model: "deepseek-chat"
-  api_key: "sk-your_api_key_here"
+  model: "deepseek-chat"                      # 使用的模型名称
+  api_key: "sk-e1895a18b1b944178fa9e00de1efd436" # 您的 API Key
 
+# 向量化模型配置
 embedding:
-  model: "Qwen3-Embedding-0___6B"
-  device: "cpu"
-  dim: 1024
+  model: "Qwen3-Embedding-0___6B"            # 本地 Embedding 模型路径
+  device: "cpu"                              # 运行设备: "cpu" 或 "cuda"
+  dim: 1024                                  # 向量维度
 
+# RAG 检索参数
 rag:
-  top_k: 5
+  top_k: 5                                   # 检索时返回的相关文档片段数量
 
+# 存储配置
 storage:
-  persist_dir: "db/faiss_db"
+  persist_dir: "db/faiss_db"                 # 向量数据库持久化保存路径
 
+# 数据源配置
 data:
-  path: "docs"
+  path: "docs"                               # 知识库文档 (.md) 存放目录

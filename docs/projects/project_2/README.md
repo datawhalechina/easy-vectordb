@@ -10,7 +10,7 @@
 ## RAG的基本组成
 讲RAG的基本组成就不得不拿出这张经典的图
 
-![docs\projects\project_2\images](01.png)
+![.\images](01.png)
 
 整个RAG流程分为四大模块：
 
@@ -21,12 +21,60 @@
 5. Output（回答） —— LLM进行输出，回答用户的问题
 
 
+
+
+## 参考目录结构
+
+```text
+
+project_2/
+
+├── rag/                   # 核心源代码
+│   ├── Embeddings.py      # 向量化实现
+│   ├── faiss_db.py        # 向量数据库操作
+│   ├── utils.py           # 文档切分与流程工具
+│   ├── llm.py             # 大模型客户端适配
+│   └── prompt.py          # 提示词模板
+├── docs/                  # 知识库 (.md 文件)
+├── db/                    # 自动生成的索引文件
+├── main.py                # 交互式入口
+├── config.yaml            # 全局配置文件
+└── README.md              # 项目文档
+```
+
+
+
+## 环境搭建
+
+1. 基础环境：Python 3.10+
+
+2. 环境依赖：
+```bash
+pip install -r requirements.txt
+```
+
+3. 下载Embedding 模型:
+
+```python
+#模型下载
+from modelscope import snapshot_download
+model_dir = snapshot_download('Qwen3-Embedding-0___6B')
+```
+
+4. config.yaml 配置
+
+| 配置项 | 说明 | 示例值 |
+| :--- | :--- | :--- |
+| `llm.model` | 使用的大模型名称 | `deepseek-chat` |
+| `llm.api_key` | 您的 API Key | `sk-xxxx...` |
+| `embedding.model` | 本地 Embedding 模型路径 | `./Qwen3-Embedding-0.6B` |
+| `embedding.device` | 运行设备 | `cpu` 或 `cuda` |
+| `rag.top_k` | 检索返回的参考文档数量 | `5` |
+| `storage.persist_dir`| 向量数据库保存路径 | `db/faiss_db` |
+| `data.path` | 知识库文档存放路径 | `docs` |
+
+
 ## 七步构建RAG
-
-### 环境搭建
-
-
-
 
 ### 第一步：准备数据
 首先我们准备知识库”来源，我们这边使用开源项目 HowToCook（https://github.com/Anduin2017/HowToCook）的食谱来作为我们知识库的数据，该数据中主要以Markdown 文件为主,统一将数据存储到data文件下。
@@ -255,3 +303,7 @@ def stream_chat(client_info, prompt: str) -> str:
 
 
 ### 第七步：运行你的RAG
+
+```python
+python main.py
+```

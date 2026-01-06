@@ -5,6 +5,7 @@ Faiss 向量数据库实现
 import numpy as np
 import pickle
 import os
+import faiss
 from typing import List, Tuple, Dict, Any, Optional
 
 class FaissVectorStore:
@@ -14,7 +15,7 @@ class FaissVectorStore:
         self.texts = []
         self.embeddings = []
         self.metadata = []
-        self.index = self.faiss.IndexFlatIP(dimension)  # 使用内积 (Inner Product) 进行余弦相似度搜索
+        self.index = faiss.IndexFlatIP(dimension)  # 使用内积 (Inner Product) 进行余弦相似度搜索
     
     def add_vectors(self, embeddings: List[List[float]], texts: List[str], metadata: Optional[List[Dict[str, Any]]] = None):
         """向数据库添加向量及其对应的文本内容，可选添加元数据"""
@@ -66,7 +67,7 @@ class FaissVectorStore:
         }
         
         # 保存索引文件
-        self.faiss.write_index(self.index, f"{filepath}.index")
+        faiss.write_index(self.index, f"{filepath}.index")
         
         # 保存元数据和其它数据
         with open(f"{filepath}.pkl", 'wb') as f:
@@ -76,7 +77,7 @@ class FaissVectorStore:
         """从磁盘加载向量数据库"""
         # 加载索引文件
         if os.path.exists(f"{filepath}.index"):
-            self.index = self.faiss.read_index(f"{filepath}.index")
+            self.index = faiss.read_index(f"{filepath}.index")
         
         # 加载元数据和其它数据
         if os.path.exists(f"{filepath}.pkl"):
@@ -92,4 +93,4 @@ class FaissVectorStore:
         self.texts = []
         self.embeddings = []
         self.metadata = []
-        self.index = self.faiss.IndexFlatIP(self.dimension)
+        self.index = faiss.IndexFlatIP(self.dimension)
