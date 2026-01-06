@@ -23,6 +23,10 @@
 
 ## 七步构建RAG
 
+### 环境搭建
+
+
+
 
 ### 第一步：准备数据
 首先我们准备知识库”来源，我们这边使用开源项目 HowToCook（https://github.com/Anduin2017/HowToCook）的食谱来作为我们知识库的数据，该数据中主要以Markdown 文件为主,统一将数据存储到data文件下。
