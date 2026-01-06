@@ -13,7 +13,7 @@
 ## RAG的基本组成
 讲RAG的基本组成就不得不拿出这张经典的图
 
-![alt text](../images/1.png)
+![alt text](../images/01.png)
 
 整个RAG流程分为四大模块：
 
@@ -30,7 +30,7 @@
 
 ```text
 
-project_2/
+project1/
 
 ├── rag/                   # 核心源代码
 │   ├── Embeddings.py      # 向量化实现
