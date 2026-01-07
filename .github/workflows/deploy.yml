@@ -45,6 +45,6 @@ jobs:
           force_orphan: true
 
       - name: Deploy to EdgeOne Pages
-        run: npx edgeone pages deploy docs/.vitepress/dist -n easy-vectordb -t ${{ secrets.EDGEONE_API_TOKEN }} [-e <env>]
+        run: npx edgeone pages deploy docs/.vitepress/dist -n easy-vectordb -t ${{ secrets.EDGEONE_API_TOKEN }}
         env:
           EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
