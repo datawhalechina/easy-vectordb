@@ -53,7 +53,7 @@
 | [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
 | [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
 | <strong>第四部分：基于向量数据库的AI应用开发</strong> |  |  |
-| project 1  | RAG with FAISS    |✅  |
+| [project 1 基于FAISS框架RAG实战项目](./docs/projects/project1/README.md)  | RAG with FAISS    |✅  |
 | project 2 XXXXXXXXX | XXXXXXXXX     |🚧  |
 | project 3 XXXXXXXXX | XXXXXXXXX     |🚧  |
 | <strong>第五部分：补充内容</strong> | 与向量数据库有关的内容 |  |
@@ -148,6 +148,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
