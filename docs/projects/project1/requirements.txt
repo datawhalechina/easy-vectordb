@@ -1,0 +1,8 @@
+torch
+transformers
+faiss-cpu
+numpy
+tqdm
+openai
+pyyaml
+modelscope
