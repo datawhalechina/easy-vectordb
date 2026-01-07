@@ -210,6 +210,12 @@ export default defineConfig({
           ]
         },
         {
+          text: '实战项目2',
+          items: [
+            { text: '基于Milvus框架的Agent项目', link: '/projects/project2/README' }
+          ]
+        },
+        {
           text: '实战概览',
           items: [
             { text: '项目概览', link: '/projects/' }
