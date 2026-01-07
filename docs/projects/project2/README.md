@@ -77,6 +77,7 @@ import os
 import uuid
 from typing import TypedDict, Annotated, List, Union
 import operator
+from datetime import datetime
 
 from langchain_community.chat_models import ChatZhipuAI
 from langchain_community.embeddings import ZhipuAIEmbeddings
@@ -87,7 +88,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.prebuilt import create_react_agent
 
 from pymilvus import connections, utility, CollectionSchema, FieldSchema, DataType, Collection
-
+# 中文场景下，智谱的效果好一些，所以这里记得填写密钥
 ZHIPUAI_API_KEY = ""  
 # 记得启动你本地的Milvus服务
 MILVUS_HOST = "localhost"
@@ -110,6 +111,7 @@ embeddings_model = ZhipuAIEmbeddings(
 
 print("配置加载完毕（使用 GLM + Milvus）。")
 
+# 初始化向量数据库连接以及字段shema和collection
 def init_milvus_collection():
     connections.connect(host=MILVUS_HOST, port=MILVUS_PORT)
 
@@ -128,6 +130,7 @@ def init_milvus_collection():
     collection.create_index(VECTOR_FIELD_NAME, index_params)
     print(f"集合 {MILVUS_COLLECTION_NAME} 创建成功。")
 
+# langgraph组件
 vectorstore = Milvus(
     embedding_function=embeddings_model,
     connection_args={"host": MILVUS_HOST, "port": MILVUS_PORT},
@@ -138,8 +141,10 @@ vectorstore = Milvus(
     vector_field=VECTOR_FIELD_NAME,
 )
 
+# 从向量数据库创建一个检索器，并配置每次检索时返回最相似的前三条结果
 retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
 
+# 定义工具，可不要随便起abc的函数名称！
 @tool
 def search_knowledge(query: str) -> str:
     """从 Milvus 知识库中检索相关信息"""
@@ -148,9 +153,16 @@ def search_knowledge(query: str) -> str:
         return "未找到相关信息。"
     return "\n".join([f"[{i+1}] {doc.page_content}" for i, doc in enumerate(docs)])
 
-tools = [search_knowledge]
+@tool
+def get_current_time(placeholder: str = "default") -> str: 
+    """Returns the current date and time."""
+    print("\n[Tool Call: get_current_time]")
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# 工具列表
+tools = [search_knowledge,get_current_time]
 agent_executor = create_react_agent(llm, tools)
 
+# 你可以尝试询问当前几点了，验证工具是否起作用
 if __name__ == "__main__":
     print("\n🚀 GLM + Milvus 智能体已就绪！输入问题开始对话（输入 'quit' 退出）：\n")
 
@@ -189,14 +201,14 @@ def create_milvus_collection_if_not_exists():
     schema = CollectionSchema(
         fields=[field_id, field_text, field_embedding],
         description="AI Agent Knowledge Base collection",
-        enable_dynamic_field=False # 如果需要额外元数据且不想预定义，可以设为True
+        enable_dynamic_field=False # 动态字段 如果需要额外元数据且不想预定义，可以设为True
     )
     collection = Collection(MILVUS_COLLECTION_NAME, schema=schema)
     print(f"集合 '{MILVUS_COLLECTION_NAME}' 创建成功.")
 
-    # 为向量字段创建索引 (IVF_FLAT 是一个常用选择)
+    # 为向量字段创建索引
     index_params = {
-        "metric_type": "L2", # 或 "IP" (Inner Product)
+        "metric_type": "L2", # 或 "IP" 
         "index_type": "IVF_FLAT",
         "params": {"nlist": 128},
     }
@@ -247,7 +259,11 @@ try:
             "向量数据库通过将数据转换为向量嵌入，并使用专门的索引进行高效的相似性搜索。",
             "RAG (Retrieval Augmented Generation) 是一种结合了检索系统和生成模型的AI技术，可以提高生成内容的准确性和相关性。",
             "太阳是太阳系的中心天体，其核心温度高达1500万摄氏度。",
-            "Python 是一种广泛使用的高级编程语言，以其简洁的语法和强大的库生态系统而闻名。"
+            "Python 是一种广泛使用的高级编程语言，以其简洁的语法和强大的库生态系统而闻名。",
+            "DataWhale 是国内领先的 AI 开源学习社区，成立于 2018 年，致力于推动人工智能领域的开源教育与协作学习。",
+            "DataWhale 社区覆盖全球 3500 多所高校，拥有数百万开发者，所有学习资料和项目代码均开源在 GitHub 上。",
+            "DataWhale 通过组织黑客松、组队学习和开源项目共建，帮助开发者系统掌握机器学习、大模型、向量数据库等前沿技术。",
+            "DataWhale 与 AMD、魔搭社区等机构合作，共同推动 ROCm 生态和国产 AI 基础设施的开发者生态建设。"
         ]
         insert_data_to_milvus(knowledge_collection, sample_knowledge)
     else:
@@ -263,18 +279,19 @@ except Exception as e:
 ```python
 from typing import List, TypedDict, Annotated
 import operator
+from datetime import datetime
 from langgraph.graph import StateGraph, END
 from langchain_core.tools import tool
 from langchain_core.messages import BaseMessage, ToolMessage
 from langchain_core.runnables import RunnableLambda
 from langchain_core.utils.function_calling import convert_to_openai_tool
 
-# 1. Define Tools
+# 1. 定义工具
 @tool
 def search_milvus_knowledge_base(query: str) -> str:
     """
-    Search the Milvus knowledge base for information relevant to the query.
-    The input should be a clear and specific question or search keywords.
+    从Milvus中查找与问题相关的信息。
+    输入的问题应是一个特定于milvus中存储的数据的问题
     """
     if not knowledge_collection:
         return "Milvus knowledge base is not available."
@@ -283,17 +300,17 @@ def search_milvus_knowledge_base(query: str) -> str:
     
     search_params = {
         "metric_type": "L2",
-        "params": {"nprobe": 10},  # Adjust nprobe based on index type and data size
+        "params": {"nprobe": 10},  # 基于索引类型和数据规模来定义nprobe大小
     }
     
-    # Perform the search
+    # 执行搜索
     results = knowledge_collection.search(
         data=[query_vector],
         anns_field=VECTOR_FIELD_NAME,
         param=search_params,
-        limit=3,  # Return top 3 relevant results
-        expr=None,  # Optional filter, e.g., "doc_type == 'faq'"
-        output_fields=[TEXT_FIELD_NAME]  # Retrieve original text content
+        limit=3,  # 返回前三条最相关的答案
+        expr=None,  # 可选择的标量过滤语句
+        output_fields=[TEXT_FIELD_NAME]  # 返回原始的内容字段
     )
     
     context = ""
@@ -305,30 +322,35 @@ def search_milvus_knowledge_base(query: str) -> str:
         print("[Tool Result] No relevant context found in Milvus.")
         context = "No relevant information found in the knowledge base."
     return context
+@tool
+def get_current_time(placeholder: str = "default") -> str: # Langchain tools often expect an input arg
+    """Returns the current date and time."""
+    print("\n[Tool Call: get_current_time]")
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+# 定义工具列表
+tools = [search_milvus_knowledge_base,get_current_time]
 
-# Define the tools list
-tools = [search_milvus_knowledge_base]
-
-# 2. Define Agent State
+# 2. 定义Agent状态
+# 这是典型的对话历史的存储方式
 class AgentState(TypedDict):
-    messages: Annotated[List[BaseMessage], operator.add]  # Accumulate messages
+    messages: Annotated[List[BaseMessage], operator.add]  
 
-# 3. Define Nodes
+# 3. 定义节点
 def agent_node(state: AgentState) -> dict:
     """
-    Agent node: Decides the next action (call a tool or respond directly).
+    Agent node: 决定下一个行动是什么 (是调用工具还是直接回复).
     """
     print("\n[Node: Agent]")
-    # Bind tools to the LLM to make it aware of available tools
+    # 向llm展示可用的工具都有哪些
     bound_llm = llm.bind_tools(tools)
     response = bound_llm.invoke(state["messages"])
-    
+    # 展示Agent的决定
     print(f"[Agent Decision] Response: {response.content}, Tool Calls: {response.tool_calls}")
     return {"messages": [response]}
 
 def tool_node(state: AgentState) -> dict:
     """
-    Tool node: Executes tool calls requested by the agent.
+    Tool node: 执行agent发起的工具调用
     """
     print("\n[Node: Tool Executor]")
     last_message = state["messages"][-1]
@@ -342,7 +364,7 @@ def tool_node(state: AgentState) -> dict:
         tool_name = tool_call["name"]
         tool_input = tool_call["args"]
         
-        # Find the tool by name
+        # 通过name查找对应的tool
         tool = next((t for t in tools if t.name == tool_name), None)
         if not tool:
             tool_messages.append(
@@ -354,7 +376,7 @@ def tool_node(state: AgentState) -> dict:
             continue
         
         try:
-            # Execute the tool
+            # 执行工具
             result = tool.invoke(tool_input)
             tool_messages.append(
                 ToolMessage(
@@ -373,10 +395,10 @@ def tool_node(state: AgentState) -> dict:
     print(f"[Tool Executor] Executed tools, results: {tool_messages}")
     return {"messages": tool_messages}
 
-# 4. Define Conditional Edges
+# 4. 定义情景上的边界
 def should_continue(state: AgentState) -> str:
     """
-    Determines whether to continue to the tools node or end the workflow.
+    决定什么时候继续调用工具还是结束
     """
     print("\n[Edge: should_continue]")
     last_message = state["messages"][-1]
@@ -386,17 +408,17 @@ def should_continue(state: AgentState) -> str:
     print("[Edge Decision] End")
     return END
 
-# 5. Construct the Graph
+# 5. 构建图
 workflow = StateGraph(AgentState)
 
-# Add nodes
+# 添加节点
 workflow.add_node("agent", RunnableLambda(agent_node))
 workflow.add_node("tools", RunnableLambda(tool_node))
 
-# Set entry point
+# 设置入口
 workflow.set_entry_point("agent")
 
-# Add conditional edges
+# 添加边界
 workflow.add_conditional_edges(
     "agent",
     should_continue,
@@ -406,10 +428,10 @@ workflow.add_conditional_edges(
     }
 )
 
-# Add edge from tools back to agent
+# 添加工具到agent的连接
 workflow.add_edge("tools", "agent")
 
-# Compile the graph
+# 编译
 app = workflow.compile()
 print("\nLangGraph App compiled successfully!")
 
@@ -426,8 +448,6 @@ except Exception:
 ```
 
 ```python
-# Run the Agent and Interact
-
 if not knowledge_collection:
     print(" Milvus 连接和集合初始化失败。")
 else:
