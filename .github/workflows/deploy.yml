@@ -43,3 +43,8 @@ jobs:
           publish_dir: docs/.vitepress/dist
           publish_branch: gh-pages
           force_orphan: true
+
+      - name: Deploy to EdgeOne Pages
+        run: npx edgeone pages deploy <outputDirectory> -n <projectName> -t ${{ secrets.EDGEONE_API_TOKEN }} [-e <env>]
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
