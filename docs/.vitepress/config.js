@@ -204,7 +204,13 @@ export default defineConfig({
       ],
       '/projects/': [
         {
-          text: '实战项目',
+          text: '实战项目1',
+          items: [
+            { text: '基于FAISS框架RAG实战项目', link: '/projects/project1/README' }
+          ]
+        },
+        {
+          text: '实战概览',
           items: [
             { text: '项目概览', link: '/projects/' }
           ]
