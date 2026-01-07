@@ -54,7 +54,7 @@
 | [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
 | <strong>第四部分：基于向量数据库的AI应用开发</strong> |  |  |
 | [project 1 基于FAISS框架RAG实战项目](./docs/projects/project1/README.md)  | RAG with FAISS    |✅  |
-| project 2 XXXXXXXXX | XXXXXXXXX     |🚧  |
+| [project 2 基于Milvus框架的Agent项目](./docs/projects/project2/README.md) | Agent with Milvus     |✅   |
 | project 3 XXXXXXXXX | XXXXXXXXX     |🚧  |
 | <strong>第五部分：补充内容</strong> | 与向量数据库有关的内容 |  |
 | [向量基础知识](./docs/more/chapter5/向量.md) | 向量基础概念与数学原理 | ✅ |
