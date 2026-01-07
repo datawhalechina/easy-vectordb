@@ -13,7 +13,7 @@
 ## RAG的基本组成
 讲RAG的基本组成就不得不拿出这张经典的图
 
-![RAG基本组成](../images/01.png)
+![RAG基本组成](/images/project_image_01.png)
 
 整个RAG流程分为四大模块：
 
