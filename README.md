@@ -37,7 +37,7 @@
 | [Chapter 2 为什么需要向量数据库](./docs/base/chapter2/为什么需要向量数据库.md) | 检索瓶颈、相似度搜索原理 | ✅ |
 | [Chapter 3 向量嵌入算法基础](./docs/base/chapter3/向量嵌入算法基础.md) | Word2Vec、Transformer Embedding | ✅ |
 | [Chapter 4 向量搜索算法基础](./docs/base/chapter4/向量搜索算法基础.md) | 暴力检索、向量相似度 | ✅ |
-| [Chapter 5 ANN 搜索算法](./docs/base/chapter5/ANN搜索算法.md) | IVF、PQ、HNSW、LSH 原理与代码实战 | ✅ |
+| [Chapter 5 ANN 搜索算法](./docs/base/chapter5/ANN搜索算法.md) | IVF、PQ、HNSW、LSH、Annoy算法原理与代码实战 | ✅ |
 | [Chapter 6 实现你自己的向量数据库](./docs/base/chapter6/实现你自己的向量数据库.md) | 向量数据库最小实现 | ✅ |
 | <strong>第二部分：Faiss 教程（Faiss）</strong> | 高性能向量检索引擎实战 |  |
 | [Chapter 1 FAISS 入门与环境搭建](./docs/faiss/chapter1/FAISS入门与环境搭建.md) | 安装配置、基础概念 | ✅ |
@@ -148,6 +148,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
