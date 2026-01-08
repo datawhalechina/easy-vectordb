@@ -75,6 +75,7 @@ export default defineConfig({
           text: 'Chapter 5 · 向量ANN搜索算法',
           items: [
             { text: 'ANN搜索算法', link: '/base/chapter5/ANN搜索算法' },
+            { text: 'Annoy算法', link: '/base/chapter5/Annoy算法' },
             { text: 'IVF算法', link: '/base/chapter5/IVF算法' },
             { text: 'HNSW算法', link: '/base/chapter5/HNSW算法' },
             { text: 'PQ算法', link: '/base/chapter5/PQ算法' },
