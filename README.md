@@ -101,6 +101,7 @@
 - [刘晓-项目贡献者](https://github.com/Halukisan)(Datawhale鲸英助教)
 - [柯慕灵-项目贡献者](https://github.com/1985312383)(Datawhale成员)
 - [赵鑫龙-项目贡献者](https://github.com/xiaoming910)(Datawhale精英助教)
+- [陈辅元-项目贡献者](https://github.com/Fyuan0206)(Datawhale成员)
 ### 特别感谢
 
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
@@ -149,6 +150,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
