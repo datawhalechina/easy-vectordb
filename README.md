@@ -37,7 +37,7 @@
 | [Chapter 2 为什么需要向量数据库](./docs/base/chapter2/为什么需要向量数据库.md) | 检索瓶颈、相似度搜索原理 | ✅ |
 | [Chapter 3 向量嵌入算法基础](./docs/base/chapter3/向量嵌入算法基础.md) | Word2Vec、Transformer Embedding | ✅ |
 | [Chapter 4 向量搜索算法基础](./docs/base/chapter4/向量搜索算法基础.md) | 暴力检索、向量相似度 | ✅ |
-| [Chapter 5 ANN 搜索算法](./docs/base/chapter5/ANN搜索算法.md) | IVF、PQ、HNSW、LSH 原理与代码实战 | ✅ |
+| [Chapter 5 ANN 搜索算法](./docs/base/chapter5/ANN搜索算法.md) | IVF、PQ、HNSW、LSH、Annoy算法原理与代码实战 | ✅ |
 | [Chapter 6 实现你自己的向量数据库](./docs/base/chapter6/实现你自己的向量数据库.md) | 向量数据库最小实现 | ✅ |
 | <strong>第二部分：Faiss 教程（Faiss）</strong> | 高性能向量检索引擎实战 |  |
 | [Chapter 1 FAISS 入门与环境搭建](./docs/faiss/chapter1/FAISS入门与环境搭建.md) | 安装配置、基础概念 | ✅ |
@@ -97,9 +97,11 @@
 - 如果你对 Datawhale 很感兴趣并想要发起一个新的项目，请按照[Datawhale开源项目指南](https://github.com/datawhalechina/DOPMC/blob/main/GUIDE.md)进行操作即可~
 
 ### 核心贡献者
-- [牧小熊-项目负责人](https://github.com/muxiaoxiong) (Datawhale成员-武汉社区负责人)
+- [牧小熊-项目负责人](https://github.com/muxiaoxiong)(Datawhale成员)
 - [刘晓-项目贡献者](https://github.com/Halukisan)(Datawhale鲸英助教)
-
+- [柯慕灵-项目贡献者](https://github.com/1985312383)(Datawhale成员)
+- [赵鑫龙-项目贡献者](https://github.com/xiaoming910)(Datawhale精英助教)
+- [陈辅元-项目贡献者](https://github.com/Fyuan0206)(Datawhale成员)
 ### 特别感谢
 
 - 感谢 [@Sm1les](https://github.com/Sm1les) 对本项目的帮助与支持
@@ -148,6 +150,11 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
+
+
+
+
 
 
 
