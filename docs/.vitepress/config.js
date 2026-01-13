@@ -217,6 +217,12 @@ export default defineConfig({
           ]
         },
         {
+          text: '实战项目3',
+          items: [
+            { text: '基于Milvus和ArangoDB的RAG系统', link: '/projects/project3/README' }
+          ]
+        },
+        {
           text: '实战概览',
           items: [
             { text: '项目概览', link: '/projects/' }
