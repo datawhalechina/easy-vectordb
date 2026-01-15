@@ -51,7 +51,7 @@
 | [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
 | [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
 | [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
-| [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
+| [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus reranker、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
 | <strong>第四部分：基于向量数据库的AI应用开发</strong> |  |  |
 | [project 1 基于FAISS框架RAG实战项目](./docs/projects/project1/README.md)  | RAG with FAISS    |✅  |
 | [project 2 基于Milvus框架的Agent项目](./docs/projects/project2/README.md) | Agent with Milvus     |✅   |
