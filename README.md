@@ -1,7 +1,11 @@
 <div align='center'>
     <img src="./logo.png" alt="alt text" width="100%">
-    <h1>Easy-vectorDB</h1>
+    <h1>Easy-vectorDB（⚠️ Alpha内测版）</h1>
 </div>
+
+> [!CAUTION]
+> ⚠️ Alpha内测版本警告：此为早期内部构建版本，尚不完整且可能存在错误，欢迎大家提Issue反馈问题或建议。
+
 <div align="center">
 
 [![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
@@ -150,6 +154,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
