@@ -1,15 +1,20 @@
 import { defineConfig } from 'vitepress'
 
+// 1. 获取环境变量并判断
+// 如果环境变量 EDGEONE 等于 '1'，说明在 EdgeOne 环境，使用根路径 '/'
+// 否则默认是 GitHub Pages 环境，使用仓库子路径 '/easy-vectordb/'
+const isEdgeOne = process.env.EDGEONE === '1'
+const baseConfig = isEdgeOne ? '/' : '/easy-vectordb/'
+
 export default defineConfig({
   title: 'EasyVectorDB 教程',
   description: '向量数据库学习与实战指南',
   lang: 'zh-CN',
-  base: '/easy-vectordb/',
+  base: baseConfig, // 这里直接使用上面计算好的变量
   lastUpdated: true,
   ignoreDeadLinks: true,
 
   head: [
-    // ['link', { rel: 'icon', href: '/images/image.png' }],
     ['meta', { name: 'theme-color', content: '#3c8772' }]
   ],
 
@@ -27,13 +32,10 @@ export default defineConfig({
   },
 
   themeConfig: {
-    // logo: '/images/image.png',
-
     returnToTopLabel: '返回顶部',
 
-    // 控制右侧目录显示的标题层级
     outline: {
-      level: [1, 4] // 显示从 # (h1) 到 #### (h4) 的标题
+      level: [1, 4]
     },
 
     nav: [
@@ -256,6 +258,11 @@ export default defineConfig({
         dateStyle: 'short',
         timeStyle: 'medium'
       }
-    }
-  }
+    },
+
+    footer: {
+      message: '基于 Apache-2.0 许可发布',
+      copyright: '备案号：<a href="https://beian.miit.gov.cn/" target="_blank">京ICP备 2026002630 号-1</a>',
+    },
+  },
 })
