@@ -158,6 +158,7 @@ export default defineConfig({
           text: 'Chapter 6 · Milvus选学部分',
           items: [
             { text: 'Milvus底层架构详解', link: '/Milvus/chapter6/Milvus底层架构详解' },
+            { text: 'Milvus Reranker', link: '/Milvus/chapter6/Milvus Reranker重排' },
             { text: 'Milvus Lite部署教程', link: '/Milvus/chapter6/Milvus Lite部署与应用' },
             { text: 'MinerU 部署教程', link: '/Milvus/chapter5/MinerU部署教程' }
           ]
