@@ -238,11 +238,6 @@ export default defineConfig({
       { icon: 'github', link: 'https://github.com/datawhalechina/easy-vectordb' }
     ],
 
-    footer: {
-      message: '基于 MIT 许可发布',
-      copyright: 'Copyright © 2025 datawhale'
-    },
-
     search: {
       provider: 'local'
     },
