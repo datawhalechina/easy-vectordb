@@ -12,7 +12,7 @@
 
 [中文](./README.md) | [English](./README_en.md)
 
-[📚 在线阅读地址](https://datawhalechina.github.io/easy-vectordb/)
+[📚 在线阅读地址](https://datawhalechina.github.io/easy-vecdb/)
 
 📚 从零开始的向量数据库原理与实践教程
 
@@ -154,6 +154,7 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
 
 
 
