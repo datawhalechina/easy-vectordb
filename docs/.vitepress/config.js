@@ -2,12 +2,12 @@ import { defineConfig } from 'vitepress'
 
 // 1. 获取环境变量并判断
 // 如果环境变量 EDGEONE 等于 '1'，说明在 EdgeOne 环境，使用根路径 '/'
-// 否则默认是 GitHub Pages 环境，使用仓库子路径 '/easy-vectordb/'
+// 否则默认是 GitHub Pages 环境，使用仓库子路径 '/easy-vecdb/'
 const isEdgeOne = process.env.EDGEONE === '1'
-const baseConfig = isEdgeOne ? '/' : '/easy-vectordb/'
+const baseConfig = isEdgeOne ? '/' : '/easy-vecdb/'
 
 export default defineConfig({
-  title: 'EasyVectorDB 教程',
+  title: 'EasyVecDB 教程',
   description: '向量数据库学习与实战指南',
   lang: 'zh-CN',
   base: baseConfig, // 这里直接使用上面计算好的变量
@@ -235,7 +235,7 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/datawhalechina/easy-vectordb' }
+      { icon: 'github', link: 'https://github.com/datawhalechina/easy-vecdb' }
     ],
 
     search: {
@@ -243,7 +243,7 @@ export default defineConfig({
     },
 
     editLink: {
-      pattern: 'https://github.com/datawhalechina/easy-vectordb/edit/main/docs/:path',
+      pattern: 'https://github.com/datawhalechina/easy-vecdb/edit/main/docs/:path',
       text: '在 GitHub 上编辑此页'
     },
 

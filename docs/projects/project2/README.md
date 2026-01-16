@@ -1,6 +1,6 @@
 # Chapter2 Milvus 在 AI Agent 中的应用
 
-点击这里打开ipynb文件->[project2](https://github.com/datawhalechina/easy-vectordb/blob/main/docs/projects/project2/project2.ipynb)
+点击这里打开ipynb文件->[project2](https://github.com/datawhalechina/easy-vecdb/blob/main/docs/projects/project2/project2.ipynb)
 
 
 本项目将通过LangGraph和Milvus构建Agent

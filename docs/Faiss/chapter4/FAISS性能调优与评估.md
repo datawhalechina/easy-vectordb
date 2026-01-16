@@ -72,7 +72,7 @@ def load_sift1m(path):
 
 # 测试加载（注意路径使用 raw 字符串或双反斜杠）
 d = 128
-xb, xq, gt = load_sift1m(r"C:\Users\xiong\Desktop\easy-vectordb\easy-vectordb\data\sift")
+xb, xq, gt = load_sift1m(r"C:\Users\xiong\Desktop\easy-vecdb\easy-vecdb\data\sift")
 print(f"数据库向量：{xb.shape}，查询向量：{xq.shape}，真实结果：{gt.shape}")
 ```
 
@@ -124,7 +124,7 @@ def benchmark(index, xq, k, n_round=50):
     return latency_ms, qps
 
 # 加载数据（请替换为你的SIFT1M数据集路径）
-sift1m_path = r"C:\Users\xiong\Desktop\easy-vectordb\easy-vectordb\data\sift"
+sift1m_path = r"C:\Users\xiong\Desktop\easy-vecdb\easy-vecdb\data\sift"
 xb, xq, _ = load_sift1m(sift1m_path)
 k=10
 d=128
@@ -341,7 +341,7 @@ def evaluate_hnsw(params: Dict[str, int], xb: np.ndarray, xq: np.ndarray, I_gt: 
 
 # ====================== 2. 数据加载与全局配置 ======================
 # 加载数据（替换为用户的SIFT1M路径）
-sift1m_path = r"C:\Users\xiong\Desktop\easy-vectordb\easy-vectordb\data\sift"
+sift1m_path = r"C:\Users\xiong\Desktop\easy-vecdb\easy-vecdb\data\sift"
 xb, xq, gt = load_sift1m(sift1m_path)
 
 # 核心配置
