@@ -20,7 +20,7 @@ BACKEND_URL = "http://localhost:12089"
 DEFAULT_TIMEOUT = 60
 
 st.set_page_config(
-    page_title="DataWhale-easyVectorDB", 
+    page_title="DataWhale-easyVecDB", 
     layout="wide", 
     page_icon="🔍",
     initial_sidebar_state="collapsed"
@@ -214,7 +214,7 @@ st.markdown("""
 
 st.markdown("""
 <div class="main-header">
-    <h1>🔍 DataWhale-easyVectorDB Enhanced</h1>
+    <h1>🔍 DataWhale-easyVecDB Enhanced</h1>
     <p style="text-align: center; color: white; margin: 0; opacity: 0.9;">
         智能向量数据库管理系统- 集成聚类搜索、智能分块、性能监控与压测
     </p>

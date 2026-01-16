@@ -287,5 +287,5 @@ PQ 通过一种“分块 + 量化”的策略来表示高维向量：
 *在单CPU上的[ANN基准测试](https://github.com/erikbern/ann-benchmarks)对比图*
 
 ::: tip
-本节ANN算法相关代码ipynb：https://github.com/datawhalechina/easy-vectordb/tree/main/src/ANN_alorithms
+本节ANN算法相关代码ipynb：https://github.com/datawhalechina/easy-vecdb/tree/main/src/ANN_alorithms
 :::

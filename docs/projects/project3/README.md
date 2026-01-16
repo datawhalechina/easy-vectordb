@@ -1,6 +1,6 @@
 # 基于Milvus和ArangoDB的RAG系统
 
-> ipynb可执行代码请点击：[基于Milvus和ArangoDB的RAG系统.ipynb](https://github.com/datawhalechina/easy-vectordb/blob/main/docs/projects/project3/project3.ipynb)
+> ipynb可执行代码请点击：[基于Milvus和ArangoDB的RAG系统.ipynb](https://github.com/datawhalechina/easy-vecdb/blob/main/docs/projects/project3/project3.ipynb)
 
 很多学习者没有了解过ArangoDB这个数据库，下面，你可以通过该部分系统性的了解这个数据库，也可以跳过这部分直接看设计思想部分。
 

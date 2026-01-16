@@ -1,6 +1,6 @@
 <div align='center'>
     <img src="./logo.png" alt="alt text" width="100%">
-    <h1>Easy-vectorDB（⚠️ Alpha内测版）</h1>
+    <h1>Easy-vecDB（⚠️ Alpha内测版）</h1>
 </div>
 
 > [!CAUTION]
@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/blob/main/LICENSE)
 
 [中文](./README.md) | [English](./README_en.md)
 
@@ -20,7 +20,7 @@
 
 ## 🧭 项目简介
 
-**EasyVectorDB** 是一个面向开发者与研究者的 **向量数据库系统性学习项目**。  
+**EasyVecDB** 是一个面向开发者与研究者的 **向量数据库系统性学习项目**。  
 项目内容覆盖从基础概念、算法原理到生产级应用部署的全流程，聚焦以下三个方向：
 
 - 🧩 **理论入门**：理解向量数据库的原理、架构与索引机制  
@@ -88,8 +88,8 @@
 ## 📄 补充资源
 
 - 📚 [Datawhale社区介绍](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
-- 🌐 [在线文档站点](https://datawhalechina.github.io/easy-vectordb/)
-- 💻 [项目源码](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+- 🌐 [在线文档站点](https://datawhalechina.github.io/easy-vecdb/)
+- 💻 [项目源码](https://github.com/datawhalechina/easy-vecdb/tree/main/src)
 
 【相关竞赛】
 - 🚩[2025 全国大学生计算机系统能力大赛——第2届PolarDB数据库创新设计赛](https://tianchi.aliyun.com/competition/entrance/532409)
@@ -113,8 +113,8 @@
 
 <div align="left">
 
-<a href="https://github.com/datawhalechina/easy-vectordb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vectordb" />
+<a href="https://github.com/datawhalechina/easy-vecdb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vecdb" />
 </a>
 
 </div>
@@ -133,9 +133,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date&theme=dark" />
-  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
-  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date" />
 </picture>
 
 ---

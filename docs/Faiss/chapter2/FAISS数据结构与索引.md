@@ -224,7 +224,7 @@ print(f"IP vs COS  重合度：{overlap(idx_ip[0], idx_cos[0])}/10")
 运行结果
 
 ```
-(base) PS C:\Users\xiong\Desktop\easy-vectordb\easy-vectordb> & E:/anaconda/python.exe c:/Users/xiong/Desktop/easy-vectordb/easy-vectordb/test.py
+(base) PS C:\Users\xiong\Desktop\easy-vecdb\easy-vecdb> & E:/anaconda/python.exe c:/Users/xiong/Desktop/easy-vecdb/easy-vecdb/test.py
 FAISS version: 1.11.0
 三个索引均已添加向量： 10000
 IndexFlatL2 检索时间：0.0145 秒

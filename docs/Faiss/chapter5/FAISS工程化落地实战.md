@@ -577,7 +577,7 @@ def extract_image_feature(image_path: str | Path) -> np.ndarray | None:
         return None
 
 # 5. 测试特征提取（优化路径处理）
-image_dir = Path("C:/Users/xiong/Desktop/easy-vectordb/valid")  # 去掉./，规范绝对路径
+image_dir = Path("C:/Users/xiong/Desktop/easy-vecdb/valid")  # 去掉./，规范绝对路径
 image_paths = [p for p in image_dir.iterdir() if p.is_file()]
 
 # 提取文件夹内所有图像的特征
@@ -708,15 +708,15 @@ else:
 ===== 相似图片检索结果 =====
 排名1 | L2距离：0.0000
 产品ID：0_13
-图片路径：C:\Users\xiong\Desktop\easy-vectordb\valid\0_13.png
+图片路径：C:\Users\xiong\Desktop\easy-vecdb\valid\0_13.png
 
 排名2 | L2距离：0.5698
 产品ID：0_323660
-图片路径：C:\Users\xiong\Desktop\easy-vectordb\valid\0_323660.jpeg
+图片路径：C:\Users\xiong\Desktop\easy-vecdb\valid\0_323660.jpeg
 
 排名3 | L2距离：0.6224
 产品ID：0_223551
-图片路径：C:\Users\xiong\Desktop\easy-vectordb\valid\0_223551.jpg
+图片路径：C:\Users\xiong\Desktop\easy-vecdb\valid\0_223551.jpg
 ```
 
 ## 5.2.4 实战任务：论坛图片相似检索系统

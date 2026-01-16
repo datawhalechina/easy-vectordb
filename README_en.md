@@ -1,17 +1,17 @@
 <div align='center'>
     <img src="./logo.png" alt="alt text" width="100%">
-    <h1>Easy-vectorDB</h1>
+    <h1>Easy-vecDB</h1>
 </div>
 <div align="center">
 
-[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members)
-[![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues)
-[![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/issues)
+[![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/blob/main/LICENSE)
 
 [中文](./README.md) | [English](./README_en.md)
 
-[📚 Online Documentation](https://datawhalechina.github.io/easy-vectordb/)
+[📚 Online Documentation](https://datawhalechina.github.io/easy-vecdb/)
 
 📚 A From-Scratch Tutorial on Vector Database Principles and Practice
 
@@ -21,7 +21,7 @@
 
 ## 🧭 Project Overview
 
-**EasyVectorDB** is a **systematic learning project on vector databases** designed for developers and researchers.  
+**EasyVecDB** is a **systematic learning project on vector databases** designed for developers and researchers.  
 The project covers the entire workflow from fundamental concepts and algorithmic principles to production-level deployment, with a focus on the following three aspects:
 
 - 🧩 **Theory Fundamentals**: Understand the principles, architectures, and indexing mechanisms of vector databases  
@@ -84,8 +84,8 @@ The project is divided into **Base (Fundamentals)** and **Practice** sections, c
 ## 📄 Additional Resources
 
 - 📚 [Introduction to the Datawhale Community](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
-- 🌐 [Online Documentation Site](https://datawhalechina.github.io/easy-vectordb/)
-- 💻 [Project Source Code](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+- 🌐 [Online Documentation Site](https://datawhalechina.github.io/easy-vecdb/)
+- 💻 [Project Source Code](https://github.com/datawhalechina/easy-vecdb/tree/main/src)
 - 🚩 [2025 National College Student Computer System Capability Competition – 2nd PolarDB Database Innovation Design Contest](https://tianchi.aliyun.com/competition/entrance/532409)
 
 ---
@@ -108,8 +108,8 @@ The project is divided into **Base (Fundamentals)** and **Practice** sections, c
 
 <div align="left">
 
-<a href="https://github.com/datawhalechina/easy-vectordb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vectordb" />
+<a href="https://github.com/datawhalechina/easy-vecdb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vecdb" />
 </a>
 
 </div>
@@ -130,9 +130,9 @@ The project is divided into **Base (Fundamentals)** and **Practice** sections, c
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date&theme=dark" />
-  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
-  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date" />
 </picture>
 
 </div>
