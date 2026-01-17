@@ -795,7 +795,7 @@ def visualize_lsh(lsh, query_vec, k=5):
                      lw=2 if m else 1, fontsize=8, family="monospace")
             cell(xs[-1], y, f"{hc}/{lsh.num_tables}", fontsize=10, fontweight="bold",
                  color=COLORS["hits"][hc-1] if hc else COLORS["hash_table"]["no_hit_text"])
-        ax4.text((xs[0]+xs[-1])/2, y-0.8, "绿框 = 哈希码匹配 = 被召回候选集\n◆ = Ground Truth (真实Top-k)",
+        ax4.text((xs[0]+xs[-1])/2, y-1.5, "绿框 = 哈希码匹配 = 被召回候选集\n◆ = Ground Truth",
                  ha="center", fontsize=8, color=COLORS["hash_table"]["match_border"])
     
     # Panel 5: 最终结果对比
