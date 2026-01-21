@@ -44,18 +44,18 @@
 | [Chapter 5 ANN 搜索算法](./docs/base/chapter5/ANN搜索算法.md) | IVF、PQ、HNSW、LSH、Annoy算法原理与代码实战 | ✅ |
 | [Chapter 6 实现你自己的向量数据库](./docs/base/chapter6/实现你自己的向量数据库.md) | 向量数据库最小实现 | ✅ |
 | <strong>第二部分：Faiss 教程（Faiss）</strong> | 高性能向量检索引擎实战 |  |
-| [Chapter 1 FAISS 入门与环境搭建](./docs/faiss/chapter1/FAISS入门与环境搭建.md) | 安装配置、基础概念 | ✅ |
-| [Chapter 2 FAISS 核心索引实战](./docs/faiss/chapter2/FAISS数据结构与索引.md) | Flat、IVF、PQ、HNSW 等索引 | ✅ |
-| [Chapter 3 FAISS 核心功能进阶](./docs/faiss/chapter3/FAISS核心功能进阶.md) | 复合索引、GPU、批量检索 | ✅ |
-| [Chapter 4 FAISS 性能调优与评估](./docs/faiss/chapter4/FAISS性能调优与评估.md) | Recall、延迟、内存调优 | ✅ |
-| [Chapter 5 FAISS 工程化落地实战](./docs/faiss/chapter5/FAISS工程化落地实战.md) | 工程结构、服务化、实战案例 | ✅ |
+| [Chapter 1 FAISS 入门与环境搭建](./docs/Faiss/chapter1/FAISS入门与环境搭建.md) | 安装配置、基础概念 | ✅ |
+| [Chapter 2 FAISS 核心索引实战](./docs/Faiss/chapter2/FAISS数据结构与索引.md) | Flat、IVF、PQ、HNSW 等索引 | ✅ |
+| [Chapter 3 FAISS 核心功能进阶](./docs/Faiss/chapter3/FAISS核心功能进阶.md) | 复合索引、GPU、批量检索 | ✅ |
+| [Chapter 4 FAISS 性能调优与评估](./docs/Faiss/chapter4/FAISS性能调优与评估.md) | Recall、延迟、内存调优 | ✅ |
+| [Chapter 5 FAISS 工程化落地实战](./docs/Faiss/chapter5/FAISS工程化落地实战.md) | 工程结构、服务化、实战案例 | ✅ |
 | <strong>第三部分：Milvus 教程（Milvus）</strong> | 分布式向量数据库与工程实践 |  |
-| [Chapter 1 Milvus 向量数据库入门：认知与架构](./docs/milvus/chapter1/Milvus向量数据库入门.md) | 架构设计、核心组件 | ✅ |
-| [Chapter 2 Milvus 核心概念：数据模型与索引体系](./docs/milvus/chapter2/Milvus核心概念.md) | Collection、Partition、Index | ✅ |
-| [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
-| [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
-| [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
-| [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus reranker、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
+| [Chapter 1 Milvus 向量数据库入门：认知与架构](./docs/Milvus/chapter1/Milvus向量数据库入门.md) | 架构设计、核心组件 | ✅ |
+| [Chapter 2 Milvus 核心概念：数据模型与索引体系](./docs/Milvus/chapter2/Milvus核心概念.md) | Collection、Partition、Index | ✅ |
+| [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/Milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
+| [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/Milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
+| [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/Milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
+| [Chapter 6 Milvus 选学部分](./docs/Milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus reranker、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
 | <strong>第四部分：基于向量数据库的AI应用开发</strong> |  |  |
 | [project 1 基于FAISS框架RAG实战项目](./docs/projects/project1/README.md)  | RAG with FAISS    |✅  |
 | [project 2 基于Milvus框架的Agent项目](./docs/projects/project2/README.md) | Agent with Milvus     |✅   |
@@ -67,7 +67,7 @@
 | [检索理论极限](./docs/more/chapter3/Limit基于嵌入检索的理论极限.md) | 向量检索性能边界分析 | ✅ |
 | [RabitQ索引技术](./docs/more/chapter4/RabitQ：用于近似最近邻搜索的带理论误差界的高维向量量化.md) | 高维向量量化方法 | ✅ |
 | [聚类算法](./docs/more/chapter6/聚类算法介绍.md) | 聚类算法介绍 | ✅ |
-或者你想要添加更多具体的文档项？可以告诉我具体要补充哪些内容。
+|或者你想要添加更多具体的文档项？可以告诉我具体要补充哪些内容。|||
 
 如果你是想在原来的JSON导航结构中添加，也可以告诉我具体要加在哪个位置。
 ⏳ **持续更新中...** 
