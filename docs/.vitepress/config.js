@@ -52,7 +52,8 @@ export default defineConfig({
         {
           text: 'Chapter 1 · 项目介绍',
           items: [
-            { text: '项目介绍', link: '/base/chapter1/项目介绍' }
+            { text: '项目介绍', link: '/base/chapter1/项目介绍' },
+            { text: '学习路径推荐', link: '/base/chapter1/学习路径推荐' },
           ]
         },
         {
