@@ -5,7 +5,7 @@ https://github.com/datawhalechina/all-in-rag/tree/main
 ## 运行程序的步骤
 1. 配置环境
 ```shell
-cd easy-vectordb/src/graph_rag/data
+cd easy-vecdb/src/graph_rag/data
 docker compose up -d
 docker compose -f docker-compose.milvus.yml up -d
 ```

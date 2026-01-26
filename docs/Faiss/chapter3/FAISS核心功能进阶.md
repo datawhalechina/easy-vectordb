@@ -174,7 +174,7 @@ nlist = 1024
 m = 16 
 nbits = 8
 nprobe = 50
-xb, xq, gt = load_sift1m(r"C:\Users\xiong\Desktop\easy-vectordb\easy-vectordb\data\sift")
+xb, xq, gt = load_sift1m(r"C:\Users\xiong\Desktop\easy-vecdb\easy-vecdb\data\sift")
 
 # ---------------------- 创建并训练IVF-PQ索引 ----------------------
 # 索引格式：IVF{nlist},PQ{m}，距离度量用L2（欧式距离）

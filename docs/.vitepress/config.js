@@ -1,15 +1,20 @@
 import { defineConfig } from 'vitepress'
 
+// 1. 获取环境变量并判断
+// 如果环境变量 EDGEONE 等于 '1'，说明在 EdgeOne 环境，使用根路径 '/'
+// 否则默认是 GitHub Pages 环境，使用仓库子路径 '/easy-vecdb/'
+const isEdgeOne = process.env.EDGEONE === '1'
+const baseConfig = isEdgeOne ? '/' : '/easy-vecdb/'
+
 export default defineConfig({
-  title: 'EasyVectorDB 教程',
+  title: 'EasyVecDB 教程',
   description: '向量数据库学习与实战指南',
   lang: 'zh-CN',
-  base: '/easy-vectordb/',
+  base: baseConfig, // 这里直接使用上面计算好的变量
   lastUpdated: true,
   ignoreDeadLinks: true,
 
   head: [
-    // ['link', { rel: 'icon', href: '/images/image.png' }],
     ['meta', { name: 'theme-color', content: '#3c8772' }]
   ],
 
@@ -27,13 +32,10 @@ export default defineConfig({
   },
 
   themeConfig: {
-    // logo: '/images/image.png',
-
     returnToTopLabel: '返回顶部',
 
-    // 控制右侧目录显示的标题层级
     outline: {
-      level: [1, 4] // 显示从 # (h1) 到 #### (h4) 的标题
+      level: [1, 4]
     },
 
     nav: [
@@ -50,7 +52,8 @@ export default defineConfig({
         {
           text: 'Chapter 1 · 项目介绍',
           items: [
-            { text: '项目介绍', link: '/base/chapter1/项目介绍' }
+            { text: '项目介绍', link: '/base/chapter1/项目介绍' },
+            { text: '学习路径推荐', link: '/base/chapter1/学习路径推荐' },
           ]
         },
         {
@@ -233,20 +236,15 @@ export default defineConfig({
     },
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/datawhalechina/easy-vectordb' }
+      { icon: 'github', link: 'https://github.com/datawhalechina/easy-vecdb' }
     ],
-
-    footer: {
-      message: '基于 MIT 许可发布',
-      copyright: 'Copyright © 2025 datawhale'
-    },
 
     search: {
       provider: 'local'
     },
 
     editLink: {
-      pattern: 'https://github.com/datawhalechina/easy-vectordb/edit/main/docs/:path',
+      pattern: 'https://github.com/datawhalechina/easy-vecdb/edit/main/docs/:path',
       text: '在 GitHub 上编辑此页'
     },
 
@@ -256,6 +254,11 @@ export default defineConfig({
         dateStyle: 'short',
         timeStyle: 'medium'
       }
-    }
-  }
+    },
+
+    footer: {
+      message: '基于 Apache-2.0 许可发布',
+      copyright: '备案号：<a href="https://beian.miit.gov.cn/" target="_blank">京ICP备 2026002630 号-1</a>',
+    },
+  },
 })

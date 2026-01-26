@@ -29,7 +29,7 @@
 
 #### 1.3.1 第 1 步：构建随机超平面（Random Hyperplanes）
 
-- 在 d 维空间随机生成 k 个向量
+- 在 d 维空间随机生成 k 个向量，这些向量充当超平面的**法向量（Normal Vector）**。
   $$
   ( r_1, r_2, \ldots, r_k )
   $$
@@ -38,13 +38,13 @@
    N(0,1) 
   $$
   
-- 每个超平面代表一个随机方向。
+- 每个随机向量 $r_i$ 唯一确定了一个经过原点且与其垂直的超平面。我们通过判断数据点位于该超平面的哪一侧来进行哈希编码。
 
 ---
 
 #### 1.3.2 第 2 步：计算哈希签名（Hash Signature）
 
-对于一个向量 \( x \)，通过计算：
+对于一个向量 $x$，我们计算它与 $k$ 个超平面的法向量 $r_i$ 的点积。根据点积结果的正负，生成对应的二进制位：
 
 $$
 h_i(x) =
@@ -53,10 +53,10 @@ h_i(x) =
 0, & \text{otherwise}
 \end{cases}
 $$
-将每个超平面的结果拼接成一个二进制串（如 `10100110`），
-这就是该向量的 **哈希签名**。
 
-> ✅ 直觉：两个角度相似的向量，更可能被超平面划分到相同侧，因此哈希签名相似。
+将这 $k$ 个结果拼接起来，就形成了一个长度为 $k$ 的二进制串（例如 `10100110`）。这个二进制串就是向量 $x$ 的 **哈希签名**。
+
+> ✅ **直觉**：两个向量的夹角越小，被随机超平面分开的概率越低（更可能在同侧），因此哈希签名越相似。
 
 ---
 
@@ -64,21 +64,21 @@ $$
 
 - 为了减少碰撞错误（不同向量哈希相同），我们使用多组独立哈希函数。
 - 假设有：
-  - 每组 k 个哈希函数组成一个 **哈希表（hash table）**
+  - 每组 k 个哈希函数组成一个 **哈希表（hash table）**。在每个哈希表中，**哈希签名**（即那个 $k$ 位二进制串）相同的向量，会被放在一起，形成一个“哈希桶”。
   - 共 L 个这样的表。
 
-每个样本被插入到 L 个不同表中，从而提升召回率。
+每个样本被插入到 $L$ 个哈希表对应的桶中，从而提升召回率。
 
 ---
 
 #### 1.3.4 第 4 步：查询（Query）
 
-给定查询向量 \( q \)：
+给定查询向量 $q$：
 
-1. 计算其在每个哈希表中的签名；
-2. 找出所有桶中与其哈希相同的候选样本；
-3. 对候选样本计算真实相似度（如余弦或欧式距离）；
-4. 返回最相似的 Top-K。
+1. 计算 $q$ 在 $L$ 个哈希表中的签名；
+2. 找出这 $L$ 个表中所有对应 **“桶”** 里的向量，合并作为候选集；
+3. 对候选集中的向量计算真实相似度（如余弦或欧式距离）；
+4. 返回相似度最高的 Top-K。
 
 ---
 
@@ -100,10 +100,10 @@ $$
 
 | 阶段 | 时间复杂度 | 空间复杂度 |
 |------|-------------|-------------|
-| 建表 | \( O(nLk) \) | \( O(nL) \) |
-| 查询 | \( O(L(k + c)) \)，其中 c 为候选数量 | - |
+| 建表 |  $O(nLk)$  |  $O(nL)$  |
+| 查询 |  $O(L(k + c))$ ，其中 c 为候选数量 | - |
 
-相比暴力搜索 \( O(n) \)，LSH 查询复杂度可达 **亚线性级（如 O(n^0.5)）**。
+相比暴力搜索  $O(n)$ ，LSH 查询复杂度可达 **亚线性级（如 $O(n^{0.5})$）**。
 
 ---
 
@@ -116,7 +116,6 @@ $$
 ```python
 import numpy as np
 from typing import List, Union, Dict
-import numpy as np
 
 
 class CosineLSH:
@@ -134,6 +133,7 @@ class CosineLSH:
         self.hash_tables = [dict() for _ in range(num_tables)]  # 初始化哈希表
         self.random_planes_list = []  # 存储每个哈希表的随机超平面
         self.dimension = None  # 数据维度（在插入数据时确定）
+        self.data = None  # 存储数据向量（便于后续使用和调试）
     
     def _generate_random_planes(self, dimension: int) -> np.ndarray:
         """为单个哈希表生成随机超平面（每个超平面对应一个哈希函数）"""
@@ -158,6 +158,7 @@ class CosineLSH:
             data_array = data_array.reshape(1, -1)
         
         self.dimension = data_array.shape[1]  # 设置数据维度
+        self.data = data_array  # 存储数据（便于后续使用和调试）
         
         # 为每个哈希表生成随机超平面
         self.random_planes_list = [
@@ -177,16 +178,23 @@ class CosineLSH:
                     self.hash_tables[table_idx][hash_key] = [i]
     
     def query(self, query_vector: Union[List[float], np.ndarray], 
-              max_results: int = 10) -> List[int]:
+              max_results: int = 10, 
+              return_all_candidates: bool = False,
+              sort_by_distance: bool = False,
+              return_distances: bool = False):
         """
         查询与给定向量相似的向量
         
         参数:
             query_vector: 查询向量
-            max_results: 返回的最大结果数量
+            max_results: 返回的最大结果数量（当return_all_candidates=False时生效）
+            return_all_candidates: 是否返回所有候选向量（默认False）
+            sort_by_distance: 是否按距离排序（默认False）
+            return_distances: 是否返回距离（默认False）
             
         返回:
-            相似向量的索引列表
+            如果return_distances=False: 相似向量的索引列表
+            如果return_distances=True: (索引列表, 距离数组) 的元组
         """
         if self.dimension is None:
             raise ValueError("请先使用index方法插入数据")
@@ -213,7 +221,30 @@ class CosineLSH:
                     if neighbor_key in self.hash_tables[table_idx]:
                         candidates.update(self.hash_tables[table_idx][neighbor_key])
         
-        return list(candidates)[:max_results]
+        if not candidates:
+            if return_distances:
+                return np.array([], dtype=int), np.array([])
+            return []
+        
+        cand_ids = np.array(list(candidates), dtype=int)
+        
+        # 如果需要排序，计算距离并排序
+        if sort_by_distance:
+            dists = np.linalg.norm(self.data[cand_ids] - query_vec, axis=1)
+            sorted_indices = np.argsort(dists)
+            cand_ids = cand_ids[sorted_indices]
+            if return_distances:
+                dists = dists[sorted_indices]
+        
+        # 决定返回多少个结果
+        if not return_all_candidates:
+            cand_ids = cand_ids[:max_results]
+            if sort_by_distance and return_distances:
+                dists = dists[:max_results]
+        
+        if return_distances:
+            return cand_ids, dists
+        return list(cand_ids)
     
     def get_hash_tables_info(self) -> Dict:
         """返回哈希表的统计信息"""
@@ -246,6 +277,81 @@ class CosineLSH:
                                          info['total_buckets'])
         
         return info
+    
+    def query_with_topk(self, query_vector: Union[List[float], np.ndarray], k: int = 5):
+        """
+        查询并返回候选集和Top-k结果（便捷方法，用于可视化）
+        
+        参数:
+            query_vector: 查询向量
+            k: 返回的Top-k数量
+            
+        返回:
+            (候选ID数组, Top-k ID数组) 的元组
+        """
+        # 获取所有候选向量
+        all_candidates = self.query(query_vector, return_all_candidates=True, sort_by_distance=False)
+        
+        if len(all_candidates) == 0:
+            return np.array([], dtype=int), np.array([], dtype=int)
+        
+        # 计算Top-k
+        cand_ids = np.array(all_candidates, dtype=int)
+        dists = np.linalg.norm(self.data[cand_ids] - np.array(query_vector), axis=1)
+        topk = cand_ids[np.argsort(dists)[:k]]
+        
+        return cand_ids, topk
+    
+    def _query_single_table(self, query_vec, table_idx):
+        """查询单张哈希表，返回候选点ID集合（用于可视化）"""
+        hash_key = self._hash(query_vec, self.random_planes_list[table_idx])
+        return set(self.hash_tables[table_idx].get(hash_key, []))
+    
+    def _compute_topk_from_candidates(self, query_vec, candidate_ids, k):
+        """从候选集中计算Top-k最近邻（用于可视化）"""
+        if len(candidate_ids) == 0:
+            return np.array([], dtype=int)
+        dists = np.linalg.norm(self.data[candidate_ids] - query_vec, axis=1)
+        return candidate_ids[np.argsort(dists)[:k]]
+    
+    def compute_matches(self, query_vec):
+        """
+        计算所有数据点与查询点的哈希匹配情况（用于可视化）
+        
+        返回:
+            bits: 数据点哈希编码 (N, L, Bits)
+            q_bits: 查询点哈希编码 (L, Bits)
+            matches: 每个点在每张表是否匹配 (N, L)
+            hit_counts: 每个点命中的表数 (N,)
+            candidates: 至少命中一张表的点索引
+        """
+        if self.data is None:
+            raise ValueError("请先使用index方法插入数据")
+        
+        # 将random_planes_list转换为(n_tables, hash_size, dimension)格式
+        planes = np.array(self.random_planes_list)  # (num_tables, hash_size, dimension)
+        
+        # 计算投影: (N, num_tables, hash_size)
+        proj = np.dot(self.data, planes.transpose(0, 2, 1))
+        q_proj = np.dot(query_vec, planes.transpose(0, 2, 1))
+        
+        bits = proj > 0
+        q_bits = q_proj > 0
+        matches = np.all(bits == q_bits, axis=2)
+        hit_counts = matches.sum(axis=1)
+        return bits, q_bits, matches, hit_counts, np.where(hit_counts > 0)[0]
+    
+    @property
+    def planes(self):
+        """返回超平面数组，格式为 (num_tables, hash_size, dimension)（用于可视化兼容性）"""
+        if len(self.random_planes_list) == 0:
+            return None
+        return np.array(self.random_planes_list)
+    
+    @property
+    def num_bits(self):
+        """返回哈希位数（用于可视化兼容性）"""
+        return self.hash_size
 
 
 # 示例使用和测试
@@ -293,6 +399,7 @@ if __name__ == "__main__":
 ```
 
 运行演示：
+```
 正在构建LSH索引...
 
 哈希表统计信息:
@@ -313,359 +420,521 @@ if __name__ == "__main__":
 === 与线性搜索对比 ===
 线性搜索Top-5结果: [91 32 15 86 20]
 LSH召回率（与真实Top-5相比）: 40.00%
+```
 
-LSH算法可视化
+## 3.LSH算法可视化
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.decomposition import PCA
-plt.rcParams['font.sans-serif'] = ['Microsoft YaHei']
-plt.rcParams['axes.unicode_minus'] = False
-class VisualizableLSH:
-    """
-    可可视化的局部敏感哈希（LSH）实现，基于随机超平面投影
-    适用于余弦相似度搜索
-    """
-    
-    def __init__(self, hash_size=4, num_tables=3, dimension=2):
-        """
-        初始化LSH参数
-        
-        参数:
-        - hash_size: 每个哈希表的位数（超平面数量）
-        - num_tables: 哈希表数量
-        - dimension: 数据维度
-        """
-        self.hash_size = hash_size
-        self.num_tables = num_tables
-        self.dimension = dimension
-        self.hash_tables = [{} for _ in range(num_tables)]
-        self.random_planes_list = []
-        self.data_points = []
-        self.is_trained = False
-        
-        # 生成随机超平面（法向量）
-        self._generate_random_planes()
-        
-    def _generate_random_planes(self):
-        """生成随机超平面法向量"""
-        for i in range(self.num_tables):
-            # 生成随机超平面法向量，以原点为中心
-            planes = np.random.randn(self.hash_size, self.dimension) - 0.5
-            self.random_planes_list.append(planes)
-        self.is_trained = True
-    
-    def _hash_vector(self, vector, plane_norms):
-        """计算单个向量的哈希值（二进制编码）"""
-        # 计算向量与每个超平面法向量的点积
-        projections = np.dot(vector, plane_norms.T)
-        # 根据点积符号生成二进制编码
-        hash_bits = (projections > 0).astype(int)
-        # 转换为二进制字符串作为哈希键
-        return ''.join(hash_bits.astype(str))
-    
-    def add_vector(self, vector, vector_id=None):
-        """向LSH索引中添加向量"""
-        if vector_id is None:
-            vector_id = len(self.data_points)
-        
-        self.data_points.append(vector)
-        
-        # 将向量添加到所有哈希表
-        for table_idx in range(self.num_tables):
-            hash_key = self._hash_vector(vector, self.random_planes_list[table_idx])
-            
-            if hash_key in self.hash_tables[table_idx]:
-                self.hash_tables[table_idx][hash_key].append(vector_id)
-            else:
-                self.hash_tables[table_idx][hash_key] = [vector_id]
-        
-        return vector_id
-    
-    def query(self, query_vector, max_results=5):
-        """查询相似向量"""
-        candidates = set()
-        
-        # 在所有哈希表中查找候选向量
-        for table_idx in range(self.num_tables):
-            hash_key = self._hash_vector(query_vector, self.random_planes_list[table_idx])
-            if hash_key in self.hash_tables[table_idx]:
-                candidates.update(self.hash_tables[table_idx][hash_key])
-        
-        # 如果没有找到精确匹配，查找汉明距离最近的桶
-        if not candidates:
-            print("未找到精确匹配，正在搜索邻近桶...")
-            for table_idx in range(self.num_tables):
-                original_key = self._hash_vector(query_vector, self.random_planes_list[table_idx])
-                # 查找汉明距离为1的邻近桶
-                for i in range(len(original_key)):
-                    neighbor_key = list(original_key)
-                    neighbor_key[i] = '1' if neighbor_key[i] == '0' else '0'
-                    neighbor_key = ''.join(neighbor_key)
-                    if neighbor_key in self.hash_tables[table_idx]:
-                        candidates.update(self.hash_tables[table_idx][neighbor_key])
-        
-        candidate_ids = list(candidates)[:max_results]
-        candidate_vectors = [self.data_points[i] for i in candidate_ids]
-        
-        return candidate_ids, candidate_vectors
-    
-    def get_hash_stats(self):
-        """获取哈希表统计信息"""
-        stats = {
-            'total_vectors': len(self.data_points),
-            'total_buckets': 0,
-            'table_details': []
-        }
-        
-        for i, table in enumerate(self.hash_tables):
-            num_buckets = len(table)
-            vectors_in_table = sum(len(bucket) for bucket in table.values())
-            avg_size = vectors_in_table / num_buckets if num_buckets > 0 else 0
-            
-            stats['table_details'].append({
-                'table_index': i,
-                'num_buckets': num_buckets,
-                'total_vectors': vectors_in_table,
-                'average_bucket_size': avg_size
-            })
-        
-        stats['total_buckets'] = sum(detail['num_buckets'] for detail in stats['table_details'])
-        return stats
+from matplotlib import gridspec
+from matplotlib.patches import Rectangle
+from pathlib import Path
 
-def visualize_lsh_process(lsh, query_vector=None, highlight_vector=None):
-    """可视化LSH哈希过程"""
-    
-    if len(lsh.data_points) == 0:
-        print("没有数据可可视化")
-        return
-    
-    # 如果数据维度大于2，使用PCA降维
-    if lsh.dimension > 2:
-        pca = PCA(n_components=2)
-        all_vectors = np.array(lsh.data_points + ([query_vector] if query_vector is not None else []))
-        vectors_2d = pca.fit_transform(all_vectors)
-        
-        data_2d = vectors_2d[:len(lsh.data_points)]
-        if query_vector is not None:
-            query_2d = vectors_2d[-1]
-        else:
-            query_2d = None
-    else:
-        data_2d = np.array(lsh.data_points)
-        query_2d = query_vector
-    
-    # 创建可视化图表
-    fig, axes = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle('LSH算法可视化', fontsize=16, fontweight='bold')
-    
-    # 子图1: 显示数据点和超平面
-    ax1 = axes[0, 0]
+plt.rcParams['font.sans-serif'] = ['Arial Unicode MS', 'SimHei', 'Microsoft YaHei']
+plt.rcParams['axes.unicode_minus'] = False
+
+# 为了后续可视化方便，这里统一配置颜色和绘图配置。
+# 颜色配置
+COLORS = {
+    "data": "#E0E0E0",      # 数据点颜色（浅灰色）
+    "query": "#FFD93D",     # 查询点颜色（亮黄色）
+    "candidates": "#777777", # 候选点颜色（中灰色）
+    "tables": ["#E74C3C", "#3498DB", "#9B59B6"],  # 不同哈希表的颜色标识
+    "hits": ["#A8DADC", "#76C893", "#4A7C59"],    # 命中次数对应的颜色渐变
+    "planes": ["#A8DADC", "#3498DB", "#9B59B6", "#2ECC71"],  # 超平面颜色循环使用
+    "hash_table": {
+        "match_bg": "#8FBC8F",      # 哈希码匹配的背景色
+        "no_match_bg": "#FAFAFA",  # 哈希码不匹配的背景色
+        "match_border": "#43A047", # 哈希码匹配的边框色
+        "no_match_border": "#E0E0E0", # 哈希码不匹配的边框色
+        "no_hit_text": "#999",     # 未命中时的文字颜色
+    },
+}
+
+# 绘图配置
+PLOT_CONFIG = {
+    "figsize": (16, 10),
+    "fontsize": {"title": 11, "legend": 8, "text": 10, "suptitle": 16, "panel_title": 12},
+    "alpha": {
+        "data": 0.4,    # 数据点透明度
+        "candidates": 0.9,     # 候选点透明度（较不透明，突出显示）
+        "hits": 0.8,           # 命中点透明度（中等透明度）
+        "planes": 0.8,         # 超平面透明度（清晰可见但不抢镜）
+        "bbox": 0.9,           # 文本框背景透明度
+        "grid": 0.2            # 网格线透明度（很淡，只做参考）
+    },
+    "sizes": {"data": 20, "query": 120, "candidates": 60, "hit_points": 50},
+    "ground_truth": {
+        "face": "none",        # Ground truth点填充色（空心）
+        "edge": "#FF8C00",     # Ground truth点边框色（深橙色）
+        "text": "#FF8C00",     # Ground truth文本颜色（深橙色）
+        "marker": "s",         # Ground truth点形状（方框）
+        "alpha": 0.95,         # Ground truth点透明度
+        "size": 100,        # 统一的ground truth点大小
+        "linewidth": 1,   # 统一的线条粗细
+        "zorder": 8,     # 统一的图层层级
+    },
+    "grid": {
+        "hspace": 0.3,    # 子图垂直间距
+        "wspace": 0.25    # 子图水平间距
+    },
+    "table_wspace": 0.15,  # 多表哈希子图间距
+    "contour_resolution": 200,  # 背景网格分辨率
+    "save": {"dpi": 150},
+    "planes": {
+        "linewidth": 2.5,
+        "arrow": {          # 超平面法向量箭头定位参数
+            "scale": 0.12,   # 箭头大小缩放因子
+            "t_min": 0.05,   # 箭头位置最小偏移
+            "t_max": 0.33,   # 箭头位置最大偏移
+            "t_base": 0.25,  # 箭头位置基础偏移
+            "t_step": 0.04   # 多箭头间的偏移步长
+        }
+    },
+    "layout": {
+        "subplots_adjust": {  # 子图整体位置调整
+            "top": 0.92, "bottom": 0.06, "left": 0.05, "right": 0.98
+        }
+    }
+}
+
+
+
+
+def _line_in_box(w, xlim, ylim):
+    """计算超平面 w·x=0 与绘图边界框的交点，返回线段两端点"""
+    pts = []
+    eps = 1e-12
+    # 与左右边界 (x=常数) 求交
+    if abs(w[1]) > eps:
+        for x in xlim:
+            y = -w[0] * x / w[1]
+            if ylim[0] - 1e-9 <= y <= ylim[1] + 1e-9:
+                pts.append([x, y])
+    # 与上下边界 (y=常数) 求交
+    if abs(w[0]) > eps:
+        for y in ylim:
+            x = -w[1] * y / w[0]
+            if xlim[0] - 1e-9 <= x <= xlim[1] + 1e-9:
+                pts.append([x, y])
+    if len(pts) < 2:
+        return None
+    # 去重：保留第一个点，然后添加与第一个点不接近的点
+    unique = [pts[0]]
+    for p in pts[1:]:
+        if not np.allclose(p, unique[0]):
+            unique.append(p)
+            if len(unique) >= 2:
+                break
+    return (np.array(unique[0]), np.array(unique[1])) if len(unique) >= 2 else None
+
+def _draw_hyperplanes(ax, planes, xlim, ylim, query, span, colors, table_idx=0, show_arrows=True):
+    """绘制超平面及其标注"""
+    for i, p in enumerate(planes):
+        seg = _line_in_box(p, xlim, ylim)
+        if not seg:
+            continue
+        p1, p2 = seg
+
+        # Panel 1: 关注不同超平面切分，每个超平面用不同颜色，Panel 2: 关注不同的切分效果，每个表用一种颜色
+        color = colors["planes"][i] if show_arrows else colors["tables"][table_idx]
+        label = f"超平面 {i+1}" if show_arrows else (f"T{table_idx+1} 超平面" if i == 0 else None)
+
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], c=color, lw=PLOT_CONFIG["planes"]["linewidth"], alpha=PLOT_CONFIG["alpha"]["planes"], label=label)
+
+        if show_arrows and table_idx == 0:
+            # 绘制法向量箭头（只在Panel 1显示）
+            low, high = (p1, p2) if p1[1] <= p2[1] else (p2, p1)
+            n_hat = p / (np.linalg.norm(p) + 1e-12)
+            side = 1.0 if np.dot(query, p) >= 0 else -1.0
+            arrow_config = PLOT_CONFIG["planes"]["arrow"]
+            t = np.clip(arrow_config["t_base"] + (i - (len(planes) - 1) / 2) * arrow_config["t_step"], arrow_config["t_min"], arrow_config["t_max"])
+            base = low + (high - low) * t
+            arrow = side * n_hat * arrow_config["scale"] * span
+            ax.annotate("", xy=base + arrow, xytext=base,
+                       arrowprops=dict(arrowstyle="-|>", color=color, lw=2.5), zorder=6)
+            ax.text(*(base + arrow * 1.15), f"n{i+1}={'1' if side >= 0 else '0'}",
+                   fontsize=9, fontweight="bold", c=color, ha="center",
+                   bbox=dict(boxstyle="round,pad=0.15", fc="w", ec="none", alpha=PLOT_CONFIG["alpha"]["bbox"]), zorder=7)
+
+def setup_plot(ax, xlim, ylim, data, query, title="", data_alpha=None, data_color=None, data_size=None, query_label=True):
+    """统一的绘图设置函数：初始化子图并绘制数据点和查询点"""
+    ax.set(xlim=xlim, ylim=ylim, aspect="equal")
+    if title:
+        ax.set_title(title, fontsize=PLOT_CONFIG["fontsize"]["title"], fontweight="bold")
     
     # 绘制数据点
-    colors = plt.cm.Set1(np.linspace(0, 1, len(data_2d)))
-    for i, point in enumerate(data_2d):
-        ax1.scatter(point[0], point[1], c=[colors[i]], s=100, alpha=0.7, label=f'向量 {i}')
+    ax.scatter(data[:, 0], data[:, 1], 
+              c=data_color or COLORS["data"],
+              s=data_size or PLOT_CONFIG["sizes"]["data"],
+              alpha=data_alpha or PLOT_CONFIG["alpha"]["data"],
+              zorder=1)
     
-    # 绘制超平面（只显示第一个哈希表的前两个超平面）
-    if len(lsh.random_planes_list) > 0:
-        planes = lsh.random_planes_list[0]
-        for j, plane in enumerate(planes[:2]):  # 只显示前两个超平面
-            # 在2D空间中，超平面是直线
-            if lsh.dimension > 2:
-                # 对于高维数据，显示投影后的超平面方向
-                plane_2d = pca.transform([plane])[0]
-            else:
-                plane_2d = plane
-            
-            # 计算超平面的法线方向
-            norm = np.linalg.norm(plane_2d)
-            if norm > 0:
-                # 绘制超平面法线
-                ax1.quiver(0, 0, plane_2d[0], plane_2d[1], 
-                          angles='xy', scale_units='xy', scale=1, 
-                          color='red', alpha=0.7, width=0.01)
-                
-                # 绘制超平面（垂直于法线）
-                if abs(plane_2d[0]) > 1e-10:  # 避免除零
-                    slope = -plane_2d[0] / plane_2d[1] if abs(plane_2d[1]) > 1e-10 else 1e10
-                    x_vals = np.array(ax1.get_xlim())
-                    y_vals = slope * (x_vals - 0) + 0
-                    ax1.plot(x_vals, y_vals, 'r--', alpha=0.5, label=f'超平面 {j+1}')
+    # 绘制查询点
+    ax.scatter(*query, c=COLORS["query"], marker="*", 
+              s=PLOT_CONFIG["sizes"]["query"],
+              ec="k", lw=1.5, zorder=10,
+              label="查询点" if query_label else None)
+
+def draw_candidates(ax, data, matches_or_hits, table_idx=None, lsh=None, size=None, alpha=None, show_prefix=True):
+    """绘制候选点：table_idx指定时按表着色，否则按命中次数着色"""
+    size = size or PLOT_CONFIG["sizes"]["candidates"]
+    alpha = alpha or PLOT_CONFIG["alpha"]["candidates"]
     
-    # 标记查询点（如果有）
-    if query_2d is not None:
-        ax1.scatter(query_2d[0], query_2d[1], c='yellow', marker='*', 
-                   s=300, edgecolors='black', linewidth=2, label='查询点')
-    
-    ax1.set_title('数据点和超平面划分')
-    ax1.set_xlabel('特征 1')
-    ax1.set_ylabel('特征 2')
-    ax1.grid(True, alpha=0.3)
-    ax1.legend()
-    
-    # 子图2: 显示哈希桶分布
-    ax2 = axes[0, 1]
-    
-    # 统计每个桶的向量数量
-    bucket_sizes = []
-    bucket_labels = []
-    for table_idx, table in enumerate(lsh.hash_tables):
-        for hash_key, vectors in table.items():
-            bucket_sizes.append(len(vectors))
-            bucket_labels.append(f'T{table_idx}_{hash_key[:4]}...')
-    
-    if bucket_sizes:
-        ax2.bar(range(len(bucket_sizes)), bucket_sizes, alpha=0.7)
-        ax2.set_title('各哈希桶中的向量数量分布')
-        ax2.set_xlabel('哈希桶')
-        ax2.set_ylabel('向量数量')
-        ax2.tick_params(axis='x', rotation=45)
-    
-    # 子图3: 显示哈希编码
-    ax3 = axes[1, 0]
-    
-    # 显示前几个向量的哈希编码
-    display_count = min(5, len(lsh.data_points))
-    hash_codes = []
-    vector_labels = []
-    
-    for i in range(display_count):
-        hash_code = lsh._hash_vector(lsh.data_points[i], lsh.random_planes_list[0])
-        hash_codes.append([int(bit) for bit in hash_code])
-        vector_labels.append(f'向量{i}')
-    
-    if hash_codes:
-        im = ax3.imshow(hash_codes, cmap='Blues', aspect='auto')
-        ax3.set_xticks(range(len(hash_code)))
-        ax3.set_xticklabels([f'位{i+1}' for i in range(len(hash_code))])
-        ax3.set_yticks(range(display_count))
-        ax3.set_yticklabels(vector_labels)
-        
-        # 添加数值标注
-        for i in range(len(hash_codes)):
-            for j in range(len(hash_codes[0])):
-                ax3.text(j, i, hash_codes[i][j], 
-                        ha='center', va='center', fontweight='bold')
-        
-        ax3.set_title('向量哈希编码（第一个哈希表）')
-        plt.colorbar(im, ax=ax3, label='比特值')
-    
-    # 子图4: 显示查询结果（如果有查询）
-    ax4 = axes[1, 1]
-    
-    if query_2d is not None:
-        # 执行查询
-        candidate_ids, candidate_vectors = lsh.query(query_vector)
-        
-        # 绘制所有数据点
-        for i, point in enumerate(data_2d):
-            if i in candidate_ids:
-                # 高亮候选向量
-                ax4.scatter(point[0], point[1], c='red', s=150, 
-                           alpha=0.8, label='候选向量' if i == candidate_ids[0] else "")
-            else:
-                ax4.scatter(point[0], point[1], c='blue', s=80, alpha=0.3)
-        
-        # 标记查询点
-        ax4.scatter(query_2d[0], query_2d[1], c='yellow', marker='*', 
-                   s=300, edgecolors='black', linewidth=2, label='查询点')
-        
-        ax4.set_title('LSH查询结果')
-        ax4.set_xlabel('特征 1')
-        ax4.set_ylabel('特征 2')
-        ax4.grid(True, alpha=0.3)
-        ax4.legend()
+    if table_idx is not None:
+        # 按表着色
+        matches = matches_or_hits
+        if matches[:, table_idx].any():
+            pts = data[matches[:, table_idx]]
+            prefix = f"T{table_idx+1} " if show_prefix else ""
+            ax.scatter(pts[:, 0], pts[:, 1], c=COLORS["candidates"], s=size, alpha=alpha,
+                      ec="w", lw=1, zorder=5, label=f"{prefix}候选 ({len(pts)})")
     else:
-        # 如果没有查询，显示哈希表统计信息
-        stats = lsh.get_hash_stats()
-        ax4.text(0.1, 0.9, f"LSH索引统计:", fontsize=12, fontweight='bold')
-        ax4.text(0.1, 0.8, f"向量总数: {stats['total_vectors']}", fontsize=10)
-        ax4.text(0.1, 0.7, f"哈希表数量: {lsh.num_tables}", fontsize=10)
-        ax4.text(0.1, 0.6, f"总桶数: {stats['total_buckets']}", fontsize=10)
-        
-        for i, detail in enumerate(stats['table_details']):
-            ax4.text(0.1, 0.5 - i*0.1, 
-                    f"表{detail['table_index']}: {detail['num_buckets']}个桶", 
-                    fontsize=9)
-        
-        ax4.set_xlim(0, 1)
-        ax4.set_ylim(0, 1)
-        ax4.set_title('LSH索引统计信息')
-        ax4.axis('off')
+        # 按命中次数着色
+        if lsh is None:
+            raise ValueError("当table_idx=None时，必须提供lsh参数")
+        hits = matches_or_hits
+        for h in range(1, lsh.num_tables + 1):
+            idx = np.where(hits == h)[0]
+            if len(idx):
+                ax.scatter(data[idx, 0], data[idx, 1], c=COLORS["hits"][h-1], s=size,
+                          alpha=min(PLOT_CONFIG["alpha"]["hits"] + h * 0.05, 1.0),
+                          ec="w", lw=1, zorder=h+2, 
+                          label=f"命中{h}/{lsh.num_tables} ({len(idx)}点)")
+
+def _setup_legend(ax, fontsize=None, loc="upper left"):
+    """统一的图例设置函数"""
+    fontsize = fontsize or PLOT_CONFIG["fontsize"]["legend"]
+    ax.legend(fontsize=fontsize, loc=loc)
+
+def draw_ground_truth(ax, data, gt_indices, recall=None, size_scale=1.0):
+    """ground Truth绘制函数"""
+    if gt_indices is None or len(gt_indices) == 0:
+        return
     
-    plt.tight_layout()
+    gt_config = PLOT_CONFIG["ground_truth"]
+    label = f"Ground Truth (召回率: {recall:.1%})" if recall is not None else "Ground Truth"
+    ax.scatter(data[gt_indices, 0], data[gt_indices, 1],
+              c=gt_config["face"], marker=gt_config["marker"],
+              s=gt_config["size"] * size_scale,
+              ec=gt_config["edge"], lw=gt_config["linewidth"],
+              alpha=gt_config["alpha"], label=label,
+              zorder=gt_config["zorder"])
+
+
+def print_lsh_statistics(lsh, data):
+    """打印LSH索引统计信息"""
+    print(f"\nLSH索引统计:")
+    print(f"向量总数: {len(data)}")
+    print(f"哈希表数量: {lsh.num_tables}")
+    print(f"每表哈希位数: {lsh.hash_size}")
+
+    # 计算总桶数
+    total_buckets = sum(len(table) for table in lsh.hash_tables)
+    print(f"总桶数: {total_buckets}")
+
+    # 打印每个表的详细信息
+    for ti, table in enumerate(lsh.hash_tables):
+        avg_bucket_size = np.mean([len(bucket) for bucket in table.values()]) if table else 0
+        print(f"表{ti+1}: {len(table)}个桶, 平均每个桶{avg_bucket_size:.2f}个向量")
+
+def _compute_single_table_recall(lsh, query, data, gt, k, table_idx):
+    """计算单表的召回率"""
+    single_candidates = lsh._query_single_table(query, table_idx)
+    if not single_candidates:
+        return 0.0
+    cand_ids = np.array(list(single_candidates))
+    single_topk = lsh._compute_topk_from_candidates(query, cand_ids, k)
+    return len(set(single_topk) & set(gt)) / k if k else 0.0
+
+
+def visualize_lsh(lsh, query_vec, k=5):
+    """可视化 LSH 完整流程"""
+    if lsh.data is None:
+        print("没有数据")
+        return
+
+    data = lsh.data
+    query = np.asarray(query_vec)
+    n = len(data)
+    bits, q_bits, matches, hits, cands = lsh.compute_matches(query)
+
+    xlim = (data[:, 0].min() - 1, data[:, 0].max() + 1)
+    ylim = (data[:, 1].min() - 1, data[:, 1].max() + 1)
+    span = min(xlim[1] - xlim[0], ylim[1] - ylim[0])
+
+    # 预先计算召回率相关数据
+    gt = np.argsort(np.linalg.norm(data - query, axis=1))[:k]  # 真实 Top-k
+    _, lsh_topk = lsh.query_with_topk(query, k)  # LSH Top-k
+
+    fig = plt.figure(figsize=PLOT_CONFIG["figsize"])
+    gs = gridspec.GridSpec(2, 6, **PLOT_CONFIG["grid"]) 
+    
+    # Panel 1: 空间划分
+    ax1 = fig.add_subplot(gs[0, :2])
+    setup_plot(ax1, xlim, ylim, data, query, "1. 超平面空间划分 (Table 1)")
+
+    # 用网格着色展示空间划分
+    xx, yy = np.meshgrid(np.linspace(*xlim, PLOT_CONFIG["contour_resolution"]), np.linspace(*ylim, PLOT_CONFIG["contour_resolution"]))
+    gp = np.c_[xx.ravel(), yy.ravel()]
+    planes = lsh.planes
+    hv = np.sum((np.dot(gp, planes[0].T) > 0) * (2 ** np.arange(lsh.num_bits)), axis=1)
+    ax1.contourf(xx, yy, hv.reshape(xx.shape), levels=2**lsh.num_bits, cmap="tab20", alpha=0.1)
+
+    # 使用统一的超平面绘制函数
+    _draw_hyperplanes(ax1, planes[0], xlim, ylim, query, span, COLORS, table_idx=0, show_arrows=True)
+
+    # 绘制候选点和ground truth点
+    draw_candidates(ax1, data, matches, table_idx=0, show_prefix=False)
+    draw_ground_truth(ax1, data, gt)
+
+    # Hash框显示在图层最上层
+    ax1.annotate(f"Hash: [{''.join(q_bits[0].astype(int).astype(str))}]", xy=query, 
+                 xytext=(query[0]+0.8, query[1]+0.8),
+                 fontsize=10, fontweight="bold", bbox=dict(boxstyle="round,pad=0.3", fc="w", alpha=0.9),
+                 arrowprops=dict(arrowstyle="->", color="gray"), zorder=20)
+    _setup_legend(ax1)
+    ax1.grid(True, alpha=0.2)
+
+    # Panel 2: 多表策略 (显示单表召回率)
+    gs2 = gridspec.GridSpecFromSubplotSpec(1, lsh.num_tables, subplot_spec=gs[0, 2:6], wspace=PLOT_CONFIG["table_wspace"])
+
+    # 计算每个单表的召回率
+    table_recalls = [_compute_single_table_recall(lsh, query, data, gt, k, ti) for ti in range(lsh.num_tables)]
+
+    for ti in range(lsh.num_tables):
+        ax = fig.add_subplot(gs2[0, ti])
+        setup_plot(ax, xlim, ylim, data, query, f"Table {ti+1}")
+        planes = lsh.planes
+        _draw_hyperplanes(ax, planes[ti], xlim, ylim, query, span, COLORS, table_idx=ti, show_arrows=False)
+        draw_candidates(ax, data, matches, table_idx=ti, size=PLOT_CONFIG["sizes"]["candidates"]*0.6)
+        draw_ground_truth(ax, data, gt, recall=table_recalls[ti], size_scale=0.6)
+
+        _setup_legend(ax, fontsize=PLOT_CONFIG["fontsize"]["legend"]-1)
+
+    fig.text(0.67, 0.92, f"2. 多表策略 (L={lsh.num_tables})", fontsize=PLOT_CONFIG["fontsize"]["panel_title"], fontweight="bold", ha="center")
+    
+    # Panel 3: 联合召回 (按命中次数着色)
+    ax3 = fig.add_subplot(gs[1, :2])
+    setup_plot(ax3, xlim, ylim, data, query, "3. 联合召回 (按命中次数着色)",
+               data_color="lightgray", data_size=PLOT_CONFIG["sizes"]["data"]*0.5,
+               data_alpha=0.3, query_label=False)
+    draw_candidates(ax3, data, hits, lsh=lsh)
+    # 绘制ground truth点
+    draw_ground_truth(ax3, data, gt)
+
+    ax3.text(0.5, 0.02, f"候选集: {len(cands)}点 ({len(cands)/n:.0%})",
+             transform=ax3.transAxes, ha="center", fontsize=10, fontweight="bold",
+             bbox=dict(boxstyle="round", fc="w", alpha=PLOT_CONFIG["alpha"]["bbox"], ec="gray"))
+    _setup_legend(ax3)
+    
+    # Panel 4: 哈希编码对比
+    ax4 = fig.add_subplot(gs[1, 2:4])
+    ax4.axis("off")
+    ax4.set_title("4. 哈希编码对比", fontsize=PLOT_CONFIG["fontsize"]["title"], fontweight="bold")
+    
+    # 选择代表性的点展示: ground truth点 + 每个命中表数至少一个点（优先非ground truth）
+    show_idx, seen_patterns, gt_set = [], set(), set(gt)
+    
+    def add(idx):
+        pattern = tuple(tuple(bits[int(idx), ti].astype(int)) for ti in range(lsh.num_tables))
+        if pattern not in seen_patterns:
+            show_idx.append(int(idx))
+            seen_patterns.add(pattern)
+            return True
+    
+    # 添加ground truth点
+    for idx in gt:
+        add(idx)
+    
+    # 为每个命中表数至少选一个点（优先非ground truth）
+    for h in range(lsh.num_tables, -1, -1):
+        candidates = np.where(hits == h)[0]
+        if len(candidates) == 0:
+            continue
+        for idx in sorted(candidates, key=lambda x: int(x) in gt_set):
+            if add(idx):
+                break
+    
+    if show_idx:
+        xs = [1.8 * i for i in range(lsh.num_tables + 2)]
+        ax4.set_xlim(xs[0] - 1, xs[-1] + 1)
+        ax4.set_ylim(-(len(show_idx) + 2.5) * 0.9, 1)
+        
+        def cell(x, y, txt, bg=None, ec=None, lw=0, **kw):
+            if bg:
+                ax4.add_patch(Rectangle((x-0.8, y-0.35), 1.6, 0.7, fc=bg, ec=ec, lw=lw))
+            ax4.text(x, y, txt, ha="center", va="center", **kw)
+        
+        headers = ["ID"] + [f"T{j+1}" for j in range(lsh.num_tables)] + ["命中"]
+        for i, (h, x) in enumerate(zip(headers, xs)):
+            c = COLORS["tables"][i-1] if 1 <= i <= lsh.num_tables else "k"
+            cell(x, 0.55, h, fontsize=9, fontweight="bold", color=c)
+            if 1 <= i <= lsh.num_tables:
+                ax4.add_patch(Rectangle((x-0.85, 0.25), 1.7, 0.6,
+                              fc=["#FFEBEE", "#E3F2FD", "#F3E5F5"][(i-1)%3], ec=c, lw=2, zorder=-1))
+        
+        ax4.add_patch(Rectangle((xs[0]-0.5, -0.9), xs[-1]-xs[0]+1, 0.8, fc="#FFF9C4", ec=COLORS["query"], lw=2))
+        cell(xs[0], -0.5, "Query", fontsize=9, fontweight="bold", color="#F57F17")
+        for ti in range(lsh.num_tables):
+            cell(xs[ti+1], -0.5, ''.join(q_bits[ti].astype(int).astype(str)), 
+                 fontsize=9, family="monospace", fontweight="bold")
+
+        for i, idx in enumerate(show_idx):
+            y = -(i + 1.5) * 0.9 - 0.3  # 哈希表布局参数
+            hc = int(hits[idx])
+            # 如果是 ground truth 点，用特殊标记
+            point_label = f"V{idx}◆" if idx in gt else f"V{idx}"
+            point_color = PLOT_CONFIG["ground_truth"]["text"] if idx in gt else "black"
+            cell(xs[0], y, point_label, fontsize=9, color=point_color, fontweight="bold" if idx in gt else "normal")
+            for ti in range(lsh.num_tables):
+                m = matches[idx, ti]
+                cell(xs[ti+1], y, ''.join(bits[idx, ti].astype(int).astype(str)),
+                     bg=COLORS["hash_table"]["match_bg"] if m else COLORS["hash_table"]["no_match_bg"],
+                     ec=COLORS["hash_table"]["match_border"] if m else COLORS["hash_table"]["no_match_border"],
+                     lw=2 if m else 1, fontsize=8, family="monospace")
+            cell(xs[-1], y, f"{hc}/{lsh.num_tables}", fontsize=10, fontweight="bold",
+                 color=COLORS["hits"][hc-1] if hc else COLORS["hash_table"]["no_hit_text"])
+        ax4.text((xs[0]+xs[-1])/2, y-1.5, "绿框 = 哈希码匹配 = 被召回候选集\n◆ = Ground Truth",
+                 ha="center", fontsize=8, color=COLORS["hash_table"]["match_border"])
+    
+    # Panel 5: 最终结果对比
+    recall = len(set(lsh_topk) & set(gt)) / k if k else 0
+    
+    ax5 = fig.add_subplot(gs[1, 4:6])
+    setup_plot(ax5, xlim, ylim, data, query, "5. 结果对比")
+    ax5.collections[0].set_alpha(0.3)
+    ax5.collections[0].set_facecolor("lightgray")
+    draw_ground_truth(ax5, data, gt, recall=recall)
+    if len(lsh_topk):
+        ax5.scatter(data[lsh_topk, 0], data[lsh_topk, 1], c="red", marker="o", s=40, alpha=0.8, label="LSH结果")
+    for i, idx in enumerate(gt[:5]):
+        ax5.annotate(f"{i+1}", data[idx], xytext=(3, 3), textcoords="offset points",
+                     fontsize=8, color="w", fontweight="bold")
+    _setup_legend(ax5)
+    ax5.grid(True, alpha=PLOT_CONFIG["alpha"]["grid"])
+
+    # 保存和显示
+    fig.suptitle(f"LSH算法可视化  |  L={lsh.num_tables}表, 哈希位={lsh.hash_size}, N={n}点",
+                 fontsize=PLOT_CONFIG["fontsize"]["suptitle"], fontweight="bold", y=0.98)
+    plt.subplots_adjust(**PLOT_CONFIG["layout"]["subplots_adjust"])
     plt.show()
+    
+    speedup = n / len(cands) if len(cands) else float("inf")
+    print(f"\nLSH 结果: 召回率={recall:.0%}, 加速={speedup:.1f}×\n")
+    return recall
+
 
 def demonstrate_lsh():
     """演示LSH算法的完整流程"""
     print("=" * 60)
     print("LSH算法完整演示")
     print("=" * 60)
-    
-    # 1. 创建示例数据（2维便于可视化）
+
+    # 1. 创建示例数据
     np.random.seed(42)
     n_samples = 20
     dim = 2
-    
+
     # 生成具有聚类结构的数据
-    cluster1 = np.random.normal(loc=[2, 3], scale=0.5, size=(n_samples//2, dim))
-    cluster2 = np.random.normal(loc=[-1, -1], scale=0.3, size=(n_samples//2, dim))
-    data = np.vstack([cluster1, cluster2])
-    
+    data = np.vstack([np.random.normal(c, 0.8, (66, 2)) for c in [(2, 2), (-2, -2), (2, -2)]])
+
     print(f"生成{len(data)}个{dim}维数据点")
-    
+
     # 2. 创建并初始化LSH索引
-    lsh = VisualizableLSH(hash_size=4, num_tables=2, dimension=dim)
-    
+    lsh = CosineLSH(hash_size=4, num_tables=3)
+
     # 3. 向LSH索引中添加数据
-    for i, vector in enumerate(data):
-        lsh.add_vector(vector, i)
-    
+    lsh.index(data)
+
     print("LSH索引构建完成!")
-    
+
     # 4. 显示统计信息
-    stats = lsh.get_hash_stats()
-    print(f"\nLSH索引统计:")
-    print(f"向量总数: {stats['total_vectors']}")
-    print(f"哈希表数量: {lsh.num_tables}")
-    print(f"总桶数: {stats['total_buckets']}")
-    
-    for detail in stats['table_details']:
-        print(f"表{detail['table_index']}: {detail['num_buckets']}个桶, "
-              f"平均每个桶{detail['average_bucket_size']:.2f}个向量")
-    
+    print_lsh_statistics(lsh, data)
+
     # 5. 创建查询点
-    query_point = np.array([1.5, 2.0])
+    query_point = np.array([1.5, 1.5])
     print(f"\n查询点: {query_point}")
-    
+
     # 6. 执行查询
-    candidate_ids, candidate_vectors = lsh.query(query_point, max_results=3)
-    
+    candidate_ids, topk_ids = lsh.query_with_topk(query_point, k=5)
+
     print(f"找到{len(candidate_ids)}个候选向量:")
-    for i, vec_id in enumerate(candidate_ids):
-        similarity = cosine_similarity([query_point], [data[vec_id]])[0][0]
-        print(f"候选向量{vec_id}: 相似度={similarity:.4f}")
-    
-    # 7. 可视化整个过程
+    candidate_dists = np.linalg.norm(data[candidate_ids] - query_point, axis=1)
+    for i, (vec_id, dist) in enumerate(zip(candidate_ids, candidate_dists)):
+        print(f"候选向量{vec_id}: 距离={dist:.4f}")
+        if i == 4:
+            print("...")
+            break
+        
+    if len(topk_ids) > 0:
+        print(f"\nTop-5 最近邻结果:")
+        topk_dists = np.linalg.norm(data[topk_ids] - query_point, axis=1)
+        for i, (vec_id, dist) in enumerate(zip(topk_ids, topk_dists)):
+            print(f"Top{i+1}: 向量{vec_id}, 距离={dist:.4f}")
+
+    # 7. 可视化
     print("\n生成可视化图表...")
-    visualize_lsh_process(lsh, query_point)
-    
+    visualize_lsh(lsh, query_point, k=5)
+
     return lsh, data, query_point, candidate_ids
 
 # 运行演示
 lsh, data, query, candidates = demonstrate_lsh()
 ```
 输出结果：
-![alt text](/images/LSH算法结果.png)
 
-这个实现通过四个子图展示了LSH算法的关键过程：
-1.数据点和超平面划分：显示原始数据分布和随机超平面如何划分空间
-2.哈希桶分布：展示向量在不同哈希桶中的分布情况
-3.向量哈希编码：用热图形式显示每个向量的二进制哈希编码
-4.查询结果：高亮显示LSH找到的相似向量候选集
+```
+============================================================
+LSH算法完整演示
+============================================================
+生成198个2维数据点
+LSH索引构建完成!
 
+LSH索引统计:
+向量总数: 198
+哈希表数量: 3
+每表哈希位数: 4
+总桶数: 21
+表1: 7个桶, 平均每个桶28.29个向量
+表2: 8个桶, 平均每个桶24.75个向量
+表3: 6个桶, 平均每个桶33.00个向量
+
+查询点: [1.5 1.5]
+找到66个候选向量:
+候选向量0: 距离=0.9782
+候选向量1: 距离=1.9974
+候选向量2: 距离=0.4422
+候选向量3: 距离=2.0858
+候选向量4: 距离=0.9423
+...
+
+Top-5 最近邻结果:
+Top1: 向量42, 距离=0.1768
+Top2: 向量5, 距离=0.1815
+Top3: 向量46, 距离=0.2457
+Top4: 向量51, 距离=0.2667
+Top5: 向量14, 距离=0.2674
+
+生成可视化图表...
+LSH 结果: 召回率=100%, 加速=3.0×
+```
+![alt text](/images/LSH算法结果.svg)
+
+**图 1：空间分割基础**
+展示随机超平面如何将向量空间划分为哈希桶，相似的向量在概率上被映射到相同区域，体现局部敏感哈希的核心机制。
+
+**图 2：多表策略**
+3 个哈希表使用不同超平面并行工作，即使单表（如表3）遗漏相似向量，多表协作也能提高召回率。
+
+**图 3：多表共识**
+颜色深度表示向量被多少个哈希表同时选中的频率，共识度更高的向量与查询点更相似。
+
+**图 4：哈希码分析**
+展示向量如何转换为二进制哈希码，空间相近的向量产生相似的编码模式，验证哈希函数的相似性保持特性。
+
+**图 5：性能对比**
+LSH 近似搜索结果与精确搜索对比，展示在保持高召回率的同时实现显著的搜索加速。
 
 理解LSH算法的参数对掌握其工作原理至关重要：
 - hash_size（哈希大小）：

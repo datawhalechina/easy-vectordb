@@ -1,14 +1,18 @@
 <div align='center'>
     <img src="./logo.png" alt="alt text" width="100%">
-    <h1>Easy-vectorDB</h1>
+    <h1>Easy-vecDB（⚠️ Alpha内测版）</h1>
 </div>
+
+> [!CAUTION]
+> ⚠️ Alpha内测版本警告：此为早期内部构建版本，尚不完整且可能存在错误，欢迎大家提Issue反馈问题或建议。
+
 <div align="center">
 
-[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vectordb?style=flat-square)](https://github.com/datawhalechina/easy-vectordb/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/stargazers) [![GitHub forks](https://img.shields.io/github/forks/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/network/members) [![GitHub issues](https://img.shields.io/github/issues/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/issues) [![GitHub license](https://img.shields.io/github/license/datawhalechina/easy-vecdb?style=flat-square)](https://github.com/datawhalechina/easy-vecdb/blob/main/LICENSE)
 
 [中文](./README.md) | [English](./README_en.md)
 
-[📚 在线阅读地址](https://datawhalechina.github.io/easy-vectordb/)
+[📚 在线阅读地址](https://datawhalechina.github.io/easy-vecdb/)
 
 📚 从零开始的向量数据库原理与实践教程
 
@@ -16,7 +20,7 @@
 
 ## 🧭 项目简介
 
-**EasyVectorDB** 是一个面向开发者与研究者的 **向量数据库系统性学习项目**。  
+**EasyVecDB** 是一个面向开发者与研究者的 **向量数据库系统性学习项目**。  
 项目内容覆盖从基础概念、算法原理到生产级应用部署的全流程，聚焦以下三个方向：
 
 - 🧩 **理论入门**：理解向量数据库的原理、架构与索引机制  
@@ -40,18 +44,18 @@
 | [Chapter 5 ANN 搜索算法](./docs/base/chapter5/ANN搜索算法.md) | IVF、PQ、HNSW、LSH、Annoy算法原理与代码实战 | ✅ |
 | [Chapter 6 实现你自己的向量数据库](./docs/base/chapter6/实现你自己的向量数据库.md) | 向量数据库最小实现 | ✅ |
 | <strong>第二部分：Faiss 教程（Faiss）</strong> | 高性能向量检索引擎实战 |  |
-| [Chapter 1 FAISS 入门与环境搭建](./docs/faiss/chapter1/FAISS入门与环境搭建.md) | 安装配置、基础概念 | ✅ |
-| [Chapter 2 FAISS 核心索引实战](./docs/faiss/chapter2/FAISS数据结构与索引.md) | Flat、IVF、PQ、HNSW 等索引 | ✅ |
-| [Chapter 3 FAISS 核心功能进阶](./docs/faiss/chapter3/FAISS核心功能进阶.md) | 复合索引、GPU、批量检索 | ✅ |
-| [Chapter 4 FAISS 性能调优与评估](./docs/faiss/chapter4/FAISS性能调优与评估.md) | Recall、延迟、内存调优 | ✅ |
-| [Chapter 5 FAISS 工程化落地实战](./docs/faiss/chapter5/FAISS工程化落地实战.md) | 工程结构、服务化、实战案例 | ✅ |
+| [Chapter 1 FAISS 入门与环境搭建](./docs/Faiss/chapter1/FAISS入门与环境搭建.md) | 安装配置、基础概念 | ✅ |
+| [Chapter 2 FAISS 核心索引实战](./docs/Faiss/chapter2/FAISS数据结构与索引.md) | Flat、IVF、PQ、HNSW 等索引 | ✅ |
+| [Chapter 3 FAISS 核心功能进阶](./docs/Faiss/chapter3/FAISS核心功能进阶.md) | 复合索引、GPU、批量检索 | ✅ |
+| [Chapter 4 FAISS 性能调优与评估](./docs/Faiss/chapter4/FAISS性能调优与评估.md) | Recall、延迟、内存调优 | ✅ |
+| [Chapter 5 FAISS 工程化落地实战](./docs/Faiss/chapter5/FAISS工程化落地实战.md) | 工程结构、服务化、实战案例 | ✅ |
 | <strong>第三部分：Milvus 教程（Milvus）</strong> | 分布式向量数据库与工程实践 |  |
-| [Chapter 1 Milvus 向量数据库入门：认知与架构](./docs/milvus/chapter1/Milvus向量数据库入门.md) | 架构设计、核心组件 | ✅ |
-| [Chapter 2 Milvus 核心概念：数据模型与索引体系](./docs/milvus/chapter2/Milvus核心概念.md) | Collection、Partition、Index | ✅ |
-| [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
-| [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
-| [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
-| [Chapter 6 Milvus 选学部分](./docs/milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus reranker、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
+| [Chapter 1 Milvus 向量数据库入门：认知与架构](./docs/Milvus/chapter1/Milvus向量数据库入门.md) | 架构设计、核心组件 | ✅ |
+| [Chapter 2 Milvus 核心概念：数据模型与索引体系](./docs/Milvus/chapter2/Milvus核心概念.md) | Collection、Partition、Index | ✅ |
+| [Chapter 3 Milvus 基础操作：PyMilvus核心API实战](./docs/Milvus/chapter3/PyMilvus核心API实战.md) | Milvus数据写入、查询、索引管理 | ✅ |
+| [Chapter 4 Milvus的AI应用开发：基于BM25的混合搜索向量数据库开发实战](./docs/Milvus/chapter4/Milvus的AI应用开发.md) | RAG、混合向量检索应用 | ✅ |
+| [Chapter 5 Milvus的AI应用开发：图像检索应用实战](./docs/Milvus/docs/Milvus/chapter5/Milvus的AI应用开发.md) | 图像检索应用 | ✅ |
+| [Chapter 6 Milvus 选学部分](./docs/Milvus/chapter6/Milvus底层架构详解.md) |Milvus底层架构详解、Milvus reranker、Milvus Lite部署与应用、MinerU部署教程 | ✅ |
 | <strong>第四部分：基于向量数据库的AI应用开发</strong> |  |  |
 | [project 1 基于FAISS框架RAG实战项目](./docs/projects/project1/README.md)  | RAG with FAISS    |✅  |
 | [project 2 基于Milvus框架的Agent项目](./docs/projects/project2/README.md) | Agent with Milvus     |✅   |
@@ -63,7 +67,7 @@
 | [检索理论极限](./docs/more/chapter3/Limit基于嵌入检索的理论极限.md) | 向量检索性能边界分析 | ✅ |
 | [RabitQ索引技术](./docs/more/chapter4/RabitQ：用于近似最近邻搜索的带理论误差界的高维向量量化.md) | 高维向量量化方法 | ✅ |
 | [聚类算法](./docs/more/chapter6/聚类算法介绍.md) | 聚类算法介绍 | ✅ |
-或者你想要添加更多具体的文档项？可以告诉我具体要补充哪些内容。
+|或者你想要添加更多具体的文档项？可以告诉我具体要补充哪些内容。|||
 
 如果你是想在原来的JSON导航结构中添加，也可以告诉我具体要加在哪个位置。
 ⏳ **持续更新中...** 
@@ -84,8 +88,8 @@
 ## 📄 补充资源
 
 - 📚 [Datawhale社区介绍](./docs/Datawhale%E7%A4%BE%E5%8C%BA%E4%BB%8B%E7%BB%8D.pdf)
-- 🌐 [在线文档站点](https://datawhalechina.github.io/easy-vectordb/)
-- 💻 [项目源码](https://github.com/datawhalechina/easy-vectordb/tree/main/src)
+- 🌐 [在线文档站点](https://datawhalechina.github.io/easy-vecdb/)
+- 💻 [项目源码](https://github.com/datawhalechina/easy-vecdb/tree/main/src)
 
 【相关竞赛】
 - 🚩[2025 全国大学生计算机系统能力大赛——第2届PolarDB数据库创新设计赛](https://tianchi.aliyun.com/competition/entrance/532409)
@@ -109,8 +113,8 @@
 
 <div align="left">
 
-<a href="https://github.com/datawhalechina/easy-vectordb/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vectordb" />
+<a href="https://github.com/datawhalechina/easy-vecdb/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=datawhalechina/easy-vecdb" />
 </a>
 
 </div>
@@ -129,9 +133,9 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date&theme=dark" />
-  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
-  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vectordb&type=Date" />
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=datawhalechina/easy-vecdb&type=Date" />
 </picture>
 
 ---
@@ -150,6 +154,8 @@
 **Made with ❤️ by Datawhale**
 
 </div>
+
+
 
 
 

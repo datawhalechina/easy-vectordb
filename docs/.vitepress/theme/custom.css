@@ -1,3 +1,40 @@
+/* ============================================================================
+   公告栏样式
+   ============================================================================ */
+
+/* 关键：告诉 VitePress 公告栏的高度，让导航栏正确下移 */
+:root {
+  --vp-layout-top-height: 40px;
+}
+
+.announcement-banner {
+  background: linear-gradient(90deg, #ffdfae 0%, #ffbd53 100%);
+  color: #fff;
+  padding: 8px 16px;
+  text-align: center;
+  color: #000;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  height: var(--vp-layout-top-height);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 固定在顶部 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--vp-z-index-layout-top, 40);
+}
+
+/* 暗色模式下的公告栏样式 */
+.dark .announcement-banner {
+  background: linear-gradient(90deg, #5e4219 0%, #583c10 100%);
+  color: #fff;
+}
+
 /* 全局图片样式设置 */
 .vp-doc img {
   max-height: 50vh;
