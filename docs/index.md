@@ -6,7 +6,7 @@ hero:
   text: "向量数据库学习指南"
   tagline: 从理论到实战，掌握向量数据库核心技术
   image:
-    # src: /images/image.png
+    src: /images/favicon.png
     alt: EasyVecDB
   actions:
     - theme: brand
