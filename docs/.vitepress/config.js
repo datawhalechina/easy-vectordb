@@ -35,7 +35,7 @@ export default defineConfig({
   themeConfig: {
     returnToTopLabel: '返回顶部',
 
-    logo: '/images/favicon.ico',
+    logo: '/favicon.ico',
 
     outline: {
       level: [1, 4]
