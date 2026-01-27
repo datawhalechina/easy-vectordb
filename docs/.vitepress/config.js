@@ -41,6 +41,7 @@ export default defineConfig({
     nav: [
       { text: '首页', link: '/' },
       { text: '向量基础', link: '/base/chapter1/项目介绍' },
+      { text: 'Annoy 教程', link: '/Annoy/chapter1/Annoy入门与环境搭建' },
       { text: 'Faiss 教程', link: '/Faiss/chapter1/FAISS入门与环境搭建' },
       { text: 'Milvus 教程', link: '/Milvus/chapter1/Milvus向量数据库入门' },
       { text: '补充内容', link: '/more/chapter5/向量' },
@@ -93,6 +94,26 @@ export default defineConfig({
         },
       ],
 
+      '/Annoy/': [
+        {
+          text: 'Chapter 1 · Annoy入门与环境搭建',
+          items: [
+            { text: 'Annoy入门与环境搭建', link: '/Annoy/chapter1/Annoy入门与环境搭建' }
+          ]
+        },
+        {
+          text: 'Chapter 2 · Annoy核心API详解',
+          items: [
+            { text: 'Annoy核心API详解', link: '/Annoy/chapter2/Annoy核心API详解' }
+          ]
+        },
+        {
+          text: 'Chapter 3 · Annoy进阶技巧与最佳实践',
+          items: [
+            { text: 'Annoy进阶技巧与最佳实践', link: '/Annoy/chapter3/Annoy进阶技巧与最佳实践' }
+          ]
+        },
+      ],
       '/Faiss/': [
         {
           text: 'Chapter 1 · FAISS入门与环境搭建',
