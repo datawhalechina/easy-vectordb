@@ -15,7 +15,7 @@ export default defineConfig({
   ignoreDeadLinks: true,
 
   head: [
-    ['link', { rel: 'icon', href: '${baseConfig}images/favicon.ico' }],
+    ['link', { rel: 'icon', href: `${baseConfig}favicon.ico` }],
     ['meta', { name: 'theme-color', content: '#3c8772' }]
   ],
 
