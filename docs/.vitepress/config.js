@@ -258,7 +258,7 @@ export default defineConfig({
 
     footer: {
       message: '基于 Apache-2.0 许可发布',
-      copyright: '备案号：<a href="https://beian.miit.gov.cn/" target="_blank">京ICP备 2026002630 号-1</a>',
+      copyright: '<a href="https://beian.miit.gov.cn/" target="_blank">京ICP备2026002630号-1</a> | <a href="https://beian.mps.gov.cn/#/query/webSearch?code=11010602202215" rel="noreferrer" target="_blank">京公网安备11010602202215号</a>',
     },
   },
 })
