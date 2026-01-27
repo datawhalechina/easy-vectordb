@@ -206,14 +206,14 @@ class SimpleIVF:
 让我们用一个完整的例子来展示IVF的工作原理：
 
 ```python
-def demonstrate_ivf():
+def demonstrate_ivf(data_size=300):
     """完整演示IVF算法"""
     print("=" * 60)
     print("IVF算法演示")
     print("=" * 60)
     
     # 1. 生成数据
-    data = generate_sample_data(300, 2)
+    data = generate_sample_data(data_size, 2)
     print(f"生成{len(data)}个二维数据点")
     
     # 2. 创建并训练IVF索引
@@ -253,7 +253,7 @@ def demonstrate_ivf():
     return ivf, data, query_point, ivf_indices, bf_indices
 
 # 运行演示
-ivf, data, query, ivf_results, bf_results = demonstrate_ivf()
+ivf, data, query, ivf_results, bf_results = demonstrate_ivf(data_size=50000)
 ```
 
 结果输出：
@@ -456,8 +456,7 @@ def visualize_ivf(ivf, data, query, ivf_results, bf_results):
     total_candidates = sum(len(ivf.inverted_lists[i]) for i in nearest_cluster_indices)
     search_ratio = total_candidates / len(data)
     
-    print(f"
-IVF算法统计:")
+    print(f"IVF算法统计:")
     print(f"数据量: {len(data)} 个向量")
     print(f"聚类数: {ivf.n_clusters} 个簇")
     print(f"搜索簇: {ivf.n_probe} 个簇")

@@ -345,6 +345,86 @@ class SimpleHNSW:
         
         # 返回前k个结果
         return [(idx, dist) for dist, idx in results[:k]]
+    def search_with_path(self, query, k=5, ef_search=50):
+        """
+        在HNSW中搜索最近邻，并记录搜索路径
+        
+        参数:
+        - query: 查询向量
+        - k: 返回的最近邻数量
+        - ef_search: 搜索时的候选集大小
+        
+        返回:
+        - results: 包含(节点ID, 距离)的列表
+        - search_path: 每层的搜索路径字典
+        """
+        if self.entry_point is None:
+            return [], {}
+        
+        current_point = self.entry_point
+        current_level = self.entry_level
+        search_path = {}
+        
+        # 从顶层开始搜索，记录路径
+        for l in range(current_level, 0, -1):
+            path_nodes = [current_point]
+            results = self._search_layer_with_path(query, current_point, 1, l, path_nodes)
+            search_path[l] = path_nodes
+            if results:
+                current_point = results[0][1]  # 更新为每层的入口点
+        
+        # 在最底层进行精细搜索
+        path_nodes = [current_point]
+        results = self._search_layer_with_path(query, current_point, ef_search, 0, path_nodes)
+        search_path[0] = path_nodes
+        
+        # 返回前k个结果和搜索路径
+        final_results = [(idx, dist) for dist, idx in results[:k]]
+        return final_results, search_path
+    
+    def _search_layer_with_path(self, query, entry_point, ef, layer, path_nodes):
+        """
+        在指定层搜索最近邻，并记录搜索路径
+        
+        参数:
+        - query: 查询向量
+        - entry_point: 搜索起始点
+        - ef: 搜索范围
+        - layer: 搜索的层级
+        - path_nodes: 用于记录搜索路径的列表
+        
+        返回:
+        - 搜索结果列表
+        """
+        if entry_point is None or entry_point not in self.layers[layer]:
+            return []
+            
+        visited = set([entry_point])
+        candidates = [(self._euclidean_distance(query, self.data_points[entry_point]), entry_point)]
+        results = []
+        
+        while candidates and len(results) < ef:
+            candidates.sort(key=lambda x: x[0])
+            current_dist, current_point = candidates.pop(0)
+            
+            # 记录访问的节点到路径中
+            if current_point not in path_nodes:
+                path_nodes.append(current_point)
+            
+            if not results or current_dist < results[-1][0]:
+                results.append((current_dist, current_point))
+                results.sort(key=lambda x: x[0])
+                if len(results) > ef:
+                    results = results[:ef]
+            
+            # 探索邻居节点
+            for neighbor in self.layers[layer][current_point]:
+                if neighbor not in visited:
+                    visited.add(neighbor)
+                    dist = self._euclidean_distance(query, self.data_points[neighbor])
+                    candidates.append((dist, neighbor))
+        
+        return results
 ```
 
 ### 3.3第三步：生成示例数据和可视化函数
