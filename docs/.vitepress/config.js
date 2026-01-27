@@ -15,6 +15,7 @@ export default defineConfig({
   ignoreDeadLinks: true,
 
   head: [
+    ['link', { rel: 'icon', href: 'easy-vecdb/images/favicon.ico' }],
     ['meta', { name: 'theme-color', content: '#3c8772' }]
   ],
 
@@ -33,6 +34,8 @@ export default defineConfig({
 
   themeConfig: {
     returnToTopLabel: '返回顶部',
+
+    logo: '/images/favicon.ico',
 
     outline: {
       level: [1, 4]
